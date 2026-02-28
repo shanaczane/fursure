@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useEffect } from "react";
 import { type Service } from "@/app/types";
 
 interface ServiceModalProps {

@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from "react";
 import { type ServiceFilters, SERVICE_CATEGORIES } from "@/app/types";
 
 interface ServiceSearchProps {

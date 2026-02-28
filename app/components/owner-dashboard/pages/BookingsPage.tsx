@@ -10,7 +10,7 @@ import UpcomingBookings from "../components/UpcomingBookings";
 import BookingHistory from "../components/BookingHistory";
 import BookingForm from "../components/BookingForm";
 import ReviewForm from "../components/ReviewForm";
-import ConfirmDialog from "../components/Confirmdialog";
+import ConfirmDialog from "../components/ConfirmDialog";
 import SuccessModal from "../components/SuccessModal";
 
 const BookingsPage: React.FC = () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { type Booking } from "@/app/types";
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS } from "@/app/types";

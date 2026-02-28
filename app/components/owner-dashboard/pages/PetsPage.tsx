@@ -5,7 +5,7 @@ import { useAppContext } from "@/app/contexts/AppContext";
 import { type Pet } from "@/app/types";
 import Sidebar from "../components/Sidebar";
 import TopNavbar from "../components/TopNavbar";
-import ConfirmDialog from "../components/Confirmdialog";
+import ConfirmDialog from "../components/ConfirmDialog";
 import SuccessModal from "../components/SuccessModal";
 
 const PetsPage: React.FC = () => {
