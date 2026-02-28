@@ -70,11 +70,32 @@ const getInitialUser = (): User => {
       };
 };
 
+const DEFAULT_USER: User = {
+  id: "1",
+  name: "John Doe",
+  email: "john.doe@example.com",
+  phone: "+1 (555) 123-4567",
+  role: "owner" as const,
+  avatar: "👤",
+};
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User>(getInitialUser);
+  const [user, setUser] = useState<User>(DEFAULT_USER);
   const [services] = useState<Service[]>(MOCK_SERVICES);
-  const [bookings, setBookings] = useState<Booking[]>(getInitialBookings);
-  const [pets, setPets] = useState<Pet[]>(getInitialPets);
+  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
+  const [pets, setPets] = useState<Pet[]>(MOCK_PETS);
+
+  // Load from localStorage after mount to avoid SSR/client hydration mismatch
+  useEffect(() => {
+    const savedUser = safeGetItem("petcare_user");
+    if (savedUser) setUser(JSON.parse(savedUser));
+
+    const savedBookings = safeGetItem("petcare_bookings");
+    if (savedBookings) setBookings(JSON.parse(savedBookings));
+
+    const savedPets = safeGetItem("petcare_pets");
+    if (savedPets) setPets(JSON.parse(savedPets));
+  }, []);
 
   // Persist to localStorage whenever state changes
   useEffect(() => {
