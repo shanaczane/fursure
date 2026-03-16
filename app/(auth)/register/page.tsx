@@ -30,7 +30,15 @@ export default function Register() {
         await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
+          options: {
+            data: {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              role: formData.role,  // ← this is what was missing
+            },
+          },
         });
+
 
       if (signupError) throw signupError;
       if (!authData.user) throw new Error("No user data returned");
