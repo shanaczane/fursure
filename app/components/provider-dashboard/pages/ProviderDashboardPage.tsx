@@ -10,7 +10,7 @@ import {
   formatRelativeDate,
   formatCurrency,
 } from "../utils/providerUtils";
-import { BOOKING_STATUS_CONFIG } from "../..provider-dashboard/../types";
+import { BOOKING_STATUS_CONFIG } from "../types";
 import ProviderLayout from "../components/ProviderLayout";
 
 const ProviderDashboardPage: React.FC = () => {
