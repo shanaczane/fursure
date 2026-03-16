@@ -31,6 +31,7 @@ const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
 
   const handleLogout = () => {
     document.cookie = "token=; path=/; max-age=0";
+    document.cookie = "role=; path=/; max-age=0";
     window.location.href = "/login";
   };
 
