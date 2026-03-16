@@ -63,10 +63,11 @@ export default function Register() {
       if (authData.session) {
         const token = authData.session.access_token;
         document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
+        document.cookie = `role=${formData.role}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
+        router.push(formData.role === "SERVICE_PROVIDER" ? "/provider" : "/owner");
+      } else {
+        router.push("/login");
       }
-
-      alert("Account created successfully! Please log in.");
-      router.push("/login");
     } catch (err) {
       setError((err as Error).message);
     } finally {
