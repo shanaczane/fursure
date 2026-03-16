@@ -32,8 +32,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const handleLogout = () => {
-    // Clear auth cookie
     document.cookie = "token=; path=/; max-age=0";
+    document.cookie = "role=; path=/; max-age=0";
     window.location.href = "/login";
   };
 
