@@ -35,6 +35,7 @@ export default function Login() {
 
       const token = authData.session.access_token;
       document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
+      document.cookie = `role=${selectedRole}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
 
       const response = await fetch("/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` },
@@ -43,7 +44,7 @@ export default function Login() {
       const userData: AuthResponse = await response.json();
 
       if (userData.success && userData.data) {
-        switch (userData.data.role) {
+        switch (selectedRole) {
           case "PET_OWNER":
             router.push("/owner");
             break;
