@@ -27,6 +27,31 @@ export default function Login() {
       if (loginError) throw loginError;
       if (!authData.session) throw new Error("No session returned");
 
+      // Fetch the user's actual role from the database
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut();
+        throw new Error("Account not found. Please register first.");
+      }
+
+      const roleMap: Record<string, UserRole> = {
+        owner: "PET_OWNER",
+        provider: "SERVICE_PROVIDER",
+        admin: "ADMIN",
+      };
+      const actualRole = roleMap[profile.role] ?? "PET_OWNER";
+
+      if (actualRole !== selectedRole) {
+        await supabase.auth.signOut();
+        const label = tabs.find(t => t.role === actualRole)?.label ?? profile.role;
+        throw new Error(`This account is registered as a ${label}. Please select the correct role tab.`);
+      }
+
       const token = authData.session.access_token;
       document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
       document.cookie = `role=${selectedRole}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
