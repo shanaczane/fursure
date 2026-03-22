@@ -8,21 +8,34 @@ import {
   useEffect,
 } from "react";
 import { type Service, type Booking, type Pet, type User } from "@/app/types";
-import { MOCK_SERVICES, MOCK_BOOKINGS, MOCK_PETS } from "@/app/data/mockData";
+import {
+  getCurrentUser,
+  upsertUserProfile,
+  fetchUserPets,
+  insertPet,
+  updatePetRecord,
+  deletePetRecord,
+  fetchUserBookings,
+  insertBooking,
+  updateBookingRecord,
+  deleteBookingRecord,
+  fetchServices,
+} from "@/app/lib/api";
 
 interface AppContextType {
   user: User;
   services: Service[];
   bookings: Booking[];
   pets: Pet[];
-  updateUser: (user: Partial<User>) => void;
-  addBooking: (booking: Omit<Booking, "id">) => void;
-  updateBooking: (id: string, booking: Partial<Booking>) => void;
-  cancelBooking: (id: string) => void;
-  deleteBooking: (id: string) => void;
-  addPet: (pet: Omit<Pet, "id">) => void;
-  updatePet: (id: string, pet: Partial<Pet>) => void;
-  deletePet: (id: string) => void;
+  isLoading: boolean;
+  updateUser: (updates: Partial<User>) => Promise<void>;
+  addBooking: (booking: Omit<Booking, "id">) => Promise<void>;
+  updateBooking: (id: string, updates: Partial<Booking>) => Promise<void>;
+  cancelBooking: (id: string) => Promise<void>;
+  deleteBooking: (id: string) => Promise<void>;
+  addPet: (pet: Omit<Pet, "id">) => Promise<void>;
+  updatePet: (id: string, updates: Partial<Pet>) => Promise<void>;
+  deletePet: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -35,108 +48,107 @@ export const useAppContext = () => {
   return context;
 };
 
-// Safe localStorage helpers — guard against SSR (server has no window)
-const safeGetItem = (key: string): string | null => {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(key);
-};
-
-const safeSetItem = (key: string, value: string): void => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, value);
-};
-
-const getInitialBookings = (): Booking[] => {
-  const saved = safeGetItem("petcare_bookings");
-  return saved ? JSON.parse(saved) : MOCK_BOOKINGS;
-};
-
-const getInitialPets = (): Pet[] => {
-  const saved = safeGetItem("petcare_pets");
-  return saved ? JSON.parse(saved) : MOCK_PETS;
-};
-
-const getInitialUser = (): User => {
-  const saved = safeGetItem("petcare_user");
-  return saved
-    ? JSON.parse(saved)
-    : {
-        id: "1",
-        name: "John Doe",
-        email: "john.doe@example.com",
-        phone: "+1 (555) 123-4567",
-        role: "owner" as const,
-        avatar: "👤",
-      };
-};
-
 const DEFAULT_USER: User = {
-  id: "1",
-  name: "John Doe",
-  email: "john.doe@example.com",
-  phone: "+1 (555) 123-4567",
+  id: "",
+  name: "",
+  email: "",
   role: "owner" as const,
   avatar: "👤",
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User>(DEFAULT_USER);
-  const [services] = useState<Service[]>(MOCK_SERVICES);
-  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
-  const [pets, setPets] = useState<Pet[]>(MOCK_PETS);
+  const [services, setServices] = useState<Service[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load from localStorage after mount to avoid SSR/client hydration mismatch
+  // Load all data from Supabase after mount
   useEffect(() => {
-    const savedUser = safeGetItem("petcare_user");
-    if (savedUser) setUser(JSON.parse(savedUser));
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [currentUser, allServices] = await Promise.all([
+          getCurrentUser(),
+          fetchServices(),
+        ]);
 
-    const savedBookings = safeGetItem("petcare_bookings");
-    if (savedBookings) setBookings(JSON.parse(savedBookings));
+        if (currentUser) {
+          setUser(currentUser);
+          const [userPets, userBookings] = await Promise.all([
+            fetchUserPets(currentUser.id),
+            fetchUserBookings(currentUser.id),
+          ]);
+          setPets(userPets);
+          setBookings(userBookings);
+        }
 
-    const savedPets = safeGetItem("petcare_pets");
-    if (savedPets) setPets(JSON.parse(savedPets));
+        setServices(allServices);
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  // Persist to localStorage whenever state changes
-  useEffect(() => {
-    safeSetItem("petcare_user", JSON.stringify(user));
-  }, [user]);
-  useEffect(() => {
-    safeSetItem("petcare_bookings", JSON.stringify(bookings));
-  }, [bookings]);
-  useEffect(() => {
-    safeSetItem("petcare_pets", JSON.stringify(pets));
-  }, [pets]);
+  const updateUser = async (updates: Partial<User>) => {
+    const updated = { ...user, ...updates };
+    setUser(updated);
+    if (user.id) {
+      await upsertUserProfile(user.id, {
+        name: updated.name,
+        email: updated.email,
+        phone: updated.phone,
+        avatar: updated.avatar,
+      });
+    }
+  };
 
-  const updateUser = (updates: Partial<User>) =>
-    setUser((prev) => ({ ...prev, ...updates }));
+  const addBooking = async (booking: Omit<Booking, "id">) => {
+    if (!user.id) return;
+    const created = await insertBooking(user.id, booking);
+    setBookings((prev) => [created, ...prev]);
+  };
 
-  const addBooking = (booking: Omit<Booking, "id">) =>
-    setBookings((prev) => [...prev, { ...booking, id: String(Date.now()) }]);
-
-  const updateBooking = (id: string, updates: Partial<Booking>) =>
+  const updateBooking = async (id: string, updates: Partial<Booking>) => {
+    await updateBookingRecord(id, updates);
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, ...updates } : b)),
     );
+  };
 
-  const cancelBooking = (id: string) =>
+  const cancelBooking = async (id: string) => {
+    await updateBookingRecord(id, { status: "cancelled" });
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
     );
+  };
 
-  const deleteBooking = (id: string) =>
+  const deleteBooking = async (id: string) => {
+    await deleteBookingRecord(id);
     setBookings((prev) => prev.filter((b) => b.id !== id));
+  };
 
-  const addPet = (pet: Omit<Pet, "id">) =>
-    setPets((prev) => [...prev, { ...pet, id: String(Date.now()) }]);
+  const addPet = async (pet: Omit<Pet, "id">) => {
+    if (!user.id) return;
+    const created = await insertPet(user.id, pet);
+    setPets((prev) => [...prev, created]);
+  };
 
-  const updatePet = (id: string, updates: Partial<Pet>) =>
+  const updatePet = async (id: string, updates: Partial<Pet>) => {
+    await updatePetRecord(id, updates);
     setPets((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...updates } : p)),
     );
+  };
 
-  const deletePet = (id: string) =>
+  const deletePet = async (id: string) => {
+    await deletePetRecord(id);
     setPets((prev) => prev.filter((p) => p.id !== id));
+  };
 
   return (
     <AppContext.Provider
@@ -145,6 +157,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         services,
         bookings,
         pets,
+        isLoading,
         updateUser,
         addBooking,
         updateBooking,
