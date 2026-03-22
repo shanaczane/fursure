@@ -1,22 +1,20 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useProviderContext } from "../context/ProviderAppContext";
 import type { ProviderService } from "../types";
 import { PROVIDER_SERVICE_CATEGORIES } from "../types";
 import { formatCurrency } from "../utils/providerUtils";
 import ProviderLayout from "../components/ProviderLayout";
-import ServiceFormModal from "../components/ServiceFormModal";
 
 const MyServicesPage: React.FC = () => {
-  const { services, addService, updateService, deleteService, toggleServiceActive } =
-    useProviderContext();
+  const router = useRouter();
+  const { services, deleteService, toggleServiceActive } = useProviderContext();
 
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(true);
-  const [editingService, setEditingService] = useState<ProviderService | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -37,26 +35,6 @@ const MyServicesPage: React.FC = () => {
     setTimeout(() => setSuccessMsg(""), 3000);
   };
 
-  const handleAdd = () => {
-    setEditingService(null);
-    setIsModalOpen(true);
-  };
-
-  const handleEdit = (service: ProviderService) => {
-    setEditingService(service);
-    setIsModalOpen(true);
-  };
-
-  const handleSave = (data: Omit<ProviderService, "id" | "totalBookings" | "rating" | "reviews" | "createdAt">) => {
-    if (editingService) {
-      updateService(editingService.id, data);
-      showSuccess("Service updated successfully!");
-    } else {
-      addService(data);
-      showSuccess("Service added successfully!");
-    }
-  };
-
   const handleDelete = (id: string) => {
     deleteService(id);
     setDeleteConfirmId(null);
@@ -68,75 +46,82 @@ const MyServicesPage: React.FC = () => {
     showSuccess(`"${name}" is now ${!isActive ? "active" : "inactive"}.`);
   };
 
-  const activeCount = services.filter((s) => s.isActive).length;
+  const activeCount = services.filter(s => s.isActive).length;
+
+  const categoryColors: Record<string, { bg: string; color: string }> = {
+    grooming: { bg: "var(--fur-amber-light)", color: "var(--fur-amber-dark)" },
+    veterinary: { bg: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" },
+    training: { bg: "#EDE9FE", color: "#5B21B6" },
+    boarding: { bg: "#E0E7FF", color: "#3730A3" },
+    walking: { bg: "#D1FAE5", color: "#065F46" },
+    daycare: { bg: "#FEF3C7", color: "#92400E" },
+  };
 
   return (
     <ProviderLayout>
-      <div className="space-y-5">
+      <div className="space-y-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">My Services</h1>
-            <p className="text-gray-500 text-sm">
-              {activeCount} active · {services.length} total
+            <h1 className="text-2xl md:text-3xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+              My Services
+            </h1>
+            <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
+              {activeCount} active · {services.length} total services listed
             </p>
           </div>
           <button
-            onClick={handleAdd}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            onClick={() => router.push("/provider/services/new")}
+            className="btn-primary flex items-center gap-2 px-6 py-3"
           >
             <span>➕</span>
             <span>Add New Service</span>
           </button>
         </div>
 
-        {/* Success Toast */}
+        {/* Success toast */}
         {successMsg && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center space-x-2">
+          <div className="flex items-center gap-3 p-4 rounded-xl border"
+            style={{ background: "#D1FAE5", borderColor: "#6EE7B7", color: "#065F46" }}>
             <span>✓</span>
-            <span>{successMsg}</span>
+            <span className="font-700 text-sm">{successMsg}</span>
           </div>
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
+        <div className="rounded-2xl p-5 border" style={{ background: "white", borderColor: "var(--border)" }}>
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
             <div className="flex-1 relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search services..."
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="fur-input pl-10"
               />
-              <svg className="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 absolute left-3 top-3.5" style={{ color: "var(--fur-slate-light)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <div className="flex items-center space-x-2">
+            <label className="flex items-center gap-2 px-4 cursor-pointer">
               <input
                 type="checkbox"
-                id="showInactive"
                 checked={showInactive}
                 onChange={(e) => setShowInactive(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded"
               />
-              <label htmlFor="showInactive" className="text-sm text-gray-600 whitespace-nowrap">
-                Show inactive
-              </label>
-            </div>
+              <span className="text-sm font-600" style={{ color: "var(--fur-slate-mid)" }}>Show inactive</span>
+            </label>
           </div>
-          {/* Category Filter Chips */}
-          <div className="flex flex-wrap gap-2 mt-3">
+          <div className="flex flex-wrap gap-2">
             {PROVIDER_SERVICE_CATEGORIES.map((cat) => (
               <button
                 key={cat.value}
                 onClick={() => setCategoryFilter(cat.value)}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                  categoryFilter === cat.value
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-                }`}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-700 border-2 transition-all"
+                style={categoryFilter === cat.value
+                  ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
+                  : { background: "white", color: "var(--fur-slate-mid)", borderColor: "var(--border)" }}
               >
                 <span>{cat.emoji}</span>
                 <span>{cat.label}</span>
@@ -145,142 +130,135 @@ const MyServicesPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Services Grid */}
+        {/* Services grid */}
         {filtered.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-            <p className="text-5xl mb-3">🐾</p>
-            <p className="font-semibold text-gray-700">No services found</p>
-            <p className="text-gray-500 text-sm mt-1">
+          <div className="rounded-2xl p-16 text-center border" style={{ background: "white", borderColor: "var(--border)" }}>
+            <p className="text-5xl mb-4">🐾</p>
+            <p className="font-700 text-lg mb-2" style={{ color: "var(--fur-slate)" }}>No services found</p>
+            <p className="text-sm mb-6" style={{ color: "var(--fur-slate-light)" }}>
               {services.length === 0 ? "Add your first service to get started" : "Try adjusting your filters"}
             </p>
             {services.length === 0 && (
-              <button
-                onClick={handleAdd}
-                className="mt-4 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-              >
+              <button onClick={() => router.push("/provider/services/new")} className="btn-primary px-8 py-3">
                 Add First Service
               </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filtered.map((service) => (
-              <div
-                key={service.id}
-                className={`bg-white rounded-xl shadow-sm border-2 overflow-hidden transition-all ${
-                  service.isActive ? "border-gray-200 hover:border-blue-300" : "border-dashed border-gray-300 opacity-70"
-                }`}
-              >
-                {/* Card Header */}
-                <div className="h-28 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center relative">
-                  <span className="text-5xl">{service.image}</span>
-                  {!service.isActive && (
-                    <span className="absolute top-2 right-2 bg-gray-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                      Inactive
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {filtered.map((service) => {
+              const colors = categoryColors[service.category] || { bg: "var(--fur-sand)", color: "var(--fur-brown)" };
+              return (
+                <div
+                  key={service.id}
+                  className={`rounded-2xl overflow-hidden border-2 transition-all ${service.isActive ? "card-hover" : "opacity-60"}`}
+                  style={{ borderColor: service.isActive ? "var(--border)" : "transparent", background: "white",
+                    borderStyle: service.isActive ? "solid" : "dashed" }}
+                >
+                  {/* Card header */}
+                  <div className="h-28 flex items-center justify-center relative" style={{ background: colors.bg }}>
+                    <div className="absolute inset-0 opacity-30" style={{
+                      backgroundImage: "radial-gradient(circle at 80% 20%, rgba(255,255,255,0.8) 0%, transparent 60%)"
+                    }} />
+                    <span className="text-4xl relative z-10">{service.image}</span>
+                    <span
+                      className="absolute top-2.5 right-2.5 text-xs font-700 px-2.5 py-1 rounded-full"
+                      style={service.isActive
+                        ? { background: "#D1FAE5", color: "#065F46" }
+                        : { background: "#F3F4F6", color: "#6B7280" }}
+                    >
+                      {service.isActive ? "● Active" : "○ Inactive"}
                     </span>
-                  )}
-                  {service.isActive && (
-                    <span className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                      Active
-                    </span>
-                  )}
-                </div>
-
-                <div className="p-4">
-                  <div className="mb-3">
-                    <h3 className="font-bold text-gray-900 text-base line-clamp-1">{service.name}</h3>
-                    <div className="flex items-center space-x-2 mt-0.5">
-                      <span className="text-xs text-gray-500 capitalize">{service.category}</span>
-                      <span className="text-gray-300">·</span>
-                      <span className="text-xs text-gray-500">{service.duration} min</span>
-                      {service.rating > 0 && (
-                        <>
-                          <span className="text-gray-300">·</span>
-                          <span className="text-xs text-yellow-600">⭐ {service.rating} ({service.reviews})</span>
-                        </>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">{service.description}</p>
                   </div>
 
-                  {/* Stats Row */}
-                  <div className="flex items-center justify-between py-3 border-t border-b border-gray-100 mb-3">
-                    <div>
-                      <p className="text-lg font-bold text-gray-900">
-                        {formatCurrency(service.price)}
-                      </p>
-                      <p className="text-xs text-gray-500">{service.priceUnit}</p>
+                  <div className="p-5">
+                    <div className="mb-4">
+                      <h3 className="font-800 text-base truncate mb-0.5" style={{ color: "var(--fur-slate)" }}>{service.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: colors.bg, color: colors.color }}>
+                          {service.category}
+                        </span>
+                        <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{service.duration} min</span>
+                        {service.rating > 0 && (
+                          <span className="text-xs" style={{ color: "#F59E0B" }}>⭐ {service.rating}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-700">{service.totalBookings}</p>
-                      <p className="text-xs text-gray-500">bookings</p>
+
+                    <p className="text-xs mb-4 line-clamp-2" style={{ color: "var(--fur-slate-light)" }}>{service.description}</p>
+
+                    <div className="flex items-center justify-between py-3 border-t border-b mb-4" style={{ borderColor: "var(--border)" }}>
+                      <div>
+                        <p className="text-lg font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+                          {formatCurrency(service.price)}
+                        </p>
+                        <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{service.priceUnit}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{service.totalBookings}</p>
+                        <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>bookings</p>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleEdit(service)}
-                      className="flex-1 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleToggle(service.id, service.name, service.isActive)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        service.isActive
-                          ? "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                          : "bg-green-50 hover:bg-green-100 text-green-700"
-                      }`}
-                    >
-                      {service.isActive ? "Deactivate" : "Activate"}
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirmId(service.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete service"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Delete Confirm Inline */}
-                {deleteConfirmId === service.id && (
-                  <div className="bg-red-50 border-t border-red-200 px-4 py-3">
-                    <p className="text-sm text-red-700 font-medium mb-2">
-                      Delete "{service.name}"? This cannot be undone.
-                    </p>
-                    <div className="flex space-x-2">
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setDeleteConfirmId(null)}
-                        className="flex-1 py-1.5 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors"
+                        onClick={() => router.push(`/provider/services/${service.id}/edit`)}
+                        className="flex-1 py-2 rounded-xl text-sm font-700 transition-colors border"
+                        style={{ borderColor: "var(--fur-teal)", color: "var(--fur-teal)", background: "var(--fur-teal-light)" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-teal)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "var(--fur-teal-light)")}
                       >
-                        Cancel
+                        Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(service.id)}
-                        className="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium transition-colors"
+                        onClick={() => handleToggle(service.id, service.name, service.isActive)}
+                        className="flex-1 py-2 rounded-xl text-sm font-700 transition-colors border"
+                        style={service.isActive
+                          ? { borderColor: "var(--border)", color: "var(--fur-slate-mid)", background: "var(--fur-mist)" }
+                          : { borderColor: "#D1FAE5", color: "#065F46", background: "#D1FAE5" }}
                       >
-                        Delete
+                        {service.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirmId(service.id)}
+                        className="p-2 rounded-xl transition-colors"
+                        style={{ color: "var(--fur-rose)" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-rose-light)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
+
+                    {/* Delete confirm */}
+                    {deleteConfirmId === service.id && (
+                      <div className="mt-3 p-3 rounded-xl" style={{ background: "var(--fur-rose-light)", border: "1px solid #FCA5A5" }}>
+                        <p className="text-sm font-700 mb-2" style={{ color: "var(--fur-rose)" }}>
+                          Delete "{service.name}"?
+                        </p>
+                        <div className="flex gap-2">
+                          <button onClick={() => setDeleteConfirmId(null)}
+                            className="flex-1 py-1.5 rounded-lg text-sm font-700 bg-white border"
+                            style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}>
+                            Cancel
+                          </button>
+                          <button onClick={() => handleDelete(service.id)}
+                            className="flex-1 py-1.5 rounded-lg text-sm font-700 text-white"
+                            style={{ background: "var(--fur-rose)" }}>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
-
-      <ServiceFormModal
-        service={editingService}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSave}
-      />
     </ProviderLayout>
   );
 };

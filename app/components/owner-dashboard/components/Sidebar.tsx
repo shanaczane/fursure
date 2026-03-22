@@ -10,16 +10,12 @@ interface SidebarProps {
   upcomingBookingsCount?: number;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({
-  isOpen,
-  onToggle,
-  upcomingBookingsCount = 0,
-}) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, upcomingBookingsCount = 0 }) => {
   const pathname = usePathname();
 
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: "🏠", path: "/owner" },
-    { id: "services", label: "Services", icon: "🔍", path: "/owner/services" },
+    { id: "dashboard", label: "Dashboard", icon: "📊", path: "/owner" },
+    { id: "services", label: "Find Pet Care", icon: "🏪", path: "/owner/services" },
     {
       id: "bookings",
       label: "My Bookings",
@@ -39,50 +35,46 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 lg:hidden"
+          style={{ background: "rgba(26,35,50,0.5)", backdropFilter: "blur(4px)" }}
           onClick={onToggle}
         />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`
-          fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-50
-          transition-transform duration-300 ease-in-out w-64
-          ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-        `}
+        className={`fixed top-0 left-0 h-full z-50 transition-transform duration-300 ease-in-out w-64 flex flex-col ${
+          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+        style={{ background: "var(--sidebar-bg)", fontFamily: "'Nunito', sans-serif" }}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b border-gray-200">
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl">🐕</span>
-            <span className="text-xl font-bold text-gray-900">FurSure</span>
+        <div className="h-16 flex items-center px-6 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🐾</span>
+            <span className="text-xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>FurSure</span>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <p className="text-xs font-700 uppercase tracking-widest px-3 mb-4 mt-2" style={{ color: "#4A6280" }}>
+            Pet Owner
+          </p>
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
             return (
               <Link
                 key={item.id}
                 href={item.path}
-                className={`
-                  flex items-center justify-between px-4 py-3 rounded-lg
-                  transition-colors duration-200
-                  ${isActive ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}
-                `}
+                className={`sidebar-item ${isActive ? "active" : ""}`}
               >
-                <div className="flex items-center space-x-3">
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="font-medium">{item.label}</span>
-                </div>
+                <span className="text-lg w-6 text-center flex-shrink-0">{item.icon}</span>
+                <span className="flex-1">{item.label}</span>
                 {item.badge !== undefined && item.badge > 0 && (
-                  <span className="bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                  <span className="text-xs font-700 px-2 py-0.5 rounded-full"
+                    style={{ background: isActive ? "rgba(26,35,50,0.3)" : "var(--fur-amber)", color: isActive ? "#1A2332" : "#1A2332" }}>
                     {item.badge}
                   </span>
                 )}
@@ -91,14 +83,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Bottom Section - Logout */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        {/* Bottom */}
+        <div className="p-4 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+            className="sidebar-item w-full justify-start"
+            style={{ color: "#4A6280" }}
           >
-            <span className="text-xl">🚪</span>
-            <span className="font-medium">Logout</span>
+            <span className="text-lg w-6 text-center">🚪</span>
+            <span>Logout</span>
           </button>
         </div>
       </aside>

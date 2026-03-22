@@ -1,5 +1,144 @@
 import { type Service, type Booking, type Pet } from "@/app/types";
 
+// ─── Pet Shop type ────────────────────────────────────────────────────────────
+export interface PetShop {
+  id: string;
+  name: string;
+  description: string;
+  location: string;
+  distance: string;
+  rating: number;
+  reviews: number;
+  image: string;           // emoji cover
+  coverColor: string;      // css color for hero bg
+  categories: string[];    // service categories offered
+  responseTime: string;
+  isVerified: boolean;
+  phone?: string;
+  hours: string;
+  serviceIds: string[];    // references to MOCK_SERVICES
+}
+
+// ─── Pet Shops ────────────────────────────────────────────────────────────────
+export const MOCK_PET_SHOPS: PetShop[] = [
+  {
+    id: "shop-1",
+    name: "Pawsome Groomers",
+    description: "Award-winning grooming studio specializing in all breeds. Our experienced team provides a stress-free, luxurious experience for your pet.",
+    location: "Downtown",
+    distance: "1.2 km",
+    rating: 4.9,
+    reviews: 221,
+    image: "✂️",
+    coverColor: "#EFF6FF",
+    categories: ["grooming"],
+    responseTime: "Usually responds within 2 hours",
+    isVerified: true,
+    phone: "+1 (555) 101-2020",
+    hours: "Mon–Sat 9AM–6PM, Sun 10AM–4PM",
+    serviceIds: ["1", "7"],
+  },
+  {
+    id: "shop-2",
+    name: "VetCare Clinic",
+    description: "Full-service veterinary clinic offering wellness checks, vaccinations, emergency care, and specialist referrals for cats, dogs, and more.",
+    location: "Midtown",
+    distance: "2.5 km",
+    rating: 4.8,
+    reviews: 490,
+    image: "🏥",
+    coverColor: "#F0FDF4",
+    categories: ["veterinary"],
+    responseTime: "Usually responds within 1 hour",
+    isVerified: true,
+    phone: "+1 (555) 202-3030",
+    hours: "Mon–Fri 8AM–8PM, Sat–Sun 10AM–4PM",
+    serviceIds: ["2", "8", "12"],
+  },
+  {
+    id: "shop-3",
+    name: "Happy Paws Training",
+    description: "Certified trainers using positive-reinforcement methods to build well-behaved, confident pets. Group and private sessions available.",
+    location: "Parkside",
+    distance: "3.1 km",
+    rating: 5.0,
+    reviews: 234,
+    image: "🎓",
+    coverColor: "#FAF5FF",
+    categories: ["training"],
+    responseTime: "Usually responds within 3 hours",
+    isVerified: true,
+    phone: "+1 (555) 303-4040",
+    hours: "7 days a week: 7AM–7PM",
+    serviceIds: ["3", "9"],
+  },
+  {
+    id: "shop-4",
+    name: "Cozy Paws Resort",
+    description: "Luxury boarding and daycare in a home-like environment. 24/7 supervision, webcam access, and individual attention for every guest.",
+    location: "Suburbs",
+    distance: "5.8 km",
+    rating: 4.7,
+    reviews: 334,
+    image: "🏠",
+    coverColor: "#FFF7ED",
+    categories: ["boarding", "daycare"],
+    responseTime: "Usually responds within 4 hours",
+    isVerified: true,
+    phone: "+1 (555) 404-5050",
+    hours: "24/7 Check-in Available",
+    serviceIds: ["4", "6"],
+  },
+  {
+    id: "shop-5",
+    name: "Active Tails",
+    description: "Professional dog walking and adventure hiking for active pups. GPS tracking and real-time photo updates keep you in the loop.",
+    location: "Central Park",
+    distance: "1.8 km",
+    rating: 4.9,
+    reviews: 510,
+    image: "🚶",
+    coverColor: "#F0FDF4",
+    categories: ["walking"],
+    responseTime: "Usually responds within 30 minutes",
+    isVerified: true,
+    phone: "+1 (555) 505-6060",
+    hours: "Mon–Sun 6AM–8PM",
+    serviceIds: ["5", "11"],
+  },
+  {
+    id: "shop-6",
+    name: "Pawtraits Studio",
+    description: "Professional pet photography studio capturing your pet's personality. Studio and outdoor sessions with 50+ edited digital photos included.",
+    location: "Arts District",
+    distance: "6.1 km",
+    rating: 5.0,
+    reviews: 76,
+    image: "📸",
+    coverColor: "#FFF1F2",
+    categories: ["grooming"],
+    responseTime: "Usually responds within 12 hours",
+    isVerified: false,
+    phone: "+1 (555) 606-7070",
+    hours: "By Appointment: Tue–Sun",
+    serviceIds: ["10"],
+  },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+export const getShopById = (id: string): PetShop | undefined =>
+  MOCK_PET_SHOPS.find(s => s.id === id);
+
+export const getShopByServiceId = (serviceId: string): PetShop | undefined =>
+  MOCK_PET_SHOPS.find(s => s.serviceIds.includes(serviceId));
+
+export const getServicesByShopId = (shopId: string, allServices: Service[]): Service[] => {
+  const shop = getShopById(shopId);
+  if (!shop) return [];
+  return allServices.filter(s => shop.serviceIds.includes(s.id));
+};
+
+// ─── Existing mock data (unchanged) ──────────────────────────────────────────
 export const MOCK_PETS: Pet[] = [
   { id: "1", name: "Max", type: "dog", breed: "Golden Retriever", age: 3 },
   { id: "2", name: "Luna", type: "cat", breed: "Persian", age: 2 },
@@ -20,16 +159,8 @@ export const MOCK_SERVICES: Service[] = [
     location: "Downtown",
     distance: "1.2 km",
     image: "🐕",
-    description:
-      "Full-service grooming including bath, haircut, nail trim, and ear cleaning. Our experienced groomers handle all breeds with gentle care and professional techniques.",
-    features: [
-      "Luxury Bath & Brush",
-      "Professional Haircut",
-      "Nail Trim & Filing",
-      "Ear Cleaning",
-      "Teeth Brushing",
-      "Cologne & Bow Tie",
-    ],
+    description: "Full-service grooming including bath, haircut, nail trim, and ear cleaning. Our experienced groomers handle all breeds with gentle care.",
+    features: ["Luxury Bath & Brush", "Professional Haircut", "Nail Trim & Filing", "Ear Cleaning", "Teeth Brushing", "Cologne & Bow Tie"],
     availability: ["Mon-Sat: 9AM-6PM", "Sunday: 10AM-4PM"],
     responseTime: "Usually responds within 2 hours",
   },
@@ -45,16 +176,8 @@ export const MOCK_SERVICES: Service[] = [
     location: "Midtown",
     distance: "2.5 km",
     image: "🐈",
-    description:
-      "Comprehensive health examination for cats of all ages. Our veterinarians provide thorough checkups, vaccinations, and health consultations.",
-    features: [
-      "Physical Examination",
-      "Vaccination Updates",
-      "Health Certificate",
-      "Nutrition Consultation",
-      "Parasite Prevention",
-      "Dental Check",
-    ],
+    description: "Comprehensive health examination for cats of all ages. Vaccinations, health consultations and dental checks included.",
+    features: ["Physical Examination", "Vaccination Updates", "Health Certificate", "Nutrition Consultation", "Parasite Prevention", "Dental Check"],
     availability: ["Mon-Fri: 8AM-8PM", "Sat-Sun: 10AM-4PM"],
     responseTime: "Usually responds within 1 hour",
   },
@@ -70,16 +193,8 @@ export const MOCK_SERVICES: Service[] = [
     location: "Parkside",
     distance: "3.1 km",
     image: "🦴",
-    description:
-      "Professional dog training for obedience, behavior correction, and advanced tricks. Certified trainers use positive reinforcement methods.",
-    features: [
-      "Obedience Training",
-      "Behavior Correction",
-      "Socialization Skills",
-      "Private Sessions",
-      "Progress Reports",
-      "At-Home Training",
-    ],
+    description: "Professional dog training for obedience, behavior correction, and advanced tricks. Certified trainers use positive reinforcement.",
+    features: ["Obedience Training", "Behavior Correction", "Socialization Skills", "Private Sessions", "Progress Reports", "At-Home Training"],
     availability: ["7 days a week: 7AM-7PM"],
     responseTime: "Usually responds within 3 hours",
   },
@@ -95,16 +210,8 @@ export const MOCK_SERVICES: Service[] = [
     location: "Suburbs",
     distance: "5.8 km",
     image: "🏠",
-    description:
-      "Luxury pet boarding with spacious rooms and 24/7 care. Your pets enjoy comfortable accommodations, playtime, and constant supervision.",
-    features: [
-      "Climate Controlled Rooms",
-      "24/7 Supervision",
-      "Multiple Playtime Sessions",
-      "Webcam Access",
-      "Special Dietary Needs",
-      "Medical Care Available",
-    ],
+    description: "Luxury pet boarding with spacious rooms and 24/7 care. Webcam access and special dietary accommodations available.",
+    features: ["Climate Controlled Rooms", "24/7 Supervision", "Multiple Playtime Sessions", "Webcam Access", "Special Dietary Needs", "Medical Care Available"],
     availability: ["24/7 Check-in Available"],
     responseTime: "Usually responds within 4 hours",
   },
@@ -120,23 +227,15 @@ export const MOCK_SERVICES: Service[] = [
     location: "Central Park",
     distance: "1.8 km",
     image: "🚶",
-    description:
-      "Professional dog walking services with GPS tracking and photo updates. Perfect for busy pet owners who want their dogs to stay active.",
-    features: [
-      "GPS Tracking",
-      "Photo Updates",
-      "Flexible Schedule",
-      "Group or Solo Walks",
-      "Waste Cleanup",
-      "Water Breaks",
-    ],
+    description: "Professional dog walking with GPS tracking and photo updates. Flexible scheduling for busy pet owners.",
+    features: ["GPS Tracking", "Photo Updates", "Flexible Schedule", "Group or Solo Walks", "Waste Cleanup", "Water Breaks"],
     availability: ["Mon-Sun: 6AM-8PM"],
     responseTime: "Usually responds within 30 minutes",
   },
   {
     id: "6",
     name: "Pet Daycare Center",
-    provider: "Playful Paws Daycare",
+    provider: "Cozy Paws Resort",
     category: "daycare",
     rating: 4.8,
     reviews: 178,
@@ -145,23 +244,15 @@ export const MOCK_SERVICES: Service[] = [
     location: "Westside",
     distance: "2.2 km",
     image: "🎾",
-    description:
-      "Fun and safe daycare for dogs with supervised play and socialization. Your pet will make friends and burn energy in a controlled environment.",
-    features: [
-      "Supervised Play Areas",
-      "Socialization Activities",
-      "Rest Areas",
-      "Treats Included",
-      "Outdoor Play Yard",
-      "Small Group Sizes",
-    ],
+    description: "Fun and safe daycare for dogs with supervised play and socialization in a controlled environment.",
+    features: ["Supervised Play Areas", "Socialization Activities", "Rest Areas", "Treats Included", "Outdoor Play Yard", "Small Group Sizes"],
     availability: ["Mon-Fri: 7AM-7PM", "Sat: 8AM-5PM"],
     responseTime: "Usually responds within 1 hour",
   },
   {
     id: "7",
     name: "Cat Grooming Spa",
-    provider: "Feline Finesse",
+    provider: "Pawsome Groomers",
     category: "grooming",
     rating: 4.9,
     reviews: 94,
@@ -170,23 +261,15 @@ export const MOCK_SERVICES: Service[] = [
     location: "Uptown",
     distance: "3.5 km",
     image: "😺",
-    description:
-      "Specialized grooming services for cats by cat behavior experts. Stress-free grooming in a calm, cat-friendly environment.",
-    features: [
-      "Gentle Bathing",
-      "Mat Removal",
-      "Nail Trimming",
-      "Ear Cleaning",
-      "De-shedding Treatment",
-      "Lion Cut Available",
-    ],
+    description: "Specialized grooming for cats in a calm, stress-free environment by feline behavior experts.",
+    features: ["Gentle Bathing", "Mat Removal", "Nail Trimming", "Ear Cleaning", "De-shedding Treatment", "Lion Cut Available"],
     availability: ["Tue-Sat: 9AM-5PM"],
     responseTime: "Usually responds within 2 hours",
   },
   {
     id: "8",
     name: "Emergency Vet Care",
-    provider: "PetMed Emergency",
+    provider: "VetCare Clinic",
     category: "veterinary",
     rating: 4.6,
     reviews: 287,
@@ -195,23 +278,15 @@ export const MOCK_SERVICES: Service[] = [
     location: "Medical District",
     distance: "4.2 km",
     image: "🚑",
-    description:
-      "24/7 emergency veterinary care for urgent pet health issues. Fully equipped facility with experienced emergency veterinarians.",
-    features: [
-      "24/7 Emergency Care",
-      "Advanced Diagnostics",
-      "Surgery Capabilities",
-      "Critical Care Unit",
-      "Pain Management",
-      "Specialist Referrals",
-    ],
+    description: "24/7 emergency veterinary care for urgent pet health issues. Fully equipped facility with experienced emergency vets.",
+    features: ["24/7 Emergency Care", "Advanced Diagnostics", "Surgery Capabilities", "Critical Care Unit", "Pain Management", "Specialist Referrals"],
     availability: ["Open 24/7 - Every Day"],
     responseTime: "Immediate response for emergencies",
   },
   {
     id: "9",
     name: "Puppy Training Classes",
-    provider: "Pup Academy",
+    provider: "Happy Paws Training",
     category: "training",
     rating: 4.9,
     reviews: 145,
@@ -220,16 +295,8 @@ export const MOCK_SERVICES: Service[] = [
     location: "East Side",
     distance: "2.8 km",
     image: "🐶",
-    description:
-      "Comprehensive puppy training program covering socialization, basic commands, and house training. Group classes for puppies 8-20 weeks old.",
-    features: [
-      "Basic Commands",
-      "Potty Training",
-      "Socialization",
-      "Bite Inhibition",
-      "Leash Training",
-      "Take-Home Materials",
-    ],
+    description: "Comprehensive puppy training covering socialization, basic commands, and house training. Group classes for puppies 8-20 weeks.",
+    features: ["Basic Commands", "Potty Training", "Socialization", "Bite Inhibition", "Leash Training", "Take-Home Materials"],
     availability: ["Classes: Sat-Sun 10AM, 2PM, 4PM"],
     responseTime: "Usually responds within 24 hours",
   },
@@ -245,23 +312,15 @@ export const MOCK_SERVICES: Service[] = [
     location: "Arts District",
     distance: "6.1 km",
     image: "📸",
-    description:
-      "Professional pet photography sessions capturing your pet's personality. Includes digital photos and optional print packages.",
-    features: [
-      "Studio or Outdoor",
-      "50+ Digital Photos",
-      "Professional Editing",
-      "Props Included",
-      "Multiple Poses",
-      "Print Packages Available",
-    ],
+    description: "Professional pet photography sessions capturing your pet's unique personality. 50+ edited digital photos included.",
+    features: ["Studio or Outdoor", "50+ Digital Photos", "Professional Editing", "Props Included", "Multiple Poses", "Print Packages Available"],
     availability: ["By Appointment: Tue-Sun"],
     responseTime: "Usually responds within 12 hours",
   },
   {
     id: "11",
     name: "Dog Walking & Hiking",
-    provider: "Trail Tails Adventures",
+    provider: "Active Tails",
     category: "walking",
     rating: 4.8,
     reviews: 198,
@@ -270,23 +329,15 @@ export const MOCK_SERVICES: Service[] = [
     location: "Mountain Trails",
     distance: "8.5 km",
     image: "🥾",
-    description:
-      "Adventure dog walking and hiking trips. Perfect for active dogs who need more than just a walk around the block.",
-    features: [
-      "Scenic Trail Hikes",
-      "Small Groups (Max 4)",
-      "Transportation Included",
-      "Water & Snacks",
-      "Photo Updates",
-      "Adventure Report",
-    ],
+    description: "Adventure hiking trips for active dogs. Small groups of max 4, transportation included.",
+    features: ["Scenic Trail Hikes", "Small Groups (Max 4)", "Transportation Included", "Water & Snacks", "Photo Updates", "Adventure Report"],
     availability: ["Wed-Sun: 7AM-4PM"],
     responseTime: "Usually responds within 4 hours",
   },
   {
     id: "12",
     name: "Senior Pet Care",
-    provider: "Golden Years Pet Care",
+    provider: "VetCare Clinic",
     category: "veterinary",
     rating: 4.9,
     reviews: 167,
@@ -295,16 +346,8 @@ export const MOCK_SERVICES: Service[] = [
     location: "Northside",
     distance: "3.9 km",
     image: "👴",
-    description:
-      "Specialized care for senior pets including health monitoring, mobility support, and comfort care. Compassionate care for aging companions.",
-    features: [
-      "Geriatric Health Check",
-      "Mobility Assessment",
-      "Pain Management",
-      "Nutrition Planning",
-      "Quality of Life Care",
-      "Home Visit Options",
-    ],
+    description: "Specialized care for senior pets including health monitoring, mobility support, and comfort care.",
+    features: ["Geriatric Health Check", "Mobility Assessment", "Pain Management", "Nutrition Planning", "Quality of Life Care", "Home Visit Options"],
     availability: ["Mon-Fri: 9AM-6PM"],
     responseTime: "Usually responds within 3 hours",
   },
@@ -320,8 +363,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     time: "10:00 AM",
     status: "confirmed",
     petName: "Max",
-    notes:
-      "Please use hypoallergenic shampoo. Max is a bit nervous around clippers.",
+    notes: "Please use hypoallergenic shampoo. Max is a bit nervous around clippers.",
   },
   {
     id: "2",
@@ -360,7 +402,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     id: "5",
     serviceId: "6",
     serviceName: "Pet Daycare Center",
-    providerName: "Playful Paws Daycare",
+    providerName: "Cozy Paws Resort",
     date: "2024-02-14",
     time: "8:00 AM",
     status: "confirmed",
@@ -371,7 +413,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     id: "6",
     serviceId: "7",
     serviceName: "Cat Grooming Spa",
-    providerName: "Feline Finesse",
+    providerName: "Pawsome Groomers",
     date: "2024-01-15",
     time: "1:00 PM",
     status: "completed",
@@ -387,7 +429,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     time: "12:00 PM",
     status: "completed",
     petName: "Charlie",
-    notes: "3-day boarding while on vacation. Charlie had a blast!",
+    notes: "3-day boarding while on vacation.",
   },
   {
     id: "8",
@@ -402,17 +444,16 @@ export const MOCK_BOOKINGS: Booking[] = [
   },
 ];
 
-// Helper functions
 export const getServicesByCategory = (category: string): Service[] => {
   if (category === "all") return MOCK_SERVICES;
-  return MOCK_SERVICES.filter((s) => s.category === category);
+  return MOCK_SERVICES.filter(s => s.category === category);
 };
 
 export const getServiceById = (id: string): Service | undefined =>
-  MOCK_SERVICES.find((s) => s.id === id);
+  MOCK_SERVICES.find(s => s.id === id);
 
 export const getUpcomingBookings = (bookings: Booking[]): Booking[] =>
-  bookings.filter((b) => b.status === "pending" || b.status === "confirmed");
+  bookings.filter(b => b.status === "pending" || b.status === "confirmed");
 
 export const getPastBookings = (bookings: Booking[]): Booking[] =>
-  bookings.filter((b) => b.status === "completed" || b.status === "cancelled");
+  bookings.filter(b => b.status === "completed" || b.status === "cancelled");

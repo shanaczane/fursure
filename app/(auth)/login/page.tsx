@@ -8,12 +8,9 @@ import type { LoginCredentials, AuthResponse } from "@/app/types/auth";
 type UserRole = "PET_OWNER" | "SERVICE_PROVIDER" | "ADMIN";
 
 export default function Login() {
-  const [credentials, setCredentials] = useState<LoginCredentials>({
-    email: "",
-    password: "",
-  });
+  const [credentials, setCredentials] = useState<LoginCredentials>({ email: "", password: "" });
   const [selectedRole, setSelectedRole] = useState<UserRole>("PET_OWNER");
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -22,14 +19,11 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     try {
-      const { data: authData, error: loginError } =
-        await supabase.auth.signInWithPassword({
-          email: credentials.email,
-          password: credentials.password,
-        });
-
+      const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
       if (loginError) throw loginError;
       if (!authData.session) throw new Error("No session returned");
 
@@ -37,26 +31,12 @@ export default function Login() {
       document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
       document.cookie = `role=${selectedRole}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
 
-      const response = await fetch("/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      const response = await fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } });
       const userData: AuthResponse = await response.json();
 
       if (userData.success && userData.data) {
-        switch (selectedRole) {
-          case "PET_OWNER":
-            router.push("/owner");
-            break;
-          case "SERVICE_PROVIDER":
-            router.push("/provider");
-            break;
-          case "ADMIN":
-            router.push("/admin");
-            break;
-          default:
-            throw new Error("Invalid user role");
-        }
+        const routes: Record<UserRole, string> = { PET_OWNER: "/owner", SERVICE_PROVIDER: "/provider", ADMIN: "/admin" };
+        router.push(routes[selectedRole] || "/owner");
       } else {
         throw new Error(userData.message || "Authentication failed");
       }
@@ -67,150 +47,145 @@ export default function Login() {
     }
   };
 
-  const handleInputChange =
-    (field: keyof LoginCredentials) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCredentials((prev) => ({ ...prev, [field]: e.target.value }));
-    };
-
-  const tabs: { role: UserRole; label: string }[] = [
-    { role: "PET_OWNER", label: "Customer" },
-    { role: "SERVICE_PROVIDER", label: "Service Provider" },
-    { role: "ADMIN", label: "Admin" },
+  const tabs: { role: UserRole; label: string; icon: string }[] = [
+    { role: "PET_OWNER", label: "Pet Owner", icon: "🐾" },
+    { role: "SERVICE_PROVIDER", label: "Provider", icon: "🏢" },
+    { role: "ADMIN", label: "Admin", icon: "🔑" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#dce8f5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-md w-full max-w-md px-10 py-10">
-        {/* Role Tabs */}
-        <div className="flex gap-6 mb-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.role}
-              type="button"
-              onClick={() => setSelectedRole(tab.role)}
-              className={`text-sm font-medium pb-1 transition-all ${
-                selectedRole === tab.role
-                  ? "text-black border-b-2 border-black"
-                  : "text-gray-400 hover:text-gray-600"
-              }`}
-            >
-              {tab.label}
-            </button>
+    <div className="min-h-screen flex" style={{ fontFamily: "'Nunito', sans-serif" }}>
+      {/* Left panel - branding */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 auth-bg relative overflow-hidden">
+        <div className="absolute inset-0 opacity-5" style={{
+          backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+          backgroundSize: "32px 32px"
+        }} />
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-16">
+            <span className="text-3xl">🐾</span>
+            <span className="text-3xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>FurSure</span>
+          </div>
+          <h2 className="text-4xl font-900 text-white mb-6 leading-tight" style={{ fontFamily: "'Fraunces', serif" }}>
+            Welcome back to<br />your pet care hub
+          </h2>
+          <p className="text-lg" style={{ color: "#7A90A8" }}>
+            Manage bookings, track your pets' care history, and connect with trusted service providers.
+          </p>
+        </div>
+        <div className="relative space-y-3">
+          {[
+            { emoji: "🐕", name: "Max's Grooming", detail: "Confirmed · Tomorrow 10am", color: "#FEF3C7" },
+            { emoji: "🐈", name: "Luna's Vet Visit", detail: "Completed · Last week", color: "#D1FAE5" },
+            { emoji: "🦴", name: "Charlie's Training", detail: "Pending · Friday 2pm", color: "#EDE9FE" },
+          ].map((item) => (
+            <div key={item.name} className="flex items-center gap-4 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl" style={{ background: item.color }}>
+                {item.emoji}
+              </div>
+              <div>
+                <p className="font-700 text-white text-sm">{item.name}</p>
+                <p className="text-xs" style={{ color: "#7A90A8" }}>{item.detail}</p>
+              </div>
+            </div>
           ))}
         </div>
+      </div>
 
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-black">Log In</h1>
-          <p className="text-gray-400 text-sm mt-1">To access your account</p>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          {/* Email */}
-          <div>
-            <label className="text-xs text-gray-400 mb-1 block">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={credentials.email}
-              onChange={handleInputChange("email")}
-              required
-              disabled={loading}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none focus:border-blue-400 focus:bg-white transition-colors"
-            />
+      {/* Right panel - form */}
+      <div className="flex-1 flex items-center justify-center p-8" style={{ background: "var(--fur-cream)" }}>
+        <div className="w-full max-w-md">
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <span className="text-2xl">🐾</span>
+            <span className="text-2xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-teal)" }}>FurSure</span>
           </div>
 
-          {/* Password */}
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="text-xs text-gray-400">Password</label>
+          <h1 className="text-3xl font-900 mb-2" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>Log In</h1>
+          <p className="text-sm mb-8" style={{ color: "var(--fur-slate-light)" }}>Welcome back! Select your role to continue.</p>
+
+          {/* Role tabs */}
+          <div className="flex gap-2 mb-8 p-1 rounded-xl" style={{ background: "var(--fur-mist)" }}>
+            {tabs.map((tab) => (
               <button
+                key={tab.role}
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-xs text-gray-400 flex items-center gap-1 hover:text-gray-600 transition-colors"
+                onClick={() => setSelectedRole(tab.role)}
+                className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-700 transition-all"
+                style={selectedRole === tab.role
+                  ? { background: "white", color: "var(--fur-teal)", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }
+                  : { color: "var(--fur-slate-light)" }}
               >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  {showPassword ? (
-                    <>
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </>
-                  ) : (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                    />
-                  )}
-                </svg>
-                {showPassword ? "Hide" : "Show"}
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
               </button>
-            </div>
-            <input
-              type={showPassword ? "text" : "password"}
-              value={credentials.password}
-              onChange={handleInputChange("password")}
-              required
-              disabled={loading}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none focus:border-blue-400 focus:bg-white transition-colors"
-            />
-            <div className="mt-2 text-center">
-              <a
-                href="/forgot-password"
-                className="text-xs text-gray-500 underline hover:text-gray-700 transition-colors"
-              >
-                I forget my password
-              </a>
-            </div>
+            ))}
           </div>
 
-          {error && (
-            <div
-              className="bg-red-50 text-red-500 text-xs rounded-xl px-4 py-3"
-              role="alert"
-            >
-              {error}
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Email Address</label>
+              <input
+                type="email"
+                value={credentials.email}
+                onChange={(e) => setCredentials(prev => ({ ...prev, email: e.target.value }))}
+                required
+                disabled={loading}
+                placeholder="you@example.com"
+                className="fur-input"
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 rounded-full transition-colors disabled:opacity-60 mt-2"
-          >
-            {loading ? "Logging in..." : "Log In"}
-          </button>
-        </form>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Password</label>
+                <a href="/forgot-password" className="text-xs font-600 hover:underline" style={{ color: "var(--fur-teal)" }}>Forgot password?</a>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={credentials.password}
+                  onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                  required
+                  disabled={loading}
+                  placeholder="••••••••"
+                  className="fur-input pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-700"
+                  style={{ color: "var(--fur-slate-light)" }}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
 
-        <div className="mt-7 text-center">
-          <p className="text-sm text-gray-400 mb-4">
-            Don&apos;t have an account?
-          </p>
-          <button
-            onClick={() => router.push("/register")}
-            type="button"
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-10 py-3 rounded-full transition-colors"
-          >
-            Create an account
-          </button>
+            {error && (
+              <div className="p-4 rounded-xl text-sm font-600" style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5" }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full py-3 text-base disabled:opacity-60"
+            >
+              {loading ? "Logging in..." : `Log In as ${tabs.find(t => t.role === selectedRole)?.label}`}
+            </button>
+          </form>
+
+          <div className="mt-8 pt-8 border-t text-center" style={{ borderColor: "var(--border)" }}>
+            <p className="text-sm mb-4" style={{ color: "var(--fur-slate-light)" }}>Don't have an account?</p>
+            <button
+              onClick={() => router.push("/register")}
+              className="btn-amber w-full py-3 text-base"
+            >
+              Create an Account
+            </button>
+          </div>
         </div>
       </div>
     </div>

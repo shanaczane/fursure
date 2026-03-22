@@ -9,13 +9,9 @@ type RegisterRole = "PET_OWNER" | "SERVICE_PROVIDER";
 
 export default function Register() {
   const [formData, setFormData] = useState<RegisterData>({
-    email: "",
-    password: "",
-    firstName: "",
-    lastName: "",
-    role: "PET_OWNER",
+    email: "", password: "", firstName: "", lastName: "", role: "PET_OWNER",
   });
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -24,41 +20,22 @@ export default function Register() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     try {
-      const { data: authData, error: signupError } =
-        await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              firstName: formData.firstName,
-              lastName: formData.lastName,
-              role: formData.role,  // ← this is what was missing
-            },
-          },
-        });
-
-
+      const { data: authData, error: signupError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: { data: { firstName: formData.firstName, lastName: formData.lastName, role: formData.role } },
+      });
       if (signupError) throw signupError;
       if (!authData.user) throw new Error("No user data returned");
 
       const response = await fetch("/api/auth/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: authData.user.id,
-          email: formData.email,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          role: formData.role,
-        }),
+        body: JSON.stringify({ userId: authData.user.id, email: formData.email, firstName: formData.firstName, lastName: formData.lastName, role: formData.role }),
       });
-
       const syncData = await response.json();
-      if (!syncData.success) {
-        throw new Error(syncData.message || "Failed to sync user");
-      }
+      if (!syncData.success) throw new Error(syncData.message || "Failed to sync user");
 
       if (authData.session) {
         const token = authData.session.access_token;
@@ -75,173 +52,149 @@ export default function Register() {
     }
   };
 
-  const handleInputChange =
-    (field: keyof RegisterData) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      setFormData((prev) => ({ ...prev, [field]: e.target.value }));
-    };
-
-  const tabs: { role: RegisterRole; label: string }[] = [
-    { role: "PET_OWNER", label: "Customer" },
-    { role: "SERVICE_PROVIDER", label: "Service Provider" },
+  const tabs: { role: RegisterRole; label: string; icon: string; desc: string }[] = [
+    { role: "PET_OWNER", label: "Pet Owner", icon: "🐾", desc: "Book and manage pet care services" },
+    { role: "SERVICE_PROVIDER", label: "Service Provider", icon: "🏢", desc: "List services and manage bookings" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#dce8f5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-md w-full max-w-md px-10 py-10">
-        {/* Role Tabs */}
-        <div className="flex gap-6 mb-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.role}
-              type="button"
-              onClick={() =>
-                setFormData((prev) => ({ ...prev, role: tab.role }))
-              }
-              className={`text-sm font-medium pb-1 transition-all ${
-                formData.role === tab.role
-                  ? "text-black border-b-2 border-black"
-                  : "text-gray-400 hover:text-gray-600"
-              }`}
-            >
-              {tab.label}
-            </button>
+    <div className="min-h-screen flex" style={{ fontFamily: "'Nunito', sans-serif" }}>
+      {/* Left panel */}
+      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between p-12 auth-bg relative overflow-hidden">
+        <div className="absolute inset-0 opacity-5" style={{
+          backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+          backgroundSize: "32px 32px"
+        }} />
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-16">
+            <span className="text-3xl">🐾</span>
+            <span className="text-3xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>FurSure</span>
+          </div>
+          <h2 className="text-4xl font-900 text-white mb-6" style={{ fontFamily: "'Fraunces', serif" }}>
+            Join 10,000+ pet<br />lovers today
+          </h2>
+          <p style={{ color: "#7A90A8" }}>
+            Connect with the best local pet care providers and give your furry friend the life they deserve.
+          </p>
+        </div>
+        <div className="relative space-y-4">
+          {["✂️ Professional Grooming", "🏥 Trusted Vets", "🎓 Expert Training", "🏠 Safe Boarding", "🚶 Daily Walking"].map((item) => (
+            <div key={item} className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full" style={{ background: "var(--fur-amber)" }} />
+              <span className="text-sm font-600" style={{ color: "#A0B8D0" }}>{item}</span>
+            </div>
           ))}
         </div>
+      </div>
 
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-black">Create Account</h1>
-          <p className="text-gray-400 text-sm mt-1">Join FurSure today</p>
-        </div>
-
-        <form onSubmit={handleRegister} className="space-y-4">
-          {/* First / Last Name */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">
-                First Name
-              </label>
-              <input
-                type="text"
-                value={formData.firstName}
-                onChange={handleInputChange("firstName")}
-                required
-                disabled={loading}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none focus:border-blue-400 focus:bg-white transition-colors"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">
-                Last Name
-              </label>
-              <input
-                type="text"
-                value={formData.lastName}
-                onChange={handleInputChange("lastName")}
-                required
-                disabled={loading}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none focus:border-blue-400 focus:bg-white transition-colors"
-              />
-            </div>
+      {/* Right panel */}
+      <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto" style={{ background: "var(--fur-cream)" }}>
+        <div className="w-full max-w-lg py-8">
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <span className="text-2xl">🐾</span>
+            <span className="text-2xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-teal)" }}>FurSure</span>
           </div>
 
-          {/* Email */}
-          <div>
-            <label className="text-xs text-gray-400 mb-1 block">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange("email")}
-              required
-              disabled={loading}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none focus:border-blue-400 focus:bg-white transition-colors"
-            />
-          </div>
+          <h1 className="text-3xl font-900 mb-2" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>Create Account</h1>
+          <p className="text-sm mb-8" style={{ color: "var(--fur-slate-light)" }}>Join FurSure and start booking trusted pet care.</p>
 
-          {/* Password */}
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="text-xs text-gray-400">Password</label>
+          {/* Role selection cards */}
+          <div className="grid grid-cols-2 gap-3 mb-8">
+            {tabs.map((tab) => (
               <button
+                key={tab.role}
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-xs text-gray-400 flex items-center gap-1 hover:text-gray-600 transition-colors"
+                onClick={() => setFormData(prev => ({ ...prev, role: tab.role }))}
+                className="p-4 rounded-xl border-2 text-left transition-all"
+                style={formData.role === tab.role
+                  ? { borderColor: "var(--fur-teal)", background: "var(--fur-teal-light)", boxShadow: "0 0 0 3px rgba(45,140,114,0.12)" }
+                  : { borderColor: "var(--border)", background: "white" }}
               >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  {showPassword ? (
-                    <>
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </>
-                  ) : (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                    />
-                  )}
-                </svg>
-                {showPassword ? "Hide" : "Show"}
+                <span className="text-2xl block mb-2">{tab.icon}</span>
+                <p className="font-700 text-sm mb-1" style={{ color: "var(--fur-slate)" }}>{tab.label}</p>
+                <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{tab.desc}</p>
               </button>
-            </div>
-            <input
-              type={showPassword ? "text" : "password"}
-              value={formData.password}
-              onChange={handleInputChange("password")}
-              minLength={6}
-              required
-              disabled={loading}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-800 outline-none focus:border-blue-400 focus:bg-white transition-colors"
-            />
-            <p className="text-xs text-gray-400 mt-1">Minimum 6 characters</p>
+            ))}
           </div>
 
-          {error && (
-            <div
-              className="bg-red-50 text-red-500 text-xs rounded-xl px-4 py-3"
-              role="alert"
-            >
-              {error}
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>First Name</label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                  required
+                  disabled={loading}
+                  placeholder="John"
+                  className="fur-input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Last Name</label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                  required
+                  disabled={loading}
+                  placeholder="Doe"
+                  className="fur-input"
+                />
+              </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 rounded-full transition-colors disabled:opacity-60 mt-2"
-          >
-            {loading ? "Creating account..." : "Create Account"}
-          </button>
-        </form>
+            <div>
+              <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Email Address</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                required
+                disabled={loading}
+                placeholder="you@example.com"
+                className="fur-input"
+              />
+            </div>
 
-        <div className="mt-7 text-center">
-          <p className="text-sm text-gray-400 mb-4">Already have an account?</p>
-          <button
-            onClick={() => router.push("/login")}
-            type="button"
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-10 py-3 rounded-full transition-colors"
-          >
-            Log in
-          </button>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Password</label>
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="text-xs font-600" style={{ color: "var(--fur-slate-light)" }}>
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                minLength={6}
+                required
+                disabled={loading}
+                placeholder="Min. 6 characters"
+                className="fur-input"
+              />
+            </div>
+
+            {error && (
+              <div className="p-4 rounded-xl text-sm font-600" style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5" }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base disabled:opacity-60">
+              {loading ? "Creating account..." : `Create Account as ${formData.role === "SERVICE_PROVIDER" ? "Provider" : "Pet Owner"}`}
+            </button>
+          </form>
+
+          <div className="mt-6 pt-6 border-t text-center" style={{ borderColor: "var(--border)" }}>
+            <p className="text-sm mb-4" style={{ color: "var(--fur-slate-light)" }}>Already have an account?</p>
+            <button onClick={() => router.push("/login")} className="btn-secondary w-full py-3">
+              Log In
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -17,7 +17,7 @@ const ProviderDashboardPage: React.FC = () => {
   const { user, services, bookings } = useProviderContext();
   const stats = getProviderDashboardStats(bookings, services);
   const upcomingBookings = getUpcomingBookings(bookings).slice(0, 4);
-  const pendingBookings = bookings.filter((b) => b.status === "pending").slice(0, 3);
+  const pendingBookings = bookings.filter(b => b.status === "pending").slice(0, 3);
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -26,80 +26,107 @@ const ProviderDashboardPage: React.FC = () => {
     return "Good evening";
   };
 
+  const statCards = [
+    { label: "Pending", value: stats.pendingBookings, icon: "⏳", color: "#F59E0B", bg: "#FEF3C7" },
+    { label: "Confirmed", value: stats.confirmedBookings, icon: "📅", color: "var(--fur-teal)", bg: "var(--fur-teal-light)" },
+    { label: "Active Services", value: stats.activeServices, icon: "🐾", color: "#8B5CF6", bg: "#EDE9FE" },
+    { label: "This Month", value: formatCurrency(stats.monthlyEarnings), icon: "💰", color: "#059669", bg: "#D1FAE5" },
+  ];
+
+  const quickActions = [
+    { label: "Add Service", icon: "➕", href: "/provider/services/new", color: "var(--fur-teal-light)", accent: "var(--fur-teal)" },
+    { label: "View Bookings", icon: "📅", href: "/provider/bookings", color: "#FEF3C7", accent: "#92400E" },
+    { label: "My Schedule", icon: "🗓️", href: "/provider/schedule", color: "#EDE9FE", accent: "#5B21B6" },
+    { label: "Edit Profile", icon: "👤", href: "/provider/profile", color: "#D1FAE5", accent: "#065F46" },
+  ];
+
   return (
     <ProviderLayout>
-      <div className="space-y-6">
-        {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-1">
-                {getGreeting()}, {user.name.split(" ")[0]}! 👋
-              </h1>
-              <p className="text-blue-100 text-sm md:text-base">
-                {user.businessName} · {stats.pendingBookings} booking{stats.pendingBookings !== 1 ? "s" : ""} awaiting your response
-              </p>
-            </div>
-            {stats.averageRating > 0 && (
-              <div className="bg-white/10 backdrop-blur rounded-lg px-4 py-2 flex items-center space-x-2">
-                <span className="text-yellow-300 text-xl">⭐</span>
-                <div>
-                  <p className="text-white font-bold text-lg leading-none">{stats.averageRating}</p>
-                  <p className="text-blue-200 text-xs">{user.totalReviews} reviews</p>
-                </div>
-              </div>
-            )}
-          </div>
+      <div className="space-y-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
+        {/* Welcome banner */}
+        <div className="rounded-2xl overflow-hidden relative"
+          style={{ background: "linear-gradient(135deg, #1A2332 0%, #2D4A6B 100%)" }}>
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10 -translate-y-1/2 translate-x-1/4"
+            style={{ background: "var(--fur-amber)" }} />
+          <div className="absolute bottom-0 left-1/3 w-48 h-48 rounded-full opacity-5 translate-y-1/2"
+            style={{ background: "var(--fur-teal)" }} />
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-            {[
-              { label: "Pending", value: stats.pendingBookings, color: "text-amber-300" },
-              { label: "Confirmed", value: stats.confirmedBookings, color: "text-green-300" },
-              { label: "Active Services", value: stats.activeServices, color: "text-blue-200" },
-              { label: "This Month", value: formatCurrency(stats.monthlyEarnings), color: "text-emerald-300" },
-            ].map((s) => (
-              <div key={s.label} className="bg-white/10 rounded-lg p-3 text-center">
-                <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-                <p className="text-blue-100 text-xs mt-0.5">{s.label}</p>
+          <div className="relative p-6 md:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+              <div>
+                <p className="text-sm font-600 mb-1" style={{ color: "#7A90A8" }}>{getGreeting()} 👋</p>
+                <h1 className="text-2xl md:text-3xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>
+                  {user.businessName}
+                </h1>
+                <p className="text-sm mt-1" style={{ color: "#7A90A8" }}>
+                  {stats.pendingBookings > 0
+                    ? `${stats.pendingBookings} booking${stats.pendingBookings !== 1 ? "s" : ""} awaiting response`
+                    : "All caught up! No pending bookings."}
+                </p>
               </div>
-            ))}
+              {stats.averageRating > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <span className="text-xl">⭐</span>
+                  <div>
+                    <p className="text-xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>
+                      {stats.averageRating}
+                    </p>
+                    <p className="text-xs" style={{ color: "#7A90A8" }}>{user.totalReviews} reviews</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {statCards.map((s) => (
+                <div key={s.label} className="rounded-xl p-4"
+                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base mb-3" style={{ background: s.bg }}>
+                    {s.icon}
+                  </div>
+                  <p className="text-xl font-900 text-white mb-0.5" style={{ fontFamily: "'Fraunces', serif" }}>{s.value}</p>
+                  <p className="text-xs font-600" style={{ color: "#7A90A8" }}>{s.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Pending Bookings Alert */}
+        {/* Pending bookings alert */}
         {pendingBookings.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-amber-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-amber-100">
-              <div className="flex items-center space-x-2">
-                <span className="w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse" />
-                <h2 className="font-bold text-gray-900">Needs Your Response</h2>
-                <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+          <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "#FCD34D" }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "#FEF3C7", background: "#FFFBEB" }}>
+              <div className="flex items-center gap-3">
+                <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: "#F59E0B" }} />
+                <h2 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>Needs Your Response</h2>
+                <span className="text-xs font-700 px-2 py-0.5 rounded-full"
+                  style={{ background: "#FEF3C7", color: "#92400E" }}>
                   {stats.pendingBookings}
                 </span>
               </div>
-              <Link href="/provider/bookings" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <Link href="/provider/bookings" className="text-sm font-700" style={{ color: "var(--fur-teal)" }}>
                 View all →
               </Link>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
               {pendingBookings.map((booking) => (
-                <div key={booking.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center text-lg">
+                <div key={booking.id} className="px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                      style={{ background: "#FEF3C7" }}>
                       {booking.petType === "cat" ? "🐈" : "🐕"}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{booking.serviceName}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{booking.serviceName}</p>
+                      <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
                         {booking.petName} · {booking.ownerName} · {formatBookingDateTime(booking.date, booking.time)}
                       </p>
                     </div>
                   </div>
-                  <Link
-                    href="/provider/bookings"
-                    className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0"
-                  >
+                  <Link href="/provider/bookings"
+                    className="text-xs font-700 px-3 py-1.5 rounded-xl transition-colors"
+                    style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
                     Respond
                   </Link>
                 </div>
@@ -110,48 +137,48 @@ const ProviderDashboardPage: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Upcoming Schedule */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="font-bold text-gray-900">Upcoming Schedule</h2>
-              <Link href="/provider/schedule" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+          <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+              <h2 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>Upcoming Schedule</h2>
+              <Link href="/provider/schedule" className="text-sm font-700" style={{ color: "var(--fur-teal)" }}>
                 Full calendar →
               </Link>
             </div>
             {upcomingBookings.length === 0 ? (
-              <div className="px-6 py-10 text-center">
-                <p className="text-4xl mb-2">📅</p>
-                <p className="text-gray-500 text-sm">No upcoming bookings</p>
-                <Link href="/provider/services" className="text-blue-600 text-sm font-medium mt-1 inline-block">
+              <div className="p-12 text-center">
+                <p className="text-4xl mb-3">📅</p>
+                <p className="font-700 mb-1" style={{ color: "var(--fur-slate)" }}>No upcoming bookings</p>
+                <Link href="/provider/services" className="text-sm font-700" style={{ color: "var(--fur-teal)" }}>
                   Activate your services
                 </Link>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y" style={{ borderColor: "var(--border)" }}>
                 {upcomingBookings.map((booking) => {
                   const effectiveDate = booking.rescheduleDate || booking.date;
                   const effectiveTime = booking.rescheduleTime || booking.time;
                   const cfg = BOOKING_STATUS_CONFIG[booking.status];
                   return (
-                    <div key={booking.id} className="px-6 py-4 flex items-start space-x-3">
-                      <div className="flex-shrink-0 text-center min-w-[44px]">
-                        <p className="text-xs text-gray-400 uppercase font-medium">
+                    <div key={booking.id} className="px-6 py-4 flex items-start gap-4">
+                      <div className="flex-shrink-0 text-center min-w-12">
+                        <p className="text-xs font-700 uppercase" style={{ color: "var(--fur-slate-light)" }}>
                           {new Date(effectiveDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" })}
                         </p>
-                        <p className="text-xl font-bold text-gray-900">
+                        <p className="text-2xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
                           {new Date(effectiveDate + "T00:00:00").getDate()}
                         </p>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <p className="font-medium text-gray-900 text-sm truncate">{booking.serviceName}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-700 text-sm truncate" style={{ color: "var(--fur-slate)" }}>{booking.serviceName}</p>
                           <span className={`text-xs px-2 py-0.5 rounded-full border flex-shrink-0 ${cfg.bg} ${cfg.color}`}>
                             {cfg.label}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
+                        <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
                           {booking.petName} · {booking.ownerName}
                         </p>
-                        <p className="text-xs text-blue-600 font-medium mt-0.5">
+                        <p className="text-xs font-700 mt-1" style={{ color: "var(--fur-teal)" }}>
                           🕐 {formatRelativeDate(effectiveDate)} at {effectiveTime}
                         </p>
                       </div>
@@ -162,52 +189,52 @@ const ProviderDashboardPage: React.FC = () => {
             )}
           </div>
 
-          {/* Quick Stats + Actions */}
-          <div className="space-y-4">
-            {/* Earnings Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="font-bold text-gray-900 mb-4">Earnings Overview</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-green-50 rounded-lg p-4">
-                  <p className="text-xs text-green-600 font-medium uppercase tracking-wide mb-1">This Month</p>
-                  <p className="text-2xl font-bold text-green-700">{formatCurrency(stats.monthlyEarnings)}</p>
+          {/* Earnings + Quick Actions */}
+          <div className="space-y-5">
+            {/* Earnings */}
+            <div className="rounded-2xl border p-6" style={{ background: "white", borderColor: "var(--border)" }}>
+              <h2 className="font-800 text-base mb-5" style={{ color: "var(--fur-slate)" }}>Earnings Overview</h2>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="rounded-xl p-4" style={{ background: "var(--fur-teal-light)" }}>
+                  <p className="text-xs font-700 uppercase tracking-wide mb-2" style={{ color: "var(--fur-teal-dark)" }}>This Month</p>
+                  <p className="text-2xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-teal-dark)" }}>
+                    {formatCurrency(stats.monthlyEarnings)}
+                  </p>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <p className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">All Time</p>
-                  <p className="text-2xl font-bold text-blue-700">{formatCurrency(stats.totalEarnings)}</p>
+                <div className="rounded-xl p-4" style={{ background: "var(--fur-amber-light)" }}>
+                  <p className="text-xs font-700 uppercase tracking-wide mb-2" style={{ color: "var(--fur-amber-dark)" }}>All Time</p>
+                  <p className="text-2xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-amber-dark)" }}>
+                    {formatCurrency(stats.totalEarnings)}
+                  </p>
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "Completed", value: stats.completedBookings, color: "text-green-600" },
-                  { label: "Cancelled", value: stats.cancelledBookings, color: "text-red-500" },
-                  { label: "Total", value: stats.totalBookings, color: "text-gray-700" },
-                ].map((s) => (
-                  <div key={s.label} className="bg-gray-50 rounded-lg p-2">
-                    <p className={`font-bold text-lg ${s.color}`}>{s.value}</p>
-                    <p className="text-xs text-gray-500">{s.label}</p>
+                  { label: "Completed", value: stats.completedBookings, color: "#065F46" },
+                  { label: "Cancelled", value: stats.cancelledBookings, color: "var(--fur-rose)" },
+                  { label: "Total", value: stats.totalBookings, color: "var(--fur-slate)" },
+                ].map(s => (
+                  <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: "var(--fur-cream)" }}>
+                    <p className="text-lg font-900 mb-0.5" style={{ fontFamily: "'Fraunces', serif", color: s.color }}>{s.value}</p>
+                    <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{s.label}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="font-bold text-gray-900 mb-4">Quick Actions</h2>
+            <div className="rounded-2xl border p-6" style={{ background: "white", borderColor: "var(--border)" }}>
+              <h2 className="font-800 text-base mb-4" style={{ color: "var(--fur-slate)" }}>Quick Actions</h2>
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Add Service", icon: "➕", href: "/provider/services", color: "border-blue-200 hover:border-blue-400 hover:bg-blue-50" },
-                  { label: "View Bookings", icon: "📅", href: "/provider/bookings", color: "border-amber-200 hover:border-amber-400 hover:bg-amber-50" },
-                  { label: "My Schedule", icon: "🗓️", href: "/provider/schedule", color: "border-purple-200 hover:border-purple-400 hover:bg-purple-50" },
-                  { label: "Edit Profile", icon: "👤", href: "/provider/profile", color: "border-green-200 hover:border-green-400 hover:bg-green-50" },
-                ].map((action) => (
-                  <Link
-                    key={action.label}
-                    href={action.href}
-                    className={`border-2 rounded-xl p-4 text-center transition-all ${action.color}`}
-                  >
-                    <p className="text-2xl mb-1">{action.icon}</p>
-                    <p className="text-sm font-medium text-gray-700">{action.label}</p>
+                {quickActions.map((action) => (
+                  <Link key={action.label} href={action.href}
+                    className="flex items-center gap-3 p-4 rounded-xl border-2 transition-all card-hover"
+                    style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
+                      style={{ background: action.color }}>
+                      {action.icon}
+                    </div>
+                    <span className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{action.label}</span>
                   </Link>
                 ))}
               </div>

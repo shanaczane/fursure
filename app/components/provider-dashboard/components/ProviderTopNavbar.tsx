@@ -8,54 +8,58 @@ interface TopNavbarProps {
   isSidebarOpen: boolean;
 }
 
-const ProviderTopNavbar: React.FC<TopNavbarProps> = ({
-  onToggleSidebar,
-  isSidebarOpen,
-}) => {
+const ProviderTopNavbar: React.FC<TopNavbarProps> = ({ onToggleSidebar, isSidebarOpen }) => {
   const { user, bookings } = useProviderContext();
-  const pendingCount = bookings.filter((b) => b.status === "pending").length;
+  const pendingCount = bookings.filter(b => b.status === "pending").length;
 
   return (
     <header
-      className={`fixed top-0 right-0 h-16 bg-white border-b border-gray-200 z-30 transition-all duration-300 ${
+      className={`fixed top-0 right-0 h-16 z-30 transition-all duration-300 border-b ${
         isSidebarOpen ? "left-0 lg:left-64" : "left-0"
       }`}
+      style={{ background: "rgba(253,248,240,0.95)", backdropFilter: "blur(8px)", borderColor: "var(--border)", fontFamily: "'Nunito', sans-serif" }}
     >
       <div className="h-full px-4 md:px-6 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={onToggleSidebar}
-            className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            className="p-2 rounded-xl transition-colors"
+            style={{ color: "var(--fur-slate-light)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-mist)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
           <div className="hidden md:block">
-            <p className="text-sm font-semibold text-gray-900">{user.businessName}</p>
-            <p className="text-xs text-gray-500">Service Provider Dashboard</p>
+            <p className="text-sm font-800" style={{ color: "var(--fur-slate)" }}>{user.businessName}</p>
+            <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>Service Provider Dashboard</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-3">
           {pendingCount > 0 && (
-            <div className="hidden sm:flex items-center space-x-2 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
-              <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-              <span className="text-xs font-medium text-amber-700">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border"
+              style={{ background: "#FFFBEB", borderColor: "#FCD34D" }}>
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#F59E0B" }} />
+              <span className="text-xs font-700" style={{ color: "#92400E" }}>
                 {pendingCount} pending
               </span>
             </div>
           )}
-          <div className="flex items-center space-x-3">
+
+          <div className="flex items-center gap-3">
             <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-900">{user.name}</p>
-              <div className="flex items-center justify-end space-x-1">
-                <span className="text-yellow-400 text-xs">⭐</span>
-                <span className="text-xs text-gray-500">{user.rating}</span>
+              <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>{user.name}</p>
+              <div className="flex items-center justify-end gap-1">
+                <span className="text-xs">⭐</span>
+                <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{user.rating}</span>
               </div>
             </div>
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-              {user.avatar || user.name.charAt(0)}
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-700 text-sm"
+              style={{ background: "linear-gradient(135deg, #3B4F6B, #1A2332)" }}>
+              {user.avatar || user.name.charAt(0).toUpperCase()}
             </div>
           </div>
         </div>
