@@ -16,6 +16,14 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
+  const passwordRules = [
+    { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
+    { label: "Contains a number", test: (p: string) => /\d/.test(p) },
+    { label: "Contains a special character", test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
+  ];
+
+  const isPasswordValid = passwordRules.every(r => r.test(formData.password));
+
   const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -26,6 +34,10 @@ export default function Register() {
         password: formData.password,
         options: { data: { firstName: formData.firstName, lastName: formData.lastName, role: formData.role } },
       });
+      if (!isPasswordValid) {
+        setLoading(false);
+        return;
+      }
       if (signupError) throw signupError;
       if (!authData.user) throw new Error("No user data returned");
 
@@ -170,12 +182,26 @@ export default function Register() {
                 type={showPassword ? "text" : "password"}
                 value={formData.password}
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                minLength={6}
+                minLength={8}
                 required
                 disabled={loading}
-                placeholder="Min. 6 characters"
+                placeholder="Min. 8 characters"
                 className="fur-input"
               />
+              {formData.password.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {passwordRules.map((rule) => {
+                    const passed = rule.test(formData.password);
+                    return (
+                      <p key={rule.label} className="text-xs font-600 flex items-center gap-1"
+                        style={{ color: passed ? "var(--fur-teal)" : "var(--fur-rose)" }}>
+                        <span className="text-sm">{passed ? "✓" : "✗"}</span>
+                        {rule.label}
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {error && (

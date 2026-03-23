@@ -187,18 +187,17 @@ export default function Login() {
               </div>
             </div>
 
-            {error && (
-              <div className="p-4 rounded-xl text-sm font-600" style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5" }}>
-                ⚠️ {error}
-              </div>
-            )}
+            <p className="text-xs font-600 min-h-4" style={{ color: "var(--fur-rose)" }}>
+              {error ? `✗ ${error}` : ""}
+            </p>
 
             <button
               type="submit"
               disabled={loading}
               className="btn-primary w-full py-3 text-base disabled:opacity-60"
             >
-              {loading ? "Logging in..." : `Log In as ${tabs.find(t => t.role === selectedRole)?.label}`}
+              <span className="invisible absolute">{`Log In as ${tabs.find(t => t.role === selectedRole)?.label}`}</span>
+              <span>{loading ? "Logging in..." : `Log In as ${tabs.find(t => t.role === selectedRole)?.label}`}</span>
             </button>
           </form>
 
