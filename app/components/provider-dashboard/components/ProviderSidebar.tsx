@@ -79,7 +79,7 @@ const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
 
         {/* Bottom */}
         <div className="p-4 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-          <button onClick={handleLogout} className="sidebar-item w-full" style={{ color: "#4A6280" }}>
+          <button onClick={handleLogout} className="sidebar-item w-full" style={{ color: "#4A6280" }} suppressHydrationWarning>
             <span className="text-lg w-6 text-center">🚪</span>
             <span>Logout</span>
           </button>
