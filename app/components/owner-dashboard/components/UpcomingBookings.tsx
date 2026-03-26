@@ -77,6 +77,39 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     Note: {booking.notes}
                   </p>
                 )}
+                {booking.status === "confirmed" &&
+                  (booking.providerPhone || booking.providerEmail || booking.providerContactLink) && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                    <p className="text-xs font-semibold text-green-700">📞 Contact Provider</p>
+                    {booking.providerPhone && (
+                      <a href={`tel:${booking.providerPhone}`} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-blue-600">
+                        <span>📱</span><span>{booking.providerPhone}</span>
+                      </a>
+                    )}
+                    {booking.providerEmail && (
+                      <a href={`mailto:${booking.providerEmail}`} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-blue-600">
+                        <span>✉️</span><span>{booking.providerEmail}</span>
+                      </a>
+                    )}
+                    {booking.providerContactLink && (
+                      <a
+                        href={booking.providerContactLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-blue-600 hover:underline font-medium"
+                      >
+                        <span>🔗</span>
+                        <span>
+                          {booking.providerContactLink.includes("facebook") ? "Facebook" :
+                           booking.providerContactLink.includes("instagram") ? "Instagram" :
+                           booking.providerContactLink.includes("tiktok") ? "TikTok" :
+                           booking.providerContactLink.includes("twitter") || booking.providerContactLink.includes("x.com") ? "Twitter / X" :
+                           "Social Profile"}
+                        </span>
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="ml-4 text-right space-y-2">
