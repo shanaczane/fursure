@@ -139,10 +139,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updatePet = async (id: string, updates: Partial<Pet>) => {
-    await updatePetRecord(id, updates);
     setPets((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...updates } : p)),
     );
+    await updatePetRecord(id, updates);
   };
 
   const deletePet = async (id: string) => {
