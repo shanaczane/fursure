@@ -167,7 +167,7 @@ const ServicesPage: React.FC = () => {
                         <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: "var(--border)" }}>
                           <div>
                             <span className="text-xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
-                              ${service.price}
+                              ₱{service.price}
                             </span>
                             <span className="text-xs ml-1" style={{ color: "var(--fur-slate-light)" }}>{service.priceUnit}</span>
                           </div>

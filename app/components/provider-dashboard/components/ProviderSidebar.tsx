@@ -40,7 +40,7 @@ const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
       )}
       <aside
         className={`fixed top-0 left-0 h-full z-50 w-64 flex flex-col transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ background: "var(--sidebar-bg)", fontFamily: "'Nunito', sans-serif" }}
       >
@@ -79,7 +79,7 @@ const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
 
         {/* Bottom */}
         <div className="p-4 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-          <button onClick={handleLogout} className="sidebar-item w-full" style={{ color: "#4A6280" }}>
+          <button onClick={handleLogout} className="sidebar-item w-full" style={{ color: "#4A6280" }} suppressHydrationWarning>
             <span className="text-lg w-6 text-center">🚪</span>
             <span>Logout</span>
           </button>

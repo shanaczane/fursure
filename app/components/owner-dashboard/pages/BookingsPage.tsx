@@ -240,6 +240,7 @@ const BookingsPage: React.FC = () => {
             : null
         }
         pets={pets}
+        policy={null}
         isOpen={isEditFormOpen}
         onClose={() => {
           setIsEditFormOpen(false);
@@ -254,6 +255,7 @@ const BookingsPage: React.FC = () => {
             : null
         }
         pets={pets}
+        policy={null}
         isOpen={isBookAgainFormOpen}
         onClose={() => {
           setIsBookAgainFormOpen(false);

@@ -193,7 +193,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
           <div className="rounded-2xl p-6 border sticky top-24" style={{ background: "white", borderColor: "var(--border)" }}>
             <div className="text-center mb-6 pb-6 border-b" style={{ borderColor: "var(--border)" }}>
               <p className="text-4xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
-                ${service.price}
+                ₱{service.price}
               </p>
               <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>{service.priceUnit}</p>
             </div>

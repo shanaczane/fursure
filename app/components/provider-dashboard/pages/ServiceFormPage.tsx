@@ -252,7 +252,7 @@ const ServiceFormPage: React.FC<ServiceFormPageProps> = ({ serviceId }) => {
               <h2 className="font-800 text-base mb-5" style={{ color: "var(--fur-slate)" }}>💰 Pricing & Duration</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Price ($) *</label>
+                  <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Price (₱) *</label>
                   <input
                     type="number"
                     min="0"
@@ -405,7 +405,7 @@ const ServiceFormPage: React.FC<ServiceFormPageProps> = ({ serviceId }) => {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-900 text-lg" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
-                        ${form.price || 0}
+                        ₱{form.price || 0}
                       </span>
                       <span className="text-xs ml-1" style={{ color: "var(--fur-slate-light)" }}>{form.priceUnit}</span>
                     </div>

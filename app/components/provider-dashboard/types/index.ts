@@ -1,5 +1,26 @@
 // ─── Provider-specific types ────────────────────────────────────────────────
 
+export interface ProviderPolicy {
+  id?: string;
+  depositRequired: boolean;
+  depositPercentage: number;
+  depositRefundable: boolean;
+  cancellationHoursNotice: number;
+  paymentMethodsAccepted: string[];
+  fullPaymentRequiredUpfront: boolean;
+  additionalNotes?: string;
+}
+
+export const DEFAULT_POLICY: ProviderPolicy = {
+  depositRequired: false,
+  depositPercentage: 0,
+  depositRefundable: true,
+  cancellationHoursNotice: 24,
+  paymentMethodsAccepted: ["Cash"],
+  fullPaymentRequiredUpfront: false,
+  additionalNotes: "",
+};
+
 export type ProviderServiceCategory =
   | "grooming"
   | "veterinary"
@@ -68,6 +89,7 @@ export interface ProviderUser {
   totalReviews: number;
   totalEarnings: number;
   joinedAt: string;
+  contactLink?: string;
 }
 
 export interface ScheduleSlot {
