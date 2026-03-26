@@ -91,7 +91,7 @@ export const formatRelativeDate = (date: string): string => {
 };
 
 export const formatCurrency = (amount: number): string =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+  new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(amount);
 
 export const getBookingsForDate = (bookings: ProviderBooking[], date: string): ProviderBooking[] =>
   bookings.filter((b) => {

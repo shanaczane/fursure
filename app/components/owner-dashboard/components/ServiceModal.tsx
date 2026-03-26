@@ -85,7 +85,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               </div>
               <div className="bg-blue-50 rounded-lg p-4 text-center">
                 <div className="text-2xl font-bold text-gray-900 mb-1">
-                  ${service.price}
+                  ₱{service.price}
                 </div>
                 <p className="text-sm text-gray-600">{service.priceUnit}</p>
               </div>
