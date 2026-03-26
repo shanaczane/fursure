@@ -4,7 +4,21 @@ export interface Pet {
   type: "dog" | "cat" | "bird" | "rabbit" | "other";
   breed: string;
   age: number;
+  weight?: string;
+  gender?: "male" | "female" | "unknown";
+  color?: string;
+  medicalNotes?: string;
   imageUrl?: string;
+}
+
+export interface Vaccination {
+  id: string;
+  petId: string;
+  name: string;
+  dateGiven: string;
+  nextDueDate?: string;
+  vetName?: string;
+  notes?: string;
 }
 
 export interface Service {
