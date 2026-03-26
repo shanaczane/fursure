@@ -3,7 +3,7 @@ import type { User, Pet, Booking, Service, BookingStatus, Vaccination } from "@/
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-interface ApiOptions extends RequestInit {
+interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
 }
 
@@ -11,8 +11,9 @@ export const apiCall = async <T = unknown>(
   endpoint: string,
   options: ApiOptions = {},
 ): Promise<T> => {
+  const { body, ...rest } = options;
   const config: RequestInit = {
-    ...options,
+    ...rest,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
@@ -20,8 +21,8 @@ export const apiCall = async <T = unknown>(
     },
   };
 
-  if (options.body && typeof options.body === "object") {
-    config.body = JSON.stringify(options.body) as BodyInit;
+  if (body && typeof body === "object") {
+    config.body = JSON.stringify(body);
   }
 
   const url = endpoint.startsWith("/api") ? endpoint : `${API_URL}${endpoint}`;
@@ -171,6 +172,9 @@ export const fetchUserBookings = async (userId: string): Promise<Booking[]> => {
     status: row.status as BookingStatus,
     petName: row.pet_name,
     notes: row.notes ?? undefined,
+    providerPhone: row.provider_phone ?? undefined,
+    providerEmail: row.provider_email ?? undefined,
+    providerContactLink: row.provider_contact_link ?? undefined,
   }));
 };
 
@@ -190,6 +194,9 @@ export const insertBooking = async (
       time: booking.time,
       status: booking.status,
       notes: booking.notes ?? null,
+      provider_phone: booking.providerPhone ?? null,
+      provider_email: booking.providerEmail ?? null,
+      provider_contact_link: booking.providerContactLink ?? null,
     })
     .select()
     .single();
@@ -204,6 +211,9 @@ export const insertBooking = async (
     status: data.status as BookingStatus,
     petName: data.pet_name,
     notes: data.notes ?? undefined,
+    providerPhone: data.provider_phone ?? undefined,
+    providerEmail: data.provider_email ?? undefined,
+    providerContactLink: data.provider_contact_link ?? undefined,
   };
 };
 
@@ -225,58 +235,253 @@ export const deleteBookingRecord = async (bookingId: string): Promise<void> => {
   if (error) throw new Error(error.message);
 };
 
-// ─── Vaccinations ─────────────────────────────────────────────────────────────
+// ─── Provider Policy ──────────────────────────────────────────────────────────
 
-export const fetchPetVaccinations = async (petId: string): Promise<Vaccination[]> => {
+export const fetchProviderPolicy = async (userId: string) => {
   const { data, error } = await supabase
-    .from("pet_vaccinations")
+    .from("provider_policies")
     .select("*")
-    .eq("pet_id", petId)
-    .order("date_given", { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    petId: row.pet_id,
-    name: row.name,
-    dateGiven: row.date_given,
-    nextDueDate: row.next_due_date ?? undefined,
-    vetName: row.vet_name ?? undefined,
-    notes: row.notes ?? undefined,
-  }));
-};
-
-export const insertVaccination = async (
-  ownerId: string,
-  petId: string,
-  vaccination: Omit<Vaccination, "id" | "petId">,
-): Promise<Vaccination> => {
-  const { data, error } = await supabase
-    .from("pet_vaccinations")
-    .insert({
-      owner_id: ownerId,
-      pet_id: petId,
-      name: vaccination.name,
-      date_given: vaccination.dateGiven,
-      next_due_date: vaccination.nextDueDate ?? null,
-      vet_name: vaccination.vetName ?? null,
-      notes: vaccination.notes ?? null,
-    })
-    .select()
+    .eq("user_id", userId)
     .single();
-  if (error) throw new Error(error.message);
+  if (error && error.code !== "PGRST116") throw new Error(error.message);
+  if (!data) return null;
   return {
     id: data.id,
-    petId: data.pet_id,
-    name: data.name,
-    dateGiven: data.date_given,
-    nextDueDate: data.next_due_date ?? undefined,
-    vetName: data.vet_name ?? undefined,
-    notes: data.notes ?? undefined,
+    depositRequired: data.deposit_required,
+    depositPercentage: data.deposit_percentage,
+    depositRefundable: data.deposit_refundable,
+    cancellationHoursNotice: data.cancellation_hours_notice,
+    paymentMethodsAccepted: data.payment_methods_accepted ?? ["Cash"],
+    fullPaymentRequiredUpfront: data.full_payment_required_upfront,
+    additionalNotes: data.additional_notes ?? "",
   };
 };
 
-export const deleteVaccinationRecord = async (vaccinationId: string): Promise<void> => {
-  const { error } = await supabase.from("pet_vaccinations").delete().eq("id", vaccinationId);
+export const upsertProviderPolicy = async (
+  userId: string,
+  policy: {
+    depositRequired: boolean;
+    depositPercentage: number;
+    depositRefundable: boolean;
+    cancellationHoursNotice: number;
+    paymentMethodsAccepted: string[];
+    fullPaymentRequiredUpfront: boolean;
+    additionalNotes?: string;
+  },
+): Promise<void> => {
+  const { error } = await supabase.from("provider_policies").upsert(
+    {
+      user_id: userId,
+      deposit_required: policy.depositRequired,
+      deposit_percentage: policy.depositPercentage,
+      deposit_refundable: policy.depositRefundable,
+      cancellation_hours_notice: policy.cancellationHoursNotice,
+      payment_methods_accepted: policy.paymentMethodsAccepted,
+      full_payment_required_upfront: policy.fullPaymentRequiredUpfront,
+      additional_notes: policy.additionalNotes ?? null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) throw new Error(error.message);
+};
+
+// ─── Provider: contact info ───────────────────────────────────────────────────
+
+export const fetchProviderContactInfo = async (userId: string) => {
+  const [{ data: userRow }, { data: provRow }] = await Promise.all([
+    supabase.from("users").select("email, phone").eq("id", userId).maybeSingle(),
+    supabase.from("providers").select("contact_link").eq("user_id", userId).maybeSingle(),
+  ]);
+  return {
+    providerPhone: userRow?.phone ?? undefined,
+    providerEmail: userRow?.email ?? undefined,
+    providerContactLink: provRow?.contact_link ?? undefined,
+  };
+};
+
+export const upsertProviderContactLink = async (
+  userId: string,
+  contactLink: string,
+): Promise<void> => {
+  const providerId = await ensureProviderRow(userId);
+  const { error } = await supabase
+    .from("providers")
+    .update({ contact_link: contactLink })
+    .eq("id", providerId);
+  if (error) throw new Error(error.message);
+};
+
+// ─── Provider: own services ───────────────────────────────────────────────────
+
+/** Returns the providers.id for the auth user, creating the row if absent. */
+const ensureProviderRow = async (userId: string): Promise<string> => {
+  const { data: existing } = await supabase
+    .from("providers")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (existing) return String(existing.id);
+
+  // Fetch the user's name so we satisfy the NOT NULL constraint on providers.name
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("name")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const { data: created, error } = await supabase
+    .from("providers")
+    .insert({ user_id: userId, name: userRow?.name ?? "", is_verified: false, rating: 0 })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  return String(created.id);
+};
+
+export const fetchProviderOwnServices = async (userId: string) => {
+  const { data: provRow } = await supabase
+    .from("providers")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!provRow) return [];
+
+  const { data, error } = await supabase
+    .from("services")
+    .select("*")
+    .eq("provider_id", provRow.id)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    name: row.name,
+    category: row.category,
+    description: row.description ?? "",
+    price: row.price,
+    priceUnit: row.price_unit ?? "per session",
+    duration: row.duration ?? 60,
+    image: row.image ?? "🐾",
+    features: row.features ?? [],
+    availability: row.availability ?? [],
+    isActive: row.is_active ?? true,
+    totalBookings: row.total_bookings ?? 0,
+    rating: row.rating ?? 0,
+    reviews: row.reviews ?? 0,
+    createdAt: row.created_at ?? new Date().toISOString(),
+  }));
+};
+
+export const insertProviderServiceRecord = async (
+  userId: string,
+  service: {
+    name: string; category: string; description: string;
+    price: number; priceUnit: string; duration: number;
+    image: string; features: string[]; availability: string[];
+    isActive: boolean;
+  },
+): Promise<{ id: string; createdAt: string }> => {
+  const providerId = await ensureProviderRow(userId);
+  const { data, error } = await supabase
+    .from("services")
+    .insert({
+      provider_id: providerId,
+      name: service.name,
+      category: service.category,
+      description: service.description,
+      price: service.price,
+      price_unit: service.priceUnit,
+      duration: service.duration,
+      image: service.image,
+      features: service.features,
+      availability: service.availability,
+      is_active: service.isActive,
+    })
+    .select("id, created_at")
+    .single();
+  if (error) throw new Error(error.message);
+  return { id: String(data.id), createdAt: data.created_at };
+};
+
+export const updateProviderServiceRecord = async (
+  serviceId: string,
+  updates: Partial<{
+    name: string; category: string; description: string;
+    price: number; priceUnit: string; duration: number;
+    image: string; features: string[]; availability: string[];
+    isActive: boolean;
+  }>,
+): Promise<void> => {
+  const payload: Record<string, unknown> = {};
+  if (updates.name !== undefined) payload.name = updates.name;
+  if (updates.category !== undefined) payload.category = updates.category;
+  if (updates.description !== undefined) payload.description = updates.description;
+  if (updates.price !== undefined) payload.price = updates.price;
+  if (updates.priceUnit !== undefined) payload.price_unit = updates.priceUnit;
+  if (updates.duration !== undefined) payload.duration = updates.duration;
+  if (updates.image !== undefined) payload.image = updates.image;
+  if (updates.features !== undefined) payload.features = updates.features;
+  if (updates.availability !== undefined) payload.availability = updates.availability;
+  if (updates.isActive !== undefined) payload.is_active = updates.isActive;
+  const { error } = await supabase.from("services").update(payload).eq("id", serviceId);
+  if (error) throw new Error(error.message);
+};
+
+export const deleteProviderServiceRecord = async (serviceId: string): Promise<void> => {
+  const { error } = await supabase.from("services").delete().eq("id", serviceId);
+  if (error) throw new Error(error.message);
+};
+
+// ─── Provider: own bookings ───────────────────────────────────────────────────
+
+export const fetchProviderOwnBookings = async (userId: string) => {
+  const { data: provRow } = await supabase
+    .from("providers")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!provRow) return [];
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("provider_id", provRow.id)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    serviceId: row.service_id ? String(row.service_id) : "",
+    serviceName: row.service_name ?? "",
+    ownerName: row.owner_name ?? "Unknown",
+    ownerEmail: row.owner_email ?? "",
+    ownerPhone: row.owner_phone ?? undefined,
+    petName: row.pet_name ?? "",
+    petType: row.pet_type ?? "",
+    petBreed: row.pet_breed ?? "",
+    date: row.date,
+    time: row.time ?? "",
+    status: row.status,
+    notes: row.notes ?? undefined,
+    providerNotes: row.provider_notes ?? undefined,
+    rescheduleDate: row.reschedule_date ?? undefined,
+    rescheduleTime: row.reschedule_time ?? undefined,
+    price: row.price ?? 0,
+    createdAt: row.created_at,
+  }));
+};
+
+export const updateProviderBookingStatus = async (
+  bookingId: string,
+  status: string,
+  extras?: { providerNotes?: string; rescheduleDate?: string; rescheduleTime?: string },
+): Promise<void> => {
+  const payload: Record<string, unknown> = { status };
+  if (extras?.providerNotes !== undefined) payload.provider_notes = extras.providerNotes;
+  if (extras?.rescheduleDate !== undefined) payload.reschedule_date = extras.rescheduleDate;
+  if (extras?.rescheduleTime !== undefined) payload.reschedule_time = extras.rescheduleTime;
+  const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
   if (error) throw new Error(error.message);
 };
 
@@ -285,13 +490,14 @@ export const deleteVaccinationRecord = async (vaccinationId: string): Promise<vo
 export const fetchServices = async (): Promise<Service[]> => {
   const { data, error } = await supabase
     .from("services")
-    .select("*, providers(name, rating, reviews, response_time)")
+    .select("*, providers(name, rating, reviews, response_time, user_id)")
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({
     id: row.id,
     name: row.name,
     provider: row.providers?.name ?? "",
+    providerUserId: row.providers?.user_id ?? undefined,
     category: row.category,
     rating: row.providers?.rating ?? 0,
     reviews: row.providers?.reviews ?? 0,

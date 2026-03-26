@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppContext } from "@/app/contexts/AppContext";
 import { type Service } from "@/app/types";
+import { fetchProviderPolicy, fetchProviderContactInfo } from "@/app/lib/api";
+import type { ProviderPolicy } from "@/app/components/provider-dashboard/types";
 import BookingForm from "../components/BookingForm";
 import SuccessModal from "../components/SuccessModal";
 
@@ -15,6 +17,12 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
   const router = useRouter();
   const { services, pets, addBooking } = useAppContext();
   const [service, setService] = useState<Service | null>(null);
+  const [policy, setPolicy] = useState<ProviderPolicy | null>(null);
+  const [providerContact, setProviderContact] = useState<{
+    providerPhone?: string;
+    providerEmail?: string;
+    providerContactLink?: string;
+  }>({});
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [successModal, setSuccessModal] = useState({ isOpen: false, title: "", message: "" });
   const [activeTab, setActiveTab] = useState<"about" | "features" | "availability">("about");
@@ -22,6 +30,16 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
   useEffect(() => {
     const found = services.find(s => s.id === serviceId);
     setService(found || null);
+    setPolicy(null);
+    setProviderContact({});
+    if (found?.providerUserId) {
+      fetchProviderPolicy(found.providerUserId)
+        .then(p => setPolicy(p))
+        .catch(() => {});
+      fetchProviderContactInfo(found.providerUserId)
+        .then(c => setProviderContact(c))
+        .catch(() => {});
+    }
   }, [serviceId, services]);
 
   const handleBook = () => {
@@ -45,6 +63,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
       status: "pending",
       petName: pet.name,
       notes: notes || "Booked via service details",
+      ...providerContact,
     });
     setIsBookingOpen(false);
     setSuccessModal({
@@ -193,7 +212,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
           <div className="rounded-2xl p-6 border sticky top-24" style={{ background: "white", borderColor: "var(--border)" }}>
             <div className="text-center mb-6 pb-6 border-b" style={{ borderColor: "var(--border)" }}>
               <p className="text-4xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
-                ${service.price}
+                ₱{service.price}
               </p>
               <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>{service.priceUnit}</p>
             </div>
@@ -223,6 +242,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
       <BookingForm
         service={service}
         pets={pets}
+        policy={policy}
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
         onBook={handleConfirmBooking}

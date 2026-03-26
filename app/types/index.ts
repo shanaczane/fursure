@@ -25,6 +25,7 @@ export interface Service {
   id: string;
   name: string;
   provider: string;
+  providerUserId?: string;
   category: ServiceCategory;
   rating: number;
   reviews: number;
@@ -49,6 +50,9 @@ export interface Booking {
   status: BookingStatus;
   petName: string;
   notes?: string;
+  providerPhone?: string;
+  providerEmail?: string;
+  providerContactLink?: string;
 }
 
 export interface User {

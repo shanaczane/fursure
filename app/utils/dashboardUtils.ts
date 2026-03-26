@@ -129,7 +129,7 @@ export const formatRelativeDate = (date: string): string => {
 };
 
 export const formatPrice = (price: number, unit: string): string =>
-  `$${price} ${unit}`;
+  `₱${price} ${unit}`;
 
 export const calculateBookingStats = (bookings: Booking[]) => ({
   total: bookings.length,
