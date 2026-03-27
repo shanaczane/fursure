@@ -39,10 +39,13 @@ const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         />
       )}
       <aside
-        className={`fixed top-0 left-0 h-full z-50 w-64 flex flex-col transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        style={{ background: "var(--sidebar-bg)", fontFamily: "'Nunito', sans-serif" }}
+        className="fixed top-0 left-0 h-full z-50 w-64 flex flex-col"
+        style={{
+          background: "var(--sidebar-bg)",
+          fontFamily: "'Nunito', sans-serif",
+          transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 300ms ease-in-out",
+        }}
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
