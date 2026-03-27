@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { User, Pet, Booking, Service, BookingStatus } from "@/app/types";
+import type { User, Pet, Booking, Service, BookingStatus, Vaccination } from "@/app/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -87,6 +87,10 @@ export const fetchUserPets = async (userId: string): Promise<Pet[]> => {
     type: row.type,
     breed: row.breed ?? "",
     age: row.age ?? 0,
+    weight: row.weight ?? undefined,
+    gender: row.gender ?? undefined,
+    color: row.color ?? undefined,
+    medicalNotes: row.medical_notes ?? undefined,
     imageUrl: row.image_url ?? undefined,
   }));
 };
@@ -103,6 +107,10 @@ export const insertPet = async (
       type: pet.type,
       breed: pet.breed,
       age: pet.age,
+      weight: pet.weight ?? null,
+      gender: pet.gender ?? null,
+      color: pet.color ?? null,
+      medical_notes: pet.medicalNotes ?? null,
       image_url: pet.imageUrl ?? null,
     })
     .select()
@@ -114,6 +122,10 @@ export const insertPet = async (
     type: data.type,
     breed: data.breed ?? "",
     age: data.age ?? 0,
+    weight: data.weight ?? undefined,
+    gender: data.gender ?? undefined,
+    color: data.color ?? undefined,
+    medicalNotes: data.medical_notes ?? undefined,
     imageUrl: data.image_url ?? undefined,
   };
 };
@@ -128,6 +140,10 @@ export const updatePetRecord = async (
   if (updates.breed !== undefined) payload.breed = updates.breed;
   if (updates.age !== undefined) payload.age = updates.age;
   if (updates.imageUrl !== undefined) payload.image_url = updates.imageUrl;
+  if (updates.weight !== undefined) payload.weight = updates.weight;
+  if (updates.gender !== undefined) payload.gender = updates.gender;
+  if (updates.color !== undefined) payload.color = updates.color;
+  if (updates.medicalNotes !== undefined) payload.medical_notes = updates.medicalNotes;
   const { error } = await supabase.from("pets").update(payload).eq("id", petId);
   if (error) throw new Error(error.message);
 };
@@ -217,6 +233,58 @@ export const updateBookingRecord = async (
 export const deleteBookingRecord = async (bookingId: string): Promise<void> => {
   const { error } = await supabase.from("bookings").delete().eq("id", bookingId);
   if (error) throw new Error(error.message);
+};
+
+export const deleteVaccinationRecord = async (vaccinationId: string): Promise<void> => {
+  const { error } = await supabase.from("vaccinations").delete().eq("id", vaccinationId);
+  if (error) throw new Error(error.message);
+};
+
+export const fetchPetVaccinations = async (petId: string): Promise<Vaccination[]> => {
+  const { data, error } = await supabase
+    .from("vaccinations")
+    .select("*")
+    .eq("pet_id", petId)
+    .order("date_given", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((v) => ({
+    id: v.id,
+    petId: v.pet_id,
+    name: v.name,
+    dateGiven: v.date_given,
+    nextDueDate: v.next_due_date ?? undefined,
+    vetName: v.vet_name ?? undefined,
+    notes: v.notes ?? undefined,
+  }));
+};
+
+export const insertVaccination = async (
+  _userId: string,
+  petId: string,
+  record: Omit<Vaccination, "id" | "petId">
+): Promise<Vaccination> => {
+  const { data, error } = await supabase
+    .from("vaccinations")
+    .insert({
+      pet_id: petId,
+      name: record.name,
+      date_given: record.dateGiven,
+      next_due_date: record.nextDueDate ?? null,
+      vet_name: record.vetName ?? null,
+      notes: record.notes ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    petId: data.pet_id,
+    name: data.name,
+    dateGiven: data.date_given,
+    nextDueDate: data.next_due_date ?? undefined,
+    vetName: data.vet_name ?? undefined,
+    notes: data.notes ?? undefined,
+  };
 };
 
 // ─── Provider Policy ──────────────────────────────────────────────────────────
