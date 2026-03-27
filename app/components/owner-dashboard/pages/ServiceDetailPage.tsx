@@ -6,6 +6,8 @@ import { useAppContext } from "@/app/contexts/AppContext";
 import { type Service } from "@/app/types";
 import { fetchProviderPolicy, fetchProviderContactInfo } from "@/app/lib/api";
 import type { ProviderPolicy } from "@/app/components/provider-dashboard/types";
+import Sidebar from "../components/Sidebar";
+import TopNavbar from "../components/TopNavbar";
 import BookingForm from "../components/BookingForm";
 import SuccessModal from "../components/SuccessModal";
 
@@ -15,7 +17,8 @@ interface ServiceDetailPageProps {
 
 const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
   const router = useRouter();
-  const { services, pets, addBooking } = useAppContext();
+  const { user, services, pets, bookings, addBooking } = useAppContext();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [service, setService] = useState<Service | null>(null);
   const [policy, setPolicy] = useState<ProviderPolicy | null>(null);
   const [providerContact, setProviderContact] = useState<{
@@ -44,7 +47,12 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
 
   const handleBook = () => {
     if (pets.length === 0) {
-      router.push("/owner/pets");
+      setSuccessModal({
+        isOpen: true,
+        title: "No Pets Added Yet",
+        message: "You need to add a pet first before booking a service. Redirecting you to My Pets...",
+      });
+      setTimeout(() => router.push("/owner/pets"), 2500);
       return;
     }
     setIsBookingOpen(true);
@@ -58,6 +66,8 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
       serviceId: svc.id,
       serviceName: svc.name,
       providerName: svc.provider,
+      providerUserId: svc.providerUserId,
+      price: svc.price,
       date,
       time,
       status: "pending",
@@ -74,17 +84,10 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
     setTimeout(() => router.push("/owner/bookings"), 2500);
   };
 
-  if (!service) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-5xl mb-4">🔍</p>
-          <p className="font-700 text-lg" style={{ color: "var(--fur-slate)" }}>Service not found</p>
-          <button onClick={() => router.back()} className="btn-secondary mt-4">Go back</button>
-        </div>
-      </div>
-    );
-  }
+  const upcomingCount = bookings.filter(
+    b => (b.status === "pending" || b.status === "confirmed") &&
+      new Date(b.date + "T00:00:00") >= new Date(new Date().setHours(0, 0, 0, 0))
+  ).length;
 
   const categoryColors: Record<string, string> = {
     grooming: "var(--fur-amber-light)",
@@ -94,10 +97,34 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
     walking: "#D1FAE5",
     daycare: "#FEF3C7",
   };
+
+  if (!service) {
+    return (
+      <div className="min-h-screen" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
+        <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} upcomingBookingsCount={upcomingCount} />
+        <div style={{ marginLeft: isSidebarOpen ? "16rem" : "0", transition: "margin-left 300ms ease-in-out" }}>
+          <TopNavbar user={user} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} isSidebarOpen={isSidebarOpen} />
+          <main className="p-4 md:p-6 mt-16 flex items-center justify-center min-h-64">
+            <div className="text-center">
+              <p className="text-5xl mb-4">🔍</p>
+              <p className="font-700 text-lg" style={{ color: "var(--fur-slate)" }}>Service not found</p>
+              <button onClick={() => router.back()} className="btn-secondary mt-4">Go back</button>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   const bgColor = categoryColors[service.category] || "var(--fur-sand)";
 
   return (
-    <div style={{ fontFamily: "'Nunito', sans-serif" }}>
+    <div className="min-h-screen" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
+      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} upcomingBookingsCount={upcomingCount} />
+      <div style={{ marginLeft: isSidebarOpen ? "16rem" : "0", transition: "margin-left 300ms ease-in-out" }}>
+        <TopNavbar user={user} onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} isSidebarOpen={isSidebarOpen} />
+        <main className="p-4 md:p-6 mt-16">
+          <div className="max-w-5xl mx-auto">
       {/* Hero banner */}
       <div className="rounded-2xl overflow-hidden mb-6 relative" style={{ background: bgColor, minHeight: 200 }}>
         <div className="absolute inset-0" style={{
@@ -140,8 +167,8 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
           <div className="grid grid-cols-3 gap-4">
             {[
               { icon: "⭐", label: "Rating", value: `${service.rating}/5`, sub: `${service.reviews} reviews` },
-              { icon: "📍", label: "Distance", value: service.distance, sub: service.location },
-              { icon: "⏱️", label: "Response", value: "~2 hrs", sub: service.responseTime.replace("Usually responds within ", "") },
+              { icon: "📍", label: "Location", value: service.location || "—", sub: service.provider },
+              { icon: "⏱️", label: "Duration", value: `${Math.floor(service.duration / 60)}h ${service.duration % 60 > 0 ? `${service.duration % 60}m` : ""}`.trim(), sub: `${service.duration} mins` },
             ].map((stat) => (
               <div key={stat.label} className="rounded-xl p-4 text-center border" style={{ background: "white", borderColor: "var(--border)" }}>
                 <span className="text-2xl block mb-2">{stat.icon}</span>
@@ -239,20 +266,23 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
         </div>
       </div>
 
-      <BookingForm
-        service={service}
-        pets={pets}
-        policy={policy}
-        isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
-        onBook={handleConfirmBooking}
-      />
-      <SuccessModal
-        isOpen={successModal.isOpen}
-        title={successModal.title}
-        message={successModal.message}
-        onClose={() => setSuccessModal({ ...successModal, isOpen: false })}
-      />
+          <BookingForm
+            service={service}
+            pets={pets}
+            policy={policy}
+            isOpen={isBookingOpen}
+            onClose={() => setIsBookingOpen(false)}
+            onBook={handleConfirmBooking}
+          />
+          <SuccessModal
+            isOpen={successModal.isOpen}
+            title={successModal.title}
+            message={successModal.message}
+            onClose={() => setSuccessModal({ ...successModal, isOpen: false })}
+          />
+          </div>
+        </main>
+      </div>
     </div>
   );
 };
