@@ -87,7 +87,7 @@ const ProfilePage: React.FC = () => {
         upcomingBookingsCount={upcomingCount}
       />
       <div
-        className={`transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : "lg:ml-0"}`}
+        style={{ marginLeft: isSidebarOpen ? "16rem" : "0", transition: "margin-left 300ms ease-in-out" }}
       >
         <TopNavbar
           user={user}

@@ -79,7 +79,8 @@ const SettingsPage: React.FC = () => {
         upcomingBookingsCount={upcomingCount}
       />
       <div
-        className={`flex-1 transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : "ml-0"}`}
+        className="flex-1"
+        style={{ marginLeft: isSidebarOpen ? "16rem" : "0", transition: "margin-left 300ms ease-in-out" }}
       >
         <TopNavbar
           user={user}

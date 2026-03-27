@@ -12,10 +12,8 @@ interface TopNavbarProps {
 const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarOpen }) => {
   return (
     <header
-      className={`fixed top-0 right-0 h-16 z-30 transition-all duration-300 border-b ${
-        isSidebarOpen ? "left-0 lg:left-64" : "left-0"
-      }`}
-      style={{ background: "rgba(253,248,240,0.95)", backdropFilter: "blur(8px)", borderColor: "var(--border)", fontFamily: "'Nunito', sans-serif" }}
+      className={`fixed top-0 right-0 h-16 z-30 border-b ${isSidebarOpen ? "left-0 lg:left-64" : "left-0"}`}
+      style={{ background: "rgba(253,248,240,0.95)", backdropFilter: "blur(8px)", borderColor: "var(--border)", fontFamily: "'Nunito', sans-serif", transition: "left 300ms ease-in-out" }}
     >
       <div className="h-full px-4 md:px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">

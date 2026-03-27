@@ -98,7 +98,7 @@ const ShopProfilePage: React.FC<ShopProfilePageProps> = ({ shopId }) => {
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         upcomingBookingsCount={upcomingCount}
       />
-      <div className={`transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : "lg:ml-0"}`}>
+      <div style={{ marginLeft: isSidebarOpen ? "16rem" : "0", transition: "margin-left 300ms ease-in-out" }}>
         <TopNavbar
           user={user}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
