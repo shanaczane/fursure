@@ -182,14 +182,27 @@ export const insertBooking = async (
   userId: string,
   booking: Omit<Booking, "id">,
 ): Promise<Booking> => {
+  // Look up provider_id from providers table using providerUserId
+  let providerId = null;
+  if (booking.providerUserId) {
+    const { data: provRow } = await supabase
+      .from("providers")
+      .select("id")
+      .eq("user_id", booking.providerUserId)
+      .maybeSingle();
+    if (provRow) providerId = provRow.id;
+  }
+
   const { data, error } = await supabase
     .from("bookings")
     .insert({
       owner_id: userId,
+      provider_id: providerId,
       service_id: booking.serviceId || null,
       service_name: booking.serviceName,
       provider_name: booking.providerName,
       pet_name: booking.petName,
+      price: booking.price ?? null,
       date: booking.date,
       time: booking.time,
       status: booking.status,
@@ -415,6 +428,7 @@ export const fetchProviderOwnServices = async (userId: string) => {
     priceUnit: row.price_unit ?? "per session",
     duration: row.duration ?? 60,
     image: row.image ?? "🐾",
+    location: row.location ?? "",
     features: row.features ?? [],
     availability: row.availability ?? [],
     isActive: row.is_active ?? true,
@@ -430,7 +444,7 @@ export const insertProviderServiceRecord = async (
   service: {
     name: string; category: string; description: string;
     price: number; priceUnit: string; duration: number;
-    image: string; features: string[]; availability: string[];
+    image: string; location: string; features: string[]; availability: string[];
     isActive: boolean;
   },
 ): Promise<{ id: string; createdAt: string }> => {
@@ -446,6 +460,7 @@ export const insertProviderServiceRecord = async (
       price_unit: service.priceUnit,
       duration: service.duration,
       image: service.image,
+      location: service.location,
       features: service.features,
       availability: service.availability,
       is_active: service.isActive,
@@ -461,7 +476,7 @@ export const updateProviderServiceRecord = async (
   updates: Partial<{
     name: string; category: string; description: string;
     price: number; priceUnit: string; duration: number;
-    image: string; features: string[]; availability: string[];
+    image: string; location: string; features: string[]; availability: string[];
     isActive: boolean;
   }>,
 ): Promise<void> => {
@@ -473,6 +488,7 @@ export const updateProviderServiceRecord = async (
   if (updates.priceUnit !== undefined) payload.price_unit = updates.priceUnit;
   if (updates.duration !== undefined) payload.duration = updates.duration;
   if (updates.image !== undefined) payload.image = updates.image;
+  if (updates.location !== undefined) payload.location = updates.location;
   if (updates.features !== undefined) payload.features = updates.features;
   if (updates.availability !== undefined) payload.availability = updates.availability;
   if (updates.isActive !== undefined) payload.is_active = updates.isActive;
@@ -543,6 +559,7 @@ export const fetchServices = async (): Promise<Service[]> => {
   const { data, error } = await supabase
     .from("services")
     .select("*, providers(name, rating, reviews, response_time, user_id)")
+    .eq("is_active", true)
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({
@@ -557,6 +574,7 @@ export const fetchServices = async (): Promise<Service[]> => {
     priceUnit: row.price_unit,
     location: row.location ?? "",
     distance: row.distance ?? "",
+    duration: row.duration ?? 60,
     image: row.image ?? "",
     description: row.description ?? "",
     features: row.features ?? [],

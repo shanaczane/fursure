@@ -45,6 +45,7 @@ export interface ProviderService {
   priceUnit: string;
   duration: number; // minutes
   image: string;
+  location: string;
   features: string[];
   availability: string[];
   isActive: boolean;
