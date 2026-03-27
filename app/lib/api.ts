@@ -202,7 +202,6 @@ export const insertBooking = async (
       service_name: booking.serviceName,
       provider_name: booking.providerName,
       pet_name: booking.petName,
-      price: booking.price ?? null,
       date: booking.date,
       time: booking.time,
       status: booking.status,
@@ -550,6 +549,19 @@ export const updateProviderBookingStatus = async (
   if (extras?.rescheduleDate !== undefined) payload.reschedule_date = extras.rescheduleDate;
   if (extras?.rescheduleTime !== undefined) payload.reschedule_time = extras.rescheduleTime;
   const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
+  if (error) throw new Error(error.message);
+};
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+export const submitServiceReview = async (
+  serviceId: string,
+  rating: number,
+): Promise<void> => {
+  const { error } = await supabase.rpc("submit_service_review", {
+    p_service_id: serviceId,
+    p_rating: rating,
+  });
   if (error) throw new Error(error.message);
 };
 

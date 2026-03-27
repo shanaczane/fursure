@@ -58,30 +58,39 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
     setIsBookingOpen(true);
   };
 
-  const handleConfirmBooking = (serviceId: string, petId: string, date: string, time: string, notes: string) => {
+  const handleConfirmBooking = async (serviceId: string, petId: string, date: string, time: string, notes: string) => {
     const svc = services.find(s => s.id === serviceId);
     const pet = pets.find(p => p.id === petId);
     if (!svc || !pet) return;
-    addBooking({
-      serviceId: svc.id,
-      serviceName: svc.name,
-      providerName: svc.provider,
-      providerUserId: svc.providerUserId,
-      price: svc.price,
-      date,
-      time,
-      status: "pending",
-      petName: pet.name,
-      notes: notes || "Booked via service details",
-      ...providerContact,
-    });
-    setIsBookingOpen(false);
-    setSuccessModal({
-      isOpen: true,
-      title: "Booking Confirmed! 🎉",
-      message: `Successfully booked ${svc.name} for ${pet.name} on ${date} at ${time}!`,
-    });
-    setTimeout(() => router.push("/owner/bookings"), 2500);
+    try {
+      await addBooking({
+        serviceId: svc.id,
+        serviceName: svc.name,
+        providerName: svc.provider,
+        providerUserId: svc.providerUserId,
+        date,
+        time,
+        status: "pending",
+        petName: pet.name,
+        notes: notes || "Booked via service details",
+        ...providerContact,
+      });
+      setIsBookingOpen(false);
+      setSuccessModal({
+        isOpen: true,
+        title: "Booking Confirmed! 🎉",
+        message: `Successfully booked ${svc.name} for ${pet.name} on ${date} at ${time}!`,
+      });
+      setTimeout(() => router.push("/owner/bookings"), 2500);
+    } catch (err) {
+      console.error("Booking failed:", err);
+      setIsBookingOpen(false);
+      setSuccessModal({
+        isOpen: true,
+        title: "Booking Failed",
+        message: "Something went wrong while creating your booking. Please try again.",
+      });
+    }
   };
 
   const upcomingCount = bookings.filter(

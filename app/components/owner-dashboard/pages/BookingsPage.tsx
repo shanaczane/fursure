@@ -12,6 +12,7 @@ import BookingForm from "../components/BookingForm";
 import ReviewForm from "../components/ReviewForm";
 import ConfirmDialog from "../components/ConfirmDialog";
 import SuccessModal from "../components/SuccessModal";
+import { submitServiceReview } from "@/app/lib/api";
 
 const BookingsPage: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -161,7 +162,10 @@ const BookingsPage: React.FC = () => {
     rating: number,
     comment: string,
   ) => {
-    console.log("Review submitted:", { bookingId, rating, comment });
+    const booking = bookings.find(b => b.id === bookingId);
+    if (booking?.serviceId) {
+      submitServiceReview(booking.serviceId, rating).catch(console.error);
+    }
     setIsReviewFormOpen(false);
     setReviewingBooking(null);
     setSuccessModal({
