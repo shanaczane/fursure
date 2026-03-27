@@ -22,6 +22,7 @@ const DEFAULT_FORM = {
   priceUnit: "per session",
   duration: 60,
   image: "🐾",
+  location: "",
   features: [""],
   availability: ["Mon-Sat: 9AM-6PM"],
   isActive: true,
@@ -56,6 +57,7 @@ const ServiceFormPage: React.FC<ServiceFormPageProps> = ({ serviceId }) => {
           priceUnit: existing.priceUnit,
           duration: existing.duration,
           image: existing.image,
+          location: existing.location ?? "",
           features: existing.features.length > 0 ? existing.features : [""],
           availability: existing.availability.length > 0 ? existing.availability : ["Mon-Sat: 9AM-6PM"],
           isActive: existing.isActive,
@@ -217,6 +219,18 @@ const ServiceFormPage: React.FC<ServiceFormPageProps> = ({ serviceId }) => {
                   />
                   {errors.description && <p className="text-xs mt-1" style={{ color: "var(--fur-rose)" }}>{errors.description}</p>}
                   <p className="text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>{form.description.length} / 500 characters</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Location / Area</label>
+                  <input
+                    type="text"
+                    value={form.location}
+                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    placeholder="e.g. Makati City, BGC, Quezon City"
+                    className="fur-input"
+                  />
+                  <p className="text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>Where is your service available?</p>
                 </div>
               </div>
             </div>

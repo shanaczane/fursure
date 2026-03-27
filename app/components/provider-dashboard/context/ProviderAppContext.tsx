@@ -162,6 +162,7 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
       priceUnit: updates.priceUnit,
       duration: updates.duration,
       image: updates.image,
+      location: updates.location,
       features: updates.features,
       availability: updates.availability,
       isActive: updates.isActive,

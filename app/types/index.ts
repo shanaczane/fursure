@@ -33,6 +33,7 @@ export interface Service {
   priceUnit: string;
   location: string;
   distance: string;
+  duration: number;
   image: string;
   description: string;
   features: string[];
@@ -45,6 +46,8 @@ export interface Booking {
   serviceId: string;
   serviceName: string;
   providerName: string;
+  providerUserId?: string;
+  price?: number;
   date: string;
   time: string;
   status: BookingStatus;
