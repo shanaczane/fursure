@@ -235,6 +235,58 @@ export const deleteBookingRecord = async (bookingId: string): Promise<void> => {
   if (error) throw new Error(error.message);
 };
 
+export const deleteVaccinationRecord = async (vaccinationId: string): Promise<void> => {
+  const { error } = await supabase.from("vaccinations").delete().eq("id", vaccinationId);
+  if (error) throw new Error(error.message);
+};
+
+export const fetchPetVaccinations = async (petId: string): Promise<Vaccination[]> => {
+  const { data, error } = await supabase
+    .from("vaccinations")
+    .select("*")
+    .eq("pet_id", petId)
+    .order("date_given", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((v) => ({
+    id: v.id,
+    petId: v.pet_id,
+    name: v.name,
+    dateGiven: v.date_given,
+    nextDueDate: v.next_due_date ?? undefined,
+    vetName: v.vet_name ?? undefined,
+    notes: v.notes ?? undefined,
+  }));
+};
+
+export const insertVaccination = async (
+  _userId: string,
+  petId: string,
+  record: Omit<Vaccination, "id" | "petId">
+): Promise<Vaccination> => {
+  const { data, error } = await supabase
+    .from("vaccinations")
+    .insert({
+      pet_id: petId,
+      name: record.name,
+      date_given: record.dateGiven,
+      next_due_date: record.nextDueDate ?? null,
+      vet_name: record.vetName ?? null,
+      notes: record.notes ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    petId: data.pet_id,
+    name: data.name,
+    dateGiven: data.date_given,
+    nextDueDate: data.next_due_date ?? undefined,
+    vetName: data.vet_name ?? undefined,
+    notes: data.notes ?? undefined,
+  };
+};
+
 // ─── Provider Policy ──────────────────────────────────────────────────────────
 
 export const fetchProviderPolicy = async (userId: string) => {
