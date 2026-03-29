@@ -175,14 +175,23 @@ export const fetchUserBookings = async (userId: string): Promise<Booking[]> => {
     providerPhone: row.provider_phone ?? undefined,
     providerEmail: row.provider_email ?? undefined,
     providerContactLink: row.provider_contact_link ?? undefined,
+    // Policy fields — safe fallbacks if columns don't exist yet in DB
+    requiresDownPayment: row.requires_down_payment ?? false,
+    downPaymentDeadlineHours: row.down_payment_deadline_hours ?? 24,
+    editCancelGracePeriodHours: row.edit_cancel_grace_period_hours ?? 24,
+    createdAt: row.created_at ?? undefined,
+    downPaymentPaid: row.down_payment_paid ?? false,
+    downPaymentPaidAt: row.down_payment_paid_at ?? undefined,
+    editRequestStatus: row.edit_request_status ?? "none",
+    cancelRequestStatus: row.cancel_request_status ?? "none",
   }));
 };
 
+// ─── insertBooking: ONLY sends columns that already exist in your DB ──────────
 export const insertBooking = async (
   userId: string,
   booking: Omit<Booking, "id">,
 ): Promise<Booking> => {
-  // Look up provider_id from providers table using providerUserId
   let providerId = null;
   if (booking.providerUserId) {
     const { data: provRow } = await supabase
@@ -213,6 +222,7 @@ export const insertBooking = async (
     .select()
     .single();
   if (error) throw new Error(error.message);
+
   return {
     id: data.id,
     serviceId: data.service_id ?? "",
@@ -226,6 +236,14 @@ export const insertBooking = async (
     providerPhone: data.provider_phone ?? undefined,
     providerEmail: data.provider_email ?? undefined,
     providerContactLink: data.provider_contact_link ?? undefined,
+    // Default policy values until migration is run
+    requiresDownPayment: false,
+    downPaymentDeadlineHours: 24,
+    editCancelGracePeriodHours: 24,
+    createdAt: data.created_at ?? undefined,
+    downPaymentPaid: false,
+    editRequestStatus: "none",
+    cancelRequestStatus: "none",
   };
 };
 
@@ -238,6 +256,10 @@ export const updateBookingRecord = async (
   if (updates.date !== undefined) payload.date = updates.date;
   if (updates.time !== undefined) payload.time = updates.time;
   if (updates.notes !== undefined) payload.notes = updates.notes;
+  if (updates.downPaymentPaid !== undefined) payload.down_payment_paid = updates.downPaymentPaid;
+  if (updates.downPaymentPaidAt !== undefined) payload.down_payment_paid_at = updates.downPaymentPaidAt;
+  if (updates.editRequestStatus !== undefined) payload.edit_request_status = updates.editRequestStatus;
+  if (updates.cancelRequestStatus !== undefined) payload.cancel_request_status = updates.cancelRequestStatus;
   const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
   if (error) throw new Error(error.message);
 };
@@ -246,6 +268,38 @@ export const deleteBookingRecord = async (bookingId: string): Promise<void> => {
   const { error } = await supabase.from("bookings").delete().eq("id", bookingId);
   if (error) throw new Error(error.message);
 };
+
+// ─── Booking policy actions ───────────────────────────────────────────────────
+
+export const requestBookingEdit = async (bookingId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("bookings")
+    .update({ edit_request_status: "pending" })
+    .eq("id", bookingId);
+  if (error) throw new Error(error.message);
+};
+
+export const requestBookingCancel = async (bookingId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("bookings")
+    .update({ cancel_request_status: "pending" })
+    .eq("id", bookingId);
+  if (error) throw new Error(error.message);
+};
+
+export const payDownPayment = async (bookingId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      down_payment_paid: true,
+      down_payment_paid_at: new Date().toISOString(),
+      status: "pending",
+    })
+    .eq("id", bookingId);
+  if (error) throw new Error(error.message);
+};
+
+// ─── Vaccinations ─────────────────────────────────────────────────────────────
 
 export const deleteVaccinationRecord = async (vaccinationId: string): Promise<void> => {
   const { error } = await supabase.from("vaccinations").delete().eq("id", vaccinationId);
@@ -378,7 +432,6 @@ export const upsertProviderContactLink = async (
 
 // ─── Provider: own services ───────────────────────────────────────────────────
 
-/** Returns the providers.id for the auth user, creating the row if absent. */
 const ensureProviderRow = async (userId: string): Promise<string> => {
   const { data: existing } = await supabase
     .from("providers")
@@ -387,7 +440,6 @@ const ensureProviderRow = async (userId: string): Promise<string> => {
     .maybeSingle();
   if (existing) return String(existing.id);
 
-  // Fetch the user's name so we satisfy the NOT NULL constraint on providers.name
   const { data: userRow } = await supabase
     .from("users")
     .select("name")
