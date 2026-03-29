@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import type { ProviderBooking } from "../..provider-dashboard/../types";
 import { formatBookingDateTime } from "../utils/providerUtils";
 
-type ActionType = "accept" | "reject" | "reschedule" | "complete";
+type ActionType = "accept" | "reject" | "reschedule" | "complete" | "approve_edit" | "approve_cancel";
 
 interface BookingActionModalProps {
   booking: ProviderBooking | null;
@@ -27,6 +27,8 @@ const ACTION_CONFIG: Record<ActionType, { title: string; color: string; btnLabel
   reject: { title: "Reject Booking", color: "bg-red-600 hover:bg-red-700", btnLabel: "Reject Booking" },
   reschedule: { title: "Reschedule Booking", color: "bg-purple-600 hover:bg-purple-700", btnLabel: "Send Reschedule" },
   complete: { title: "Mark as Completed", color: "bg-blue-600 hover:bg-blue-700", btnLabel: "Mark Complete" },
+  approve_edit:   { title: "Approve Edit Request",  color: "bg-yellow-600 hover:bg-yellow-700", btnLabel: "Approve Edit"        },
+  approve_cancel: { title: "Approve Cancellation",  color: "bg-red-600 hover:bg-red-700",     btnLabel: "Approve Cancellation"   },
 };
 
 const BookingActionModal: React.FC<BookingActionModalProps> = ({
