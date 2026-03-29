@@ -48,7 +48,8 @@ const PoliciesPage: React.FC = () => {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">My Policies</h1>
           <p className="text-gray-600 text-sm">
-            Set your payment rules and cancellation policy. These will be shown to pet owners before they confirm a booking.
+            Set your payment rules and cancellation policy. These will be shown to pet owners before
+            they confirm a booking.
           </p>
         </div>
 
@@ -70,7 +71,8 @@ const PoliciesPage: React.FC = () => {
                       : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                   }`}
                 >
-                  {selected ? "✓ " : ""}{method}
+                  {selected ? "✓ " : ""}
+                  {method}
                 </button>
               );
             })}
@@ -85,11 +87,15 @@ const PoliciesPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-800">Require a downpayment?</p>
-              <p className="text-xs text-gray-500 mt-0.5">Pet owners must pay a deposit when booking.</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Pet owners must pay a deposit when booking.
+              </p>
             </div>
             <button
               type="button"
-              onClick={() => setForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))}
+              onClick={() =>
+                setForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))
+              }
               className={`relative w-12 h-6 rounded-full transition-colors ${
                 form.depositRequired ? "bg-blue-600" : "bg-gray-200"
               }`}
@@ -104,10 +110,67 @@ const PoliciesPage: React.FC = () => {
 
           {form.depositRequired && (
             <>
+              {/* ── Down payment deadline ─────────────────────────────────── */}
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-orange-900">
+                    ⏳ Down Payment Deadline:{" "}
+                    <span className="font-bold text-orange-700">
+                      {form.downPaymentDeadlineHours} hours
+                    </span>
+                  </p>
+                  <p className="text-xs text-orange-700 mt-0.5">
+                    If the owner doesn't pay within this window, the booking is automatically
+                    declined.
+                  </p>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={72}
+                  step={1}
+                  value={form.downPaymentDeadlineHours}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      downPaymentDeadlineHours: Number(e.target.value),
+                    }))
+                  }
+                  className="w-full accent-orange-500"
+                />
+                <div className="flex justify-between text-xs text-orange-600">
+                  <span>1 hr</span>
+                  <span>24 hrs</span>
+                  <span>48 hrs</span>
+                  <span>72 hrs</span>
+                </div>
+
+                {/* Quick presets */}
+                <div className="flex gap-2 flex-wrap">
+                  {[6, 12, 24, 48].map((h) => (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() =>
+                        setForm((prev) => ({ ...prev, downPaymentDeadlineHours: h }))
+                      }
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        form.downPaymentDeadlineHours === h
+                          ? "bg-orange-500 text-white border-orange-500"
+                          : "bg-white text-orange-700 border-orange-300 hover:bg-orange-100"
+                      }`}
+                    >
+                      {h}h
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Deposit percentage */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Deposit Percentage: <span className="text-blue-600 font-bold">{form.depositPercentage}%</span>
+                  Deposit Percentage:{" "}
+                  <span className="text-blue-600 font-bold">{form.depositPercentage}%</span>
                 </label>
                 <input
                   type="range"
@@ -115,7 +178,9 @@ const PoliciesPage: React.FC = () => {
                   max={100}
                   step={5}
                   value={form.depositPercentage}
-                  onChange={(e) => setForm((prev) => ({ ...prev, depositPercentage: Number(e.target.value) }))}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, depositPercentage: Number(e.target.value) }))
+                  }
                   className="w-full accent-blue-600"
                 />
                 <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -128,16 +193,24 @@ const PoliciesPage: React.FC = () => {
               {/* Full payment upfront */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Require full payment upfront?</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Overrides the deposit percentage to 100%.</p>
+                  <p className="text-sm font-medium text-gray-800">
+                    Require full payment upfront?
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Overrides the deposit percentage to 100%.
+                  </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setForm((prev) => ({
-                    ...prev,
-                    fullPaymentRequiredUpfront: !prev.fullPaymentRequiredUpfront,
-                    depositPercentage: !prev.fullPaymentRequiredUpfront ? 100 : prev.depositPercentage,
-                  }))}
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      fullPaymentRequiredUpfront: !prev.fullPaymentRequiredUpfront,
+                      depositPercentage: !prev.fullPaymentRequiredUpfront
+                        ? 100
+                        : prev.depositPercentage,
+                    }))
+                  }
                   className={`relative w-12 h-6 rounded-full transition-colors ${
                     form.fullPaymentRequiredUpfront ? "bg-blue-600" : "bg-gray-200"
                   }`}
@@ -154,11 +227,15 @@ const PoliciesPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-800">Is the deposit refundable?</p>
-                  <p className="text-xs text-gray-500 mt-0.5">If cancelled, will the deposit be returned?</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    If cancelled, will the deposit be returned?
+                  </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))}
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))
+                  }
                   className={`relative w-12 h-6 rounded-full transition-colors ${
                     form.depositRefundable ? "bg-green-500" : "bg-red-400"
                   }`}
@@ -185,7 +262,9 @@ const PoliciesPage: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Minimum notice required to cancel:{" "}
-              <span className="text-blue-600 font-bold">{form.cancellationHoursNotice} hours</span>
+              <span className="text-blue-600 font-bold">
+                {form.cancellationHoursNotice} hours
+              </span>
             </label>
             <input
               type="range"
@@ -193,7 +272,12 @@ const PoliciesPage: React.FC = () => {
               max={72}
               step={1}
               value={form.cancellationHoursNotice}
-              onChange={(e) => setForm((prev) => ({ ...prev, cancellationHoursNotice: Number(e.target.value) }))}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  cancellationHoursNotice: Number(e.target.value),
+                }))
+              }
               className="w-full accent-blue-600"
             />
             <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -208,7 +292,9 @@ const PoliciesPage: React.FC = () => {
         {/* Additional Notes */}
         <div className="bg-white rounded-lg shadow-sm p-6 space-y-3">
           <h2 className="text-lg font-bold text-gray-900">📝 Additional Notes</h2>
-          <p className="text-sm text-gray-500">Any other terms or reminders shown to customers during booking.</p>
+          <p className="text-sm text-gray-500">
+            Any other terms or reminders shown to customers during booking.
+          </p>
           <textarea
             value={form.additionalNotes ?? ""}
             onChange={(e) => setForm((prev) => ({ ...prev, additionalNotes: e.target.value }))}
@@ -224,17 +310,25 @@ const PoliciesPage: React.FC = () => {
           <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
             <li>Payment: {form.paymentMethodsAccepted.join(", ") || "Not specified"}</li>
             {form.depositRequired ? (
-              <li>
-                {form.fullPaymentRequiredUpfront
-                  ? "Full payment required upfront"
-                  : `${form.depositPercentage}% deposit required`}
-                {" "}— {form.depositRefundable ? "refundable" : "non-refundable"}
-              </li>
+              <>
+                <li>
+                  {form.fullPaymentRequiredUpfront
+                    ? "Full payment required upfront"
+                    : `${form.depositPercentage}% deposit required`}{" "}
+                  — {form.depositRefundable ? "refundable" : "non-refundable"}
+                </li>
+                <li>
+                  Down payment must be completed within{" "}
+                  <strong>{form.downPaymentDeadlineHours} hours</strong> or the booking will be
+                  declined.
+                </li>
+              </>
             ) : (
               <li>No deposit required</li>
             )}
             <li>
-              Cancellation: {form.cancellationHoursNotice === 0
+              Cancellation:{" "}
+              {form.cancellationHoursNotice === 0
                 ? "No advance notice required"
                 : `${form.cancellationHoursNotice}-hour notice required`}
             </li>

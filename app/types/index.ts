@@ -263,7 +263,11 @@ export function getBookingPermissions(booking: Booking) {
   const { status, requiresDownPayment, downPaymentPaid } = booking;
   const withinGracePeriod = gracePeriodHoursRemaining(booking) > 0;
 
-  // Can only delete cancelled or completed bookings
+  // Provider explicitly approved an edit request — owner can edit freely,
+  // bypassing grace-period and approval-dialog checks entirely.
+  const editApproved = booking.editRequestStatus === "approved";
+
+  // Can only delete cancelled, completed, or declined bookings
   const canDelete = status === "cancelled" || status === "completed" || status === "declined";
 
   let canEdit = false;
@@ -275,30 +279,30 @@ export function getBookingPermissions(booking: Booking) {
     // ── Down payment required flow ──────────────────────────────────────────
     if (status === "awaiting_downpayment") {
       // Free to cancel/edit within grace period (payment not yet made)
-      canEdit = withinGracePeriod;
+      canEdit = editApproved || withinGracePeriod;
       canCancel = withinGracePeriod;
     } else if (status === "pending" && downPaymentPaid) {
       // Down payment paid, waiting for provider — free to edit/cancel within grace
-      canEdit = withinGracePeriod;
+      canEdit = editApproved || withinGracePeriod;
       canCancel = withinGracePeriod;
     } else if (status === "confirmed") {
-      // Provider confirmed — needs approval to edit/cancel
+      // Provider confirmed — needs approval to edit/cancel (unless edit already approved)
       canEdit = true;
       canCancel = true;
-      editNeedsProviderApproval = true;
+      editNeedsProviderApproval = !editApproved;
       cancelNeedsProviderApproval = true;
     }
   } else {
     // ── No down payment flow ────────────────────────────────────────────────
     if (status === "pending") {
       // Free to edit/cancel within grace period
-      canEdit = withinGracePeriod;
+      canEdit = editApproved || withinGracePeriod;
       canCancel = withinGracePeriod;
     } else if (status === "confirmed") {
-      // Needs provider approval
+      // Needs provider approval (unless edit already approved)
       canEdit = true;
       canCancel = true;
-      editNeedsProviderApproval = true;
+      editNeedsProviderApproval = !editApproved;
       cancelNeedsProviderApproval = true;
     }
   }
@@ -310,5 +314,6 @@ export function getBookingPermissions(booking: Booking) {
     editNeedsProviderApproval,
     cancelNeedsProviderApproval,
     withinGracePeriod,
+    editApproved, // expose so components can render the "Edit Now" state
   };
 }

@@ -17,6 +17,7 @@ import {
   requestBookingEdit,
   requestBookingCancel,
   payDownPayment,
+  updateBookingRecord,
 } from "@/app/lib/api";
 
 const BookingsPage: React.FC = () => {
@@ -61,6 +62,13 @@ const BookingsPage: React.FC = () => {
   const handleEditBooking = (booking: Booking) => {
     const { canEdit, editNeedsProviderApproval } = getBookingPermissions(booking);
     if (!canEdit) return;
+
+    // Provider already approved the edit request — open form directly
+    if (booking.editRequestStatus === "approved") {
+      setEditingBooking(booking);
+      setIsEditFormOpen(true);
+      return;
+    }
 
     if (editNeedsProviderApproval) {
       setConfirmDialog({
@@ -192,8 +200,14 @@ const BookingsPage: React.FC = () => {
   };
 
   // ── Update booking (from edit form) ───────────────────────────────────────
+  //
+  // After the owner submits edits:
+  //   • If the edit was provider-approved (editRequestStatus === "approved"),
+  //     the booking goes back to "pending" so the provider re-confirms it,
+  //     and editRequestStatus resets to "none".
+  //   • Otherwise it's a free edit (within grace period) — just update fields.
 
-  const handleUpdateBooking = (
+  const handleUpdateBooking = async (
     serviceId: string,
     petId: string,
     date: string,
@@ -203,10 +217,40 @@ const BookingsPage: React.FC = () => {
     if (!editingBooking) return;
     const pet = pets.find((p) => p.id === petId);
     if (!pet) return;
-    updateBooking(editingBooking.id, { date, time, petName: pet.name, notes });
-    setIsEditFormOpen(false);
-    setEditingBooking(null);
-    showSuccess("Booking Updated", "Your booking has been updated successfully!");
+
+    const wasApprovedEdit = editingBooking.editRequestStatus === "approved";
+
+    const localUpdates: Partial<Booking> = {
+      date,
+      time,
+      petName: pet.name,
+      notes,
+      ...(wasApprovedEdit && {
+        status: "pending",        // back to pending — provider must re-confirm
+        editRequestStatus: "none",
+      }),
+    };
+
+    try {
+      // Persist to Supabase
+      await updateBookingRecord(editingBooking.id, localUpdates);
+      // Update local state
+      updateBooking(editingBooking.id, localUpdates);
+
+      setIsEditFormOpen(false);
+      setEditingBooking(null);
+
+      if (wasApprovedEdit) {
+        showSuccess(
+          "Booking Updated — Awaiting Re-confirmation",
+          "Your changes have been saved. The provider will review and re-confirm your updated booking."
+        );
+      } else {
+        showSuccess("Booking Updated", "Your booking has been updated successfully!");
+      }
+    } catch {
+      showSuccess("Error", "Failed to update the booking. Please try again.");
+    }
   };
 
   // ── Book again ─────────────────────────────────────────────────────────────

@@ -45,6 +45,8 @@ interface ProviderContextType {
   rescheduleBooking: (id: string, newDate: string, newTime: string, providerNotes?: string) => void;
   completeBooking: (id: string, providerNotes?: string) => void;
   updateBookingNotes: (id: string, providerNotes: string) => void;
+  /** General-purpose booking field patcher (for edit/cancel request approvals etc.) */
+  updateBooking: (id: string, updates: Partial<ProviderBooking>) => void;
 }
 
 const EMPTY_USER: ProviderUser = {
@@ -99,7 +101,7 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
 
       // Load policy
       fetchProviderPolicy(authUser.id)
-        .then((p) => { if (p) setPolicy(p); })
+        .then((p) => { if (p) setPolicy(p as ProviderPolicy); })
         .catch(() => {});
 
       // Load services (scoped to this provider only)
@@ -117,14 +119,14 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
   const updateUser = (updates: Partial<ProviderUser>) =>
     setUser((prev) => ({ ...prev, ...updates }));
 
-  const savePolicy = async (updated: ProviderPolicy) => {
+  const savePolicy = async (updated: ProviderPolicy): Promise<void> => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) throw new Error("Not authenticated");
     await upsertProviderPolicy(authUser.id, updated);
     setPolicy(updated);
   };
 
-  // ── Services ─────────────────────────────────────────────────────────────────
+  // ── Services ──────────────────────────────────────────────────────────────
 
   const addService = (
     service: Omit<ProviderService, "id" | "totalBookings" | "rating" | "reviews" | "createdAt">,
@@ -146,7 +148,6 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
         })
         .catch((err) => {
           console.error("[addService] Supabase insert failed:", err);
-          // Revert on failure
           setServices((prev) => prev.filter((s) => s.id !== tempId));
         });
     });
@@ -167,7 +168,6 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
       availability: updates.availability,
       isActive: updates.isActive,
     }).catch(() => {
-      // Revert on failure — reload from DB
       supabase.auth.getUser().then(({ data: { user: authUser } }) => {
         if (!authUser) return;
         fetchProviderOwnServices(authUser.id)
@@ -180,7 +180,6 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
   const deleteService = (id: string) => {
     setServices((prev) => prev.filter((s) => s.id !== id));
     deleteProviderServiceRecord(id).catch(() => {
-      // Revert: reload from DB
       supabase.auth.getUser().then(({ data: { user: authUser } }) => {
         if (!authUser) return;
         fetchProviderOwnServices(authUser.id)
@@ -200,7 +199,7 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  // ── Bookings ──────────────────────────────────────────────────────────────────
+  // ── Bookings ──────────────────────────────────────────────────────────────
 
   const setBookingStatus = (
     id: string,
@@ -211,11 +210,42 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
       prev.map((b) => (b.id === id ? { ...b, status, ...extra } : b)),
     );
 
+  /**
+   * General-purpose booking field patcher.
+   * Used for approving/rejecting edit & cancel requests without touching status.
+   *
+   * FIX: now forwards editRequestStatus and cancelRequestStatus to
+   * updateProviderBookingStatus so they are actually written to Supabase.
+   * Previously these fields were silently dropped, causing the revert on refresh.
+   */
+  const updateBooking = (id: string, updates: Partial<ProviderBooking>) => {
+    // Optimistic local update
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, ...updates } : b)),
+    );
+
+    const current = bookings.find((b) => b.id === id);
+    const status = updates.status ?? current?.status ?? "pending";
+
+    updateProviderBookingStatus(id, status, {
+      providerNotes:       updates.providerNotes,
+      rescheduleDate:      updates.rescheduleDate,
+      rescheduleTime:      updates.rescheduleTime,
+      editRequestStatus:   updates.editRequestStatus,   // ← was missing
+      cancelRequestStatus: updates.cancelRequestStatus, // ← was missing
+    }).catch((err) => {
+      // Roll back optimistic update on failure
+      console.error("[updateBooking] Supabase update failed — rolling back:", err);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, ...current } : b)),
+      );
+    });
+  };
+
   const acceptBooking = (id: string, providerNotes?: string) => {
     const booking = bookings.find((b) => b.id === id);
     if (!booking) return;
 
-    // Conflict check: is there already a *confirmed* booking on the same date+time?
     const effectiveTime = booking.rescheduleTime ?? booking.time;
     const effectiveDate = booking.rescheduleDate ?? booking.date;
     const conflict = bookings.find(
@@ -277,7 +307,8 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, providerNotes } : b)),
     );
-    updateProviderBookingStatus(id, bookings.find((b) => b.id === id)?.status ?? "pending", {
+    const current = bookings.find((b) => b.id === id);
+    updateProviderBookingStatus(id, current?.status ?? "pending", {
       providerNotes,
     }).catch(console.error);
   };
@@ -300,6 +331,7 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
         rescheduleBooking,
         completeBooking,
         updateBookingNotes,
+        updateBooking,
       }}
     >
       {children}

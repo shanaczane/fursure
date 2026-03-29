@@ -175,7 +175,6 @@ export const fetchUserBookings = async (userId: string): Promise<Booking[]> => {
     providerPhone: row.provider_phone ?? undefined,
     providerEmail: row.provider_email ?? undefined,
     providerContactLink: row.provider_contact_link ?? undefined,
-    // Policy fields — safe fallbacks if columns don't exist yet in DB
     requiresDownPayment: row.requires_down_payment ?? false,
     downPaymentDeadlineHours: row.down_payment_deadline_hours ?? 24,
     editCancelGracePeriodHours: row.edit_cancel_grace_period_hours ?? 24,
@@ -187,7 +186,6 @@ export const fetchUserBookings = async (userId: string): Promise<Booking[]> => {
   }));
 };
 
-// ─── insertBooking: ONLY sends columns that already exist in your DB ──────────
 export const insertBooking = async (
   userId: string,
   booking: Omit<Booking, "id">,
@@ -236,7 +234,6 @@ export const insertBooking = async (
     providerPhone: data.provider_phone ?? undefined,
     providerEmail: data.provider_email ?? undefined,
     providerContactLink: data.provider_contact_link ?? undefined,
-    // Default policy values until migration is run
     requiresDownPayment: false,
     downPaymentDeadlineHours: 24,
     editCancelGracePeriodHours: 24,
@@ -369,6 +366,7 @@ export const fetchProviderPolicy = async (userId: string) => {
     depositPercentage: data.deposit_percentage,
     depositRefundable: data.deposit_refundable,
     cancellationHoursNotice: data.cancellation_hours_notice,
+    downPaymentDeadlineHours: data.down_payment_deadline_hours ?? 24, // ← new
     paymentMethodsAccepted: data.payment_methods_accepted ?? ["Cash"],
     fullPaymentRequiredUpfront: data.full_payment_required_upfront,
     additionalNotes: data.additional_notes ?? "",
@@ -382,6 +380,7 @@ export const upsertProviderPolicy = async (
     depositPercentage: number;
     depositRefundable: boolean;
     cancellationHoursNotice: number;
+    downPaymentDeadlineHours: number; // ← new
     paymentMethodsAccepted: string[];
     fullPaymentRequiredUpfront: boolean;
     additionalNotes?: string;
@@ -394,6 +393,7 @@ export const upsertProviderPolicy = async (
       deposit_percentage: policy.depositPercentage,
       deposit_refundable: policy.depositRefundable,
       cancellation_hours_notice: policy.cancellationHoursNotice,
+      down_payment_deadline_hours: policy.downPaymentDeadlineHours, // ← new
       payment_methods_accepted: policy.paymentMethodsAccepted,
       full_payment_required_upfront: policy.fullPaymentRequiredUpfront,
       additional_notes: policy.additionalNotes ?? null,
@@ -588,18 +588,34 @@ export const fetchProviderOwnBookings = async (userId: string) => {
     rescheduleTime: row.reschedule_time ?? undefined,
     price: row.price ?? 0,
     createdAt: row.created_at,
+    // ── New down payment + request fields ──────────────────────────────────
+    requiresDownPayment: row.requires_down_payment ?? false,
+    downPaymentDeadlineHours: row.down_payment_deadline_hours ?? 24,
+    downPaymentPaid: row.down_payment_paid ?? false,
+    downPaymentPaidAt: row.down_payment_paid_at ?? undefined,
+    editCancelGracePeriodHours: row.edit_cancel_grace_period_hours ?? 24,
+    editRequestStatus: row.edit_request_status ?? "none",
+    cancelRequestStatus: row.cancel_request_status ?? "none",
   }));
 };
 
 export const updateProviderBookingStatus = async (
   bookingId: string,
   status: string,
-  extras?: { providerNotes?: string; rescheduleDate?: string; rescheduleTime?: string },
+  extras?: {
+    providerNotes?: string;
+    rescheduleDate?: string;
+    rescheduleTime?: string;
+    editRequestStatus?: "none" | "pending" | "approved" | "rejected"; // ← new
+    cancelRequestStatus?: "none" | "pending" | "approved" | "rejected"; // ← new
+  },
 ): Promise<void> => {
   const payload: Record<string, unknown> = { status };
   if (extras?.providerNotes !== undefined) payload.provider_notes = extras.providerNotes;
   if (extras?.rescheduleDate !== undefined) payload.reschedule_date = extras.rescheduleDate;
   if (extras?.rescheduleTime !== undefined) payload.reschedule_time = extras.rescheduleTime;
+  if (extras?.editRequestStatus !== undefined) payload.edit_request_status = extras.editRequestStatus;
+  if (extras?.cancelRequestStatus !== undefined) payload.cancel_request_status = extras.cancelRequestStatus;
   const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
   if (error) throw new Error(error.message);
 };

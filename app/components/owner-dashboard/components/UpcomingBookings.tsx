@@ -44,6 +44,9 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
           const hoursLeft = gracePeriodHoursRemaining(booking);
           const downPaymentExpired = isDownPaymentExpired(booking);
 
+          // Provider approved the edit request — owner can now freely edit
+          const editApproved = booking.editRequestStatus === "approved";
+
           return (
             <div
               key={booking.id}
@@ -117,8 +120,17 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     </p>
                   )}
 
-                  {/* ── Approval notice for confirmed bookings ────────────── */}
-                  {booking.status === "confirmed" && (
+                  {/* ── Approved edit notice — action required ────────────── */}
+                  {editApproved && (
+                    <div className="mt-3 pt-3 border-t border-green-100">
+                      <p className="text-xs text-green-700 font-medium">
+                        ✅ Edit approved by provider — please update your booking details. Once submitted, the provider will re-confirm.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* ── Approval notice for confirmed bookings (no pending requests) ── */}
+                  {booking.status === "confirmed" && !editApproved && booking.editRequestStatus !== "pending" && (
                     <p className="mt-2 text-xs text-blue-600">
                       ℹ️ Edits or cancellations require provider approval.
                     </p>
@@ -192,8 +204,19 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                   </div>
 
                   <div className="flex flex-col space-y-1">
-                    {/* Edit */}
-                    {onEdit && permissions.canEdit && (
+                    {/* Edit — approved path: show prominent green "Edit Now" button */}
+                    {onEdit && editApproved && (
+                      <button
+                        onClick={() => onEdit(booking)}
+                        className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-semibold transition-colors"
+                        title="Provider approved your edit — update your booking now"
+                      >
+                        ✏️ Edit Now
+                      </button>
+                    )}
+
+                    {/* Edit — normal path (grace period or no-approval needed) */}
+                    {onEdit && !editApproved && permissions.canEdit && (
                       <button
                         onClick={() => onEdit(booking)}
                         className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-medium transition-colors"
