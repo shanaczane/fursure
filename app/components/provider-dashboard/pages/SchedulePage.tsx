@@ -17,11 +17,18 @@ const MONTH_NAMES = [
 ];
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const toLocalDateStr = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 const SchedulePage: React.FC = () => {
   const { bookings } = useProviderContext();
   const today = new Date();
   const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
-  const [selectedDate, setSelectedDate] = useState<string>(today.toISOString().split("T")[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(toLocalDateStr(today));
 
   const calendarDays = useMemo(
     () => generateCalendarDays(viewDate.getFullYear(), viewDate.getMonth()),
@@ -50,7 +57,7 @@ const SchedulePage: React.FC = () => {
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
   const goToday = () => {
     setViewDate(new Date(today.getFullYear(), today.getMonth(), 1));
-    setSelectedDate(today.toISOString().split("T")[0]);
+    setSelectedDate(toLocalDateStr(today));
   };
 
   const formatSelectedDate = (dateStr: string) => {
@@ -63,9 +70,8 @@ const SchedulePage: React.FC = () => {
     });
   };
 
-  const isToday = (d: Date) =>
-    d.toISOString().split("T")[0] === today.toISOString().split("T")[0];
-  const isSelected = (d: Date) => d.toISOString().split("T")[0] === selectedDate;
+  const isToday = (d: Date) => toLocalDateStr(d) === toLocalDateStr(today);
+  const isSelected = (d: Date) => toLocalDateStr(d) === selectedDate;
 
   return (
     <ProviderLayout>
@@ -125,7 +131,7 @@ const SchedulePage: React.FC = () => {
                 if (!day) {
                   return <div key={`empty-${idx}`} className="h-16 border-b border-r border-gray-100 bg-gray-50/50" />;
                 }
-                const dateStr = day.toISOString().split("T")[0];
+                const dateStr = toLocalDateStr(day);
                 const hasBookings = datesWithBookings.has(dateStr);
                 const selected = isSelected(day);
                 const todayDay = isToday(day);
@@ -254,7 +260,7 @@ const SchedulePage: React.FC = () => {
             {Array.from({ length: 7 }).map((_, i) => {
               const d = new Date();
               d.setDate(d.getDate() + i);
-              const dateStr = d.toISOString().split("T")[0];
+              const dateStr = toLocalDateStr(d);
               const dayBookings = getBookingsForDate(bookings, dateStr);
               const isT = i === 0;
               return (
