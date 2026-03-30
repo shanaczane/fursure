@@ -101,7 +101,7 @@ const ManageBookingsPage: React.FC = () => {
       <div className="space-y-5">
         {/* Header */}
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Manage Bookings</h1>
+          <h1 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, color: "var(--fur-slate)" }}>Manage Bookings</h1>
           <p className="text-gray-500 text-sm">Accept, reject, or reschedule appointment requests</p>
         </div>
 

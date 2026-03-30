@@ -79,7 +79,7 @@ const SchedulePage: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Schedule</h1>
+            <h1 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, color: "var(--fur-slate)" }}>Schedule</h1>
             <p className="text-gray-500 text-sm">View your appointment calendar</p>
           </div>
           <button

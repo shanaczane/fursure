@@ -112,7 +112,7 @@ const ProviderProfilePage: React.FC = () => {
       <div className="space-y-5 max-w-4xl">
         {/* Header */}
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Profile</h1>
+          <h1 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, color: "var(--fur-slate)" }}>Profile</h1>
           <p className="text-gray-500 text-sm">Manage your account and business settings</p>
         </div>
 

@@ -46,7 +46,7 @@ const PoliciesPage: React.FC = () => {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">My Policies</h1>
+          <h1 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, color: "var(--fur-slate)" }}>My Policies</h1>
           <p className="text-gray-600 text-sm">
             Set your payment rules and cancellation policy. These will be shown to pet owners before
             they confirm a booking.
