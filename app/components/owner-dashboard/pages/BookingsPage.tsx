@@ -20,6 +20,7 @@ import {
   updateBookingRecord,
   confirmReschedule,
   declineReschedule,
+  fetchProviderContactInfo,
 } from "@/app/lib/api";
 
 const BookingsPage: React.FC = () => {
@@ -55,8 +56,7 @@ const BookingsPage: React.FC = () => {
   } = useAppContext();
   const { upcomingBookings, pastBookings } = useDashboard({ services, bookings, pets, user });
 
-  // Make sure rescheduled bookings always appear in upcoming even if useDashboard
-  // doesn't include them — merge them in so the owner can respond to the proposal.
+  // Ensure rescheduled bookings always appear in upcoming so owner can respond
   const rescheduledPending = bookings.filter(
     (b) =>
       b.status === "rescheduled" &&
@@ -222,7 +222,6 @@ const BookingsPage: React.FC = () => {
         closeConfirm();
         try {
           await confirmReschedule(bookingId, booking.rescheduleDate!, booking.rescheduleTime!);
-          // Promote proposed date/time → actual booking date/time, keep status confirmed
           updateBooking(bookingId, {
             status: "confirmed",
             date: booking.rescheduleDate!,
@@ -255,7 +254,6 @@ const BookingsPage: React.FC = () => {
         closeConfirm();
         try {
           await declineReschedule(bookingId);
-          // Mark as cancelled AND clear reschedule fields so it moves to history
           updateBooking(bookingId, {
             status: "cancelled",
             rescheduleDate: undefined,
@@ -302,10 +300,8 @@ const BookingsPage: React.FC = () => {
     try {
       await updateBookingRecord(editingBooking.id, localUpdates);
       updateBooking(editingBooking.id, localUpdates);
-
       setIsEditFormOpen(false);
       setEditingBooking(null);
-
       if (wasApprovedEdit) {
         showSuccess(
           "Booking Updated — Awaiting Re-confirmation",
@@ -326,7 +322,7 @@ const BookingsPage: React.FC = () => {
     setIsBookAgainFormOpen(true);
   };
 
-  const handleConfirmBookAgain = (
+  const handleConfirmBookAgain = async (
     serviceId: string,
     petId: string,
     date: string,
@@ -336,23 +332,54 @@ const BookingsPage: React.FC = () => {
     const service = services.find((s) => s.id === serviceId);
     const pet = pets.find((p) => p.id === petId);
     if (!service || !pet) return;
-    addBooking({
-      serviceId: service.id,
-      serviceName: service.name,
-      providerName: service.provider,
-      date,
-      time,
-      status: "pending",
-      petName: pet.name,
-      notes: notes || "Rebooked service",
-      createdAt: new Date().toISOString(),
-    });
-    setIsBookAgainFormOpen(false);
-    setBookAgainBooking(null);
-    showSuccess(
-      "Booking Confirmed",
-      `Successfully booked ${service.name} for ${pet.name} on ${date}!`
-    );
+
+    // Fetch latest provider contact info for the new booking
+    let contactInfo = {
+      providerPhone: undefined as string | undefined,
+      providerEmail: undefined as string | undefined,
+      providerContactLink: undefined as string | undefined,
+    };
+    if (service.providerUserId) {
+      try {
+        contactInfo = await fetchProviderContactInfo(service.providerUserId);
+      } catch {
+        // non-fatal — booking still works without contact info
+      }
+    }
+
+    try {
+      await addBooking({
+        serviceId: service.id,
+        serviceName: service.name,
+        providerName: service.provider,
+        // ↓ Critical: links the booking row to the provider so they can see it
+        providerUserId: service.providerUserId,
+        date,
+        time,
+        status: "pending",
+        petName: pet.name,
+        notes: notes || undefined,
+        providerPhone: contactInfo.providerPhone,
+        providerEmail: contactInfo.providerEmail,
+        providerContactLink: contactInfo.providerContactLink,
+        createdAt: new Date().toISOString(),
+        requiresDownPayment: false,
+        downPaymentDeadlineHours: 24,
+        editCancelGracePeriodHours: 24,
+        downPaymentPaid: false,
+        editRequestStatus: "none",
+        cancelRequestStatus: "none",
+      });
+
+      setIsBookAgainFormOpen(false);
+      setBookAgainBooking(null);
+      showSuccess(
+        "Booking Confirmed",
+        `Successfully booked ${service.name} for ${pet.name} on ${date}!`
+      );
+    } catch {
+      showSuccess("Error", "Failed to create booking. Please try again.");
+    }
   };
 
   // ── Review ─────────────────────────────────────────────────────────────────

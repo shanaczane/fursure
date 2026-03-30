@@ -142,27 +142,48 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                   {/* ── Down payment banner ───────────────────────────────── */}
                   {booking.status === "awaiting_downpayment" && (
                     <div
-                      className={`mt-3 pt-3 border-t ${
-                        downPaymentExpired ? "border-red-100" : "border-orange-100"
+                      className={`mt-3 pt-3 border-t rounded-lg px-3 py-3 ${
+                        downPaymentExpired
+                          ? "bg-red-50 border border-red-200"
+                          : "bg-orange-50 border border-orange-200"
                       }`}
                     >
                       {downPaymentExpired ? (
-                        <p className="text-xs text-red-600 font-medium">
-                          ⛔ Down payment deadline passed. This booking will be automatically declined.
-                        </p>
-                      ) : (
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          <p className="text-xs text-orange-700 font-medium">
-                            ⏳ Down payment required within{" "}
-                            {Math.ceil(booking.downPaymentDeadlineHours ?? 24)} hrs
-                            {hoursLeft > 0 && ` (${Math.ceil(hoursLeft)} hrs remaining)`}
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-red-700">
+                            ⛔ Down payment window closed
                           </p>
+                          <p className="text-xs text-red-600">
+                            The 24-hour cash payment deadline has passed. This booking has been
+                            automatically cancelled.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-sm font-semibold text-orange-800">
+                              💵 Cash down payment required
+                            </p>
+                            <p className="text-xs text-orange-700 mt-0.5">
+                              Pay the provider in cash within{" "}
+                              <strong>24 hours</strong> to confirm your booking.
+                              {hoursLeft > 0 && (
+                                <span className="font-bold">
+                                  {" "}
+                                  {Math.ceil(hoursLeft)} hour
+                                  {Math.ceil(hoursLeft) !== 1 ? "s" : ""} left.
+                                </span>
+                              )}{" "}
+                              If not paid in time, your booking will be{" "}
+                              <strong>automatically cancelled</strong>.
+                            </p>
+                          </div>
                           {onPayDownPayment && (
                             <button
                               onClick={() => onPayDownPayment(booking.id)}
-                              className="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white rounded text-xs font-semibold transition-colors"
+                              className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition-colors"
                             >
-                              Pay Now
+                              Mark as Paid
                             </button>
                           )}
                         </div>
