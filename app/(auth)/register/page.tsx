@@ -28,6 +28,22 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
+  const passwordRules = [
+    { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
+    { label: "Contains a number", test: (p: string) => /\d/.test(p) },
+    { label: "Contains a special character", test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
+  ];
+
+  const isPasswordValid = passwordRules.every(r => r.test(formData.password));
+
+  const passwordRules = [
+    { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
+    { label: "Contains a number", test: (p: string) => /\d/.test(p) },
+    { label: "Contains a special character", test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
+  ];
+
+  const isPasswordValid = passwordRules.every(r => r.test(formData.password));
+
   // ── Password rules ──────────────────────────────────────────────────
   const passwordRules = [
     { label: "At least 8 characters",        test: (p: string) => p.length >= 8 },
@@ -76,6 +92,10 @@ export default function Register() {
           },
         },
       });
+      if (!isPasswordValid) {
+        setLoading(false);
+        return;
+      }
       if (signupError) throw signupError;
       if (!authData.user) throw new Error("No user data returned.");
 
@@ -308,30 +328,21 @@ export default function Register() {
               <input
                 type={showPassword ? "text" : "password"}
                 value={formData.password}
-                onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                minLength={8}
                 required
                 disabled={loading}
                 placeholder="Min. 8 characters"
                 className="fur-input"
               />
-
-              {/* Live password rules — shown as soon as user starts typing */}
               {formData.password.length > 0 && (
-                <div className="mt-3 p-3 rounded-xl space-y-1.5" style={{ background: "var(--fur-mist)" }}>
+                <div className="mt-2 space-y-1">
                   {passwordRules.map((rule) => {
                     const passed = rule.test(formData.password);
                     return (
-                      <p
-                        key={rule.label}
-                        className="text-xs font-600 flex items-center gap-2"
-                        style={{ color: passed ? "#059669" : "#DC2626" }}
-                      >
-                        <span
-                          className="w-4 h-4 rounded-full flex items-center justify-center text-white flex-shrink-0"
-                          style={{ background: passed ? "#059669" : "#DC2626", fontSize: 9 }}
-                        >
-                          {passed ? "✓" : "✗"}
-                        </span>
+                      <p key={rule.label} className="text-xs font-600 flex items-center gap-1"
+                        style={{ color: passed ? "var(--fur-teal)" : "var(--fur-rose)" }}>
+                        <span className="text-sm">{passed ? "✓" : "✗"}</span>
                         {rule.label}
                       </p>
                     );

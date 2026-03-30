@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import type { ProviderBooking } from "../..provider-dashboard/../types";
 import { formatBookingDateTime } from "../utils/providerUtils";
 
-type ActionType = "accept" | "reject" | "reschedule" | "complete";
+type ActionType = "accept" | "reject" | "reschedule" | "complete" | "approve_edit" | "approve_cancel";
 
 interface BookingActionModalProps {
   booking: ProviderBooking | null;
@@ -27,6 +27,8 @@ const ACTION_CONFIG: Record<ActionType, { title: string; color: string; btnLabel
   reject: { title: "Reject Booking", color: "bg-red-600 hover:bg-red-700", btnLabel: "Reject Booking" },
   reschedule: { title: "Reschedule Booking", color: "bg-purple-600 hover:bg-purple-700", btnLabel: "Send Reschedule" },
   complete: { title: "Mark as Completed", color: "bg-blue-600 hover:bg-blue-700", btnLabel: "Mark Complete" },
+  approve_edit:   { title: "Approve Edit Request",  color: "bg-yellow-600 hover:bg-yellow-700", btnLabel: "Approve Edit"        },
+  approve_cancel: { title: "Approve Cancellation",  color: "bg-red-600 hover:bg-red-700",     btnLabel: "Approve Cancellation"   },
 };
 
 const BookingActionModal: React.FC<BookingActionModalProps> = ({
@@ -42,10 +44,12 @@ const BookingActionModal: React.FC<BookingActionModalProps> = ({
   const [notes, setNotes] = useState("");
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("10:00");
+  const [conflictError, setConflictError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
       setNotes("");
+      setConflictError("");
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       setRescheduleDate(tomorrow.toISOString().split("T")[0]);
@@ -64,13 +68,18 @@ const BookingActionModal: React.FC<BookingActionModalProps> = ({
   const config = ACTION_CONFIG[action];
 
   const handleSubmit = () => {
-    if (action === "accept") onAccept(booking.id, notes || undefined);
-    else if (action === "reject") onReject(booking.id, notes || undefined);
-    else if (action === "reschedule") {
-      if (!rescheduleDate) return alert("Please select a date");
-      onReschedule(booking.id, rescheduleDate, rescheduleTime, notes || undefined);
-    } else if (action === "complete") onComplete(booking.id, notes || undefined);
-    onClose();
+    setConflictError("");
+    try {
+      if (action === "accept") onAccept(booking.id, notes || undefined);
+      else if (action === "reject") onReject(booking.id, notes || undefined);
+      else if (action === "reschedule") {
+        if (!rescheduleDate) return alert("Please select a date");
+        onReschedule(booking.id, rescheduleDate, rescheduleTime, notes || undefined);
+      } else if (action === "complete") onComplete(booking.id, notes || undefined);
+      onClose();
+    } catch (e) {
+      setConflictError(e instanceof Error ? e.message : "An error occurred");
+    }
   };
 
   return (
@@ -180,6 +189,12 @@ const BookingActionModal: React.FC<BookingActionModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
               />
             </div>
+
+            {conflictError && (
+              <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                ⚠️ {conflictError}
+              </div>
+            )}
 
             <div className="flex space-x-3">
               <button

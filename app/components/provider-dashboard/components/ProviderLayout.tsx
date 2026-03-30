@@ -17,7 +17,12 @@ const ProviderLayout: React.FC<ProviderLayoutProps> = ({ children }) => {
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
       />
-      <div className="transition-all duration-300">
+      <div
+        style={{
+          marginLeft: isSidebarOpen ? "16rem" : "0",
+          transition: "margin-left 300ms ease-in-out",
+        }}
+      >
         <ProviderTopNavbar
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           isSidebarOpen={isSidebarOpen}

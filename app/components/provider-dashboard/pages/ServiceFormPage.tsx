@@ -22,6 +22,7 @@ const DEFAULT_FORM = {
   priceUnit: "per session",
   duration: 60,
   image: "🐾",
+  location: "",
   features: [""],
   availability: ["Mon-Sat: 9AM-6PM"],
   isActive: true,
@@ -56,6 +57,7 @@ const ServiceFormPage: React.FC<ServiceFormPageProps> = ({ serviceId }) => {
           priceUnit: existing.priceUnit,
           duration: existing.duration,
           image: existing.image,
+          location: existing.location ?? "",
           features: existing.features.length > 0 ? existing.features : [""],
           availability: existing.availability.length > 0 ? existing.availability : ["Mon-Sat: 9AM-6PM"],
           isActive: existing.isActive,
@@ -218,6 +220,18 @@ const ServiceFormPage: React.FC<ServiceFormPageProps> = ({ serviceId }) => {
                   {errors.description && <p className="text-xs mt-1" style={{ color: "var(--fur-rose)" }}>{errors.description}</p>}
                   <p className="text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>{form.description.length} / 500 characters</p>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Location / Area</label>
+                  <input
+                    type="text"
+                    value={form.location}
+                    onChange={(e) => setForm({ ...form, location: e.target.value })}
+                    placeholder="e.g. Makati City, BGC, Quezon City"
+                    className="fur-input"
+                  />
+                  <p className="text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>Where is your service available?</p>
+                </div>
               </div>
             </div>
 
@@ -252,7 +266,7 @@ const ServiceFormPage: React.FC<ServiceFormPageProps> = ({ serviceId }) => {
               <h2 className="font-800 text-base mb-5" style={{ color: "var(--fur-slate)" }}>💰 Pricing & Duration</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Price ($) *</label>
+                  <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Price (₱) *</label>
                   <input
                     type="number"
                     min="0"
@@ -405,7 +419,7 @@ const ServiceFormPage: React.FC<ServiceFormPageProps> = ({ serviceId }) => {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-900 text-lg" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
-                        ${form.price || 0}
+                        ₱{form.price || 0}
                       </span>
                       <span className="text-xs ml-1" style={{ color: "var(--fur-slate-light)" }}>{form.priceUnit}</span>
                     </div>

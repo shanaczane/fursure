@@ -36,13 +36,19 @@ const ProviderTopNavbar: React.FC<TopNavbarProps> = ({
   const initial = displayName ? displayName.charAt(0).toUpperCase() : "?";
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-30">
+    <header
+      className={`fixed top-0 right-0 h-16 z-30 border-b ${isSidebarOpen ? "left-0 lg:left-64" : "left-0"}`}
+      style={{ background: "rgba(253,248,240,0.95)", backdropFilter: "blur(8px)", borderColor: "var(--border)", fontFamily: "'Nunito', sans-serif", transition: "left 300ms ease-in-out" }}
+    >
       <div className="h-full px-4 md:px-6 flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button
             onClick={onToggleSidebar}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+            className="p-2 rounded-xl transition-colors"
+            style={{ color: "var(--fur-slate-light)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-mist)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+            suppressHydrationWarning
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />

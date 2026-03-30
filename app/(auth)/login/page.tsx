@@ -45,7 +45,32 @@ export default function Login() {
         password: credentials.password,
       });
       if (loginError) throw loginError;
-      if (!authData.session) throw new Error("No session returned.");
+      if (!authData.session) throw new Error("No session returned");
+
+      // Fetch the user's actual role from the database
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut();
+        throw new Error("Account not found. Please register first.");
+      }
+
+      const roleMap: Record<string, UserRole> = {
+        owner: "PET_OWNER",
+        provider: "SERVICE_PROVIDER",
+        admin: "ADMIN",
+      };
+      const actualRole = roleMap[profile.role] ?? "PET_OWNER";
+
+      if (actualRole !== selectedRole) {
+        await supabase.auth.signOut();
+        const label = tabs.find(t => t.role === actualRole)?.label ?? profile.role;
+        throw new Error(`This account is registered as a ${label}. Please select the correct role tab.`);
+      }
 
       // 2. Fetch the user's actual role from the database
       const { data: profile, error: profileError } = await supabase
@@ -167,7 +192,9 @@ export default function Login() {
           >
             {panel.headline}
           </h2>
-          <p className="text-lg" style={{ color: "#7A90A8" }}>{panel.sub}</p>
+          <p className="text-lg" style={{ color: "#7A90A8" }}>
+            Manage bookings, track your pets&apos; care history, and connect with trusted service providers.
+          </p>
         </div>
 
         <div className="relative space-y-3">
@@ -209,43 +236,21 @@ export default function Login() {
           </p>
 
           {/* Role tabs */}
-          <div
-            className="flex gap-1.5 mb-8 p-1.5 rounded-2xl"
-            style={{ background: "var(--fur-mist)" }}
-          >
-            {tabs.map((tab) => {
-              const isActive = selectedRole === tab.role;
-              const tabAccent = roleAccent[tab.role];
-              return (
-                <button
-                  key={tab.role}
-                  type="button"
-                  onClick={() => { setSelectedRole(tab.role); setError(null); }}
-                  className="flex-1 flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-xl text-xs font-700 transition-all duration-200"
-                  style={
-                    isActive
-                      ? {
-                          background: "white",
-                          color: tabAccent.ring,
-                          boxShadow: "0 2px 12px rgba(0,0,0,0.10)",
-                        }
-                      : { color: "var(--fur-slate-light)" }
-                  }
-                >
-                  <span className="text-base">{tab.icon}</span>
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Role badge */}
-          <div className="flex items-center gap-2 mb-6 px-3 py-2 rounded-xl w-fit"
-            style={{ background: accent.badge }}>
-            <span className="text-sm">{tabs.find((t) => t.role === selectedRole)?.icon}</span>
-            <span className="text-xs font-700" style={{ color: accent.badgeText }}>
-              Signing in as {tabs.find((t) => t.role === selectedRole)?.label} — {tabs.find((t) => t.role === selectedRole)?.desc}
-            </span>
+          <div className="flex gap-2 mb-8 p-1 rounded-xl" style={{ background: "var(--fur-mist)" }}>
+            {tabs.map((tab) => (
+              <button 
+                key={tab.role}
+                type="button"
+                onClick={() => setSelectedRole(tab.role)}
+                className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-700 transition-all"
+                style={selectedRole === tab.role
+                  ? { background: "white", color: "var(--fur-teal)", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }
+                  : { color: "var(--fur-slate-light)" }}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -295,37 +300,23 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Error */}
-            {error && (
-              <div
-                className="flex items-start gap-3 p-4 rounded-xl text-sm font-600"
-                style={{ background: "#FEE2E2", color: "#991B1B", border: "1px solid #FCA5A5" }}
-              >
-                <span className="flex-shrink-0 mt-0.5">⚠️</span>
-                <span>{error}</span>
-              </div>
-            )}
+            <p className="text-xs font-600 min-h-4" style={{ color: "var(--fur-rose)" }}>
+              {error ? `✗ ${error}` : ""}
+            </p>
 
             {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-xl text-base font-700 text-white transition-all disabled:opacity-60"
-              style={{
-                background: loading ? "#94A3B8" : accent.btn,
-                boxShadow: loading ? "none" : `0 4px 14px ${accent.ring}40`,
-              }}
+              className="btn-primary w-full py-3 text-base disabled:opacity-60"
             >
-              {loading
-                ? "Signing in…"
-                : `Log In as ${tabs.find((t) => t.role === selectedRole)?.label}`}
+              <span className="invisible absolute">{`Log In as ${tabs.find(t => t.role === selectedRole)?.label}`}</span>
+              <span>{loading ? "Logging in..." : `Log In as ${tabs.find(t => t.role === selectedRole)?.label}`}</span>
             </button>
           </form>
 
           <div className="mt-8 pt-8 border-t text-center" style={{ borderColor: "var(--border)" }}>
-            <p className="text-sm mb-4" style={{ color: "var(--fur-slate-light)" }}>
-              Don&apos;t have an account?
-            </p>
+            <p className="text-sm mb-4" style={{ color: "var(--fur-slate-light)" }}>Don&apos;t have an account?</p>
             <button
               onClick={() => router.push("/register")}
               className="btn-secondary w-full py-3 text-base"

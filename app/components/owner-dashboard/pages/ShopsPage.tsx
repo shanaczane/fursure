@@ -59,7 +59,7 @@ const ShopsPage: React.FC = () => {
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         upcomingBookingsCount={upcomingCount}
       />
-      <div className={`transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : "lg:ml-0"}`}>
+      <div style={{ marginLeft: isSidebarOpen ? "16rem" : "0", transition: "margin-left 300ms ease-in-out" }}>
         <TopNavbar
           user={user}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -88,7 +88,8 @@ const ShopsPage: React.FC = () => {
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search pet shops, locations..."
-                    className="fur-input pl-10"
+                    className="fur-input"
+                    style={{ paddingLeft: "2.5rem" }}
                   />
                   <svg className="w-4 h-4 absolute left-3 top-3.5"
                     style={{ color: "var(--fur-slate-light)" }}

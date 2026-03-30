@@ -63,7 +63,7 @@ const MyServicesPage: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+            <h1 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, color: "var(--fur-slate)" }}>
               My Services
             </h1>
             <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
@@ -97,7 +97,8 @@ const MyServicesPage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search services..."
-                className="fur-input pl-10"
+                className="fur-input"
+                style={{ paddingLeft: "2.5rem" }}
               />
               <svg className="w-4 h-4 absolute left-3 top-3.5" style={{ color: "var(--fur-slate-light)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -173,7 +174,7 @@ const MyServicesPage: React.FC = () => {
 
                   <div className="p-5">
                     <div className="mb-4">
-                      <h3 className="font-800 text-base truncate mb-0.5" style={{ color: "var(--fur-slate)" }}>{service.name}</h3>
+                      <h3 className="font-900 text-base truncate mb-0.5" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>{service.name}</h3>
                       <div className="flex items-center gap-2">
                         <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: colors.bg, color: colors.color }}>
                           {service.category}

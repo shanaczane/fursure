@@ -44,9 +44,13 @@ const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         />
       )}
       <aside
-        className={`fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-50 transition-transform duration-300 ease-in-out w-64 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className="fixed top-0 left-0 h-full z-50 w-64 flex flex-col"
+        style={{
+          background: "var(--sidebar-bg)",
+          fontFamily: "'Nunito', sans-serif",
+          transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 300ms ease-in-out",
+        }}
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-gray-200">
@@ -88,13 +92,10 @@ const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         </nav>
 
         {/* Bottom */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-          >
-            <span className="text-xl">🚪</span>
-            <span className="font-medium">Logout</span>
+        <div className="p-4 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+          <button onClick={handleLogout} className="sidebar-item w-full" style={{ color: "#4A6280" }} suppressHydrationWarning>
+            <span className="text-lg w-6 text-center">🚪</span>
+            <span>Logout</span>
           </button>
         </div>
       </aside>

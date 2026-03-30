@@ -48,11 +48,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar */}
       <aside
-        className={`
-          fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-50
-          transition-transform duration-300 ease-in-out w-64
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        `}
+        className="fixed top-0 left-0 h-full z-50 w-64 flex flex-col"
+        style={{
+          background: "var(--sidebar-bg)",
+          fontFamily: "'Nunito', sans-serif",
+          transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 300ms ease-in-out",
+        }}
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-gray-200">

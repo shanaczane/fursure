@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useProviderContext } from "../context/ProviderAppContext";
 import { getProviderDashboardStats, formatCurrency } from "../utils/providerUtils";
+import { upsertProviderContactLink } from "@/app/lib/api";
+import { supabase } from "@/app/lib/supabase";
 import ProviderLayout from "../components/ProviderLayout";
+import type { ProviderPolicy } from "../types";
+
+const PAYMENT_OPTIONS = ["Cash", "GCash", "Maya", "Bank Transfer", "Credit Card"];
 
 const ProviderProfilePage: React.FC = () => {
-  const { user, services, bookings, updateUser } = useProviderContext();
+  const { user, services, bookings, updateUser, policy, savePolicy } = useProviderContext();
   const stats = getProviderDashboardStats(bookings, services);
 
   const [formData, setFormData] = useState({
@@ -16,6 +21,7 @@ const ProviderProfilePage: React.FC = () => {
     businessName: user.businessName,
     businessAddress: user.businessAddress || "",
     bio: user.bio || "",
+    contactLink: user.contactLink || "",
   });
   const [passwordData, setPasswordData] = useState({
     current: "",
@@ -23,14 +29,19 @@ const ProviderProfilePage: React.FC = () => {
     confirm: "",
   });
   const [successMsg, setSuccessMsg] = useState("");
-  const [activeTab, setActiveTab] = useState<"profile" | "business" | "security">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "business" | "security" | "policies">("profile");
+  const [policyForm, setPolicyForm] = useState<ProviderPolicy>(policy);
+  const [savingPolicy, setSavingPolicy] = useState(false);
+  const [policySaved, setPolicySaved] = useState(false);
+
+  useEffect(() => { setPolicyForm(policy); }, [policy]);
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(""), 3000);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
       return alert("Name and email are required");
     }
@@ -41,7 +52,15 @@ const ProviderProfilePage: React.FC = () => {
       businessName: formData.businessName,
       businessAddress: formData.businessAddress,
       bio: formData.bio,
+      contactLink: formData.contactLink,
     });
+    // Persist contact link to Supabase providers table
+    if (formData.contactLink !== undefined) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        upsertProviderContactLink(authUser.id, formData.contactLink).catch(console.error);
+      }
+    }
     showSuccess("Profile updated successfully!");
   };
 
@@ -59,10 +78,33 @@ const ProviderProfilePage: React.FC = () => {
     showSuccess("Password changed successfully!");
   };
 
+  const handleSavePolicy = async () => {
+    setSavingPolicy(true);
+    try {
+      await savePolicy(policyForm);
+      setPolicySaved(true);
+      setTimeout(() => setPolicySaved(false), 3000);
+    } catch {
+      alert("Failed to save policies. Please try again.");
+    } finally {
+      setSavingPolicy(false);
+    }
+  };
+
+  const togglePaymentMethod = (method: string) => {
+    setPolicyForm((prev) => ({
+      ...prev,
+      paymentMethodsAccepted: prev.paymentMethodsAccepted.includes(method)
+        ? prev.paymentMethodsAccepted.filter((m) => m !== method)
+        : [...prev.paymentMethodsAccepted, method],
+    }));
+  };
+
   const TABS = [
     { id: "profile" as const, label: "Personal Info", icon: "👤" },
     { id: "business" as const, label: "Business", icon: "🏢" },
     { id: "security" as const, label: "Security", icon: "🔒" },
+    { id: "policies" as const, label: "Policies", icon: "📋" },
   ];
 
   return (
@@ -70,7 +112,7 @@ const ProviderProfilePage: React.FC = () => {
       <div className="space-y-5 max-w-4xl">
         {/* Header */}
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Profile</h1>
+          <h1 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, color: "var(--fur-slate)" }}>Profile</h1>
           <p className="text-gray-500 text-sm">Manage your account and business settings</p>
         </div>
 
@@ -236,6 +278,17 @@ const ProviderProfilePage: React.FC = () => {
                   />
                   <p className="text-xs text-gray-400 mt-1">{formData.bio.length}/500 characters</p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Contact / Social Link</label>
+                  <input
+                    type="url"
+                    value={formData.contactLink}
+                    onChange={(e) => setFormData({ ...formData, contactLink: e.target.value })}
+                    placeholder="https://facebook.com/yourpage"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Pet owners will see this link after their booking is confirmed.</p>
+                </div>
                 <div className="flex justify-end pt-2">
                   <button
                     onClick={handleSaveProfile}
@@ -243,6 +296,87 @@ const ProviderProfilePage: React.FC = () => {
                   >
                     Save Changes
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Policies Tab */}
+            {activeTab === "policies" && (
+              <div className="space-y-5">
+                {/* Payment Methods */}
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 mb-2">💳 Accepted Payment Methods</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PAYMENT_OPTIONS.map((method) => {
+                      const selected = policyForm.paymentMethodsAccepted.includes(method);
+                      return (
+                        <button key={method} type="button" onClick={() => togglePaymentMethod(method)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all ${selected ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"}`}>
+                          {selected ? "✓ " : ""}{method}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Deposit */}
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-gray-800">💰 Deposit Policy</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-700">Require a downpayment?</p>
+                      <p className="text-xs text-gray-400">Pet owners pay a deposit when booking.</p>
+                    </div>
+                    <button type="button"
+                      onClick={() => setPolicyForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${policyForm.depositRequired ? "bg-blue-600" : "bg-gray-200"}`}>
+                      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${policyForm.depositRequired ? "translate-x-6" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+
+                  {policyForm.depositRequired && (
+                    <div className="pl-2 space-y-3 border-l-2 border-blue-100">
+                      <div>
+                        <p className="text-sm text-gray-700 mb-1">Deposit: <span className="font-bold text-blue-600">{policyForm.depositPercentage}%</span></p>
+                        <input type="range" min={10} max={100} step={5} value={policyForm.depositPercentage}
+                          onChange={(e) => setPolicyForm((prev) => ({ ...prev, depositPercentage: Number(e.target.value) }))}
+                          className="w-full accent-blue-600" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-700">Refundable if cancelled?</p>
+                        <button type="button"
+                          onClick={() => setPolicyForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))}
+                          className={`relative w-11 h-6 rounded-full transition-colors ${policyForm.depositRefundable ? "bg-green-500" : "bg-red-400"}`}>
+                          <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${policyForm.depositRefundable ? "translate-x-6" : "translate-x-1"}`} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Cancellation */}
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 mb-1">⏰ Cancellation Notice: <span className="text-blue-600">{policyForm.cancellationHoursNotice} hrs</span></p>
+                  <input type="range" min={0} max={72} step={1} value={policyForm.cancellationHoursNotice}
+                    onChange={(e) => setPolicyForm((prev) => ({ ...prev, cancellationHoursNotice: Number(e.target.value) }))}
+                    className="w-full accent-blue-600" />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 mb-1">📝 Additional Notes</p>
+                  <textarea value={policyForm.additionalNotes ?? ""} rows={2}
+                    onChange={(e) => setPolicyForm((prev) => ({ ...prev, additionalNotes: e.target.value }))}
+                    placeholder="e.g., Please bring vaccination records on the day of service."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none" />
+                </div>
+
+                <div className="flex items-center gap-3 pt-1">
+                  <button onClick={handleSavePolicy} disabled={savingPolicy}
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-60">
+                    {savingPolicy ? "Saving..." : "Save Policies"}
+                  </button>
+                  {policySaved && <p className="text-sm text-green-600 font-medium">✓ Saved</p>}
                 </div>
               </div>
             )}

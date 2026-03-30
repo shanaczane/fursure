@@ -98,7 +98,7 @@ const ShopProfilePage: React.FC<ShopProfilePageProps> = ({ shopId }) => {
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         upcomingBookingsCount={upcomingCount}
       />
-      <div className={`transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : "lg:ml-0"}`}>
+      <div style={{ marginLeft: isSidebarOpen ? "16rem" : "0", transition: "margin-left 300ms ease-in-out" }}>
         <TopNavbar
           user={user}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -306,7 +306,7 @@ const ShopProfilePage: React.FC<ShopProfilePageProps> = ({ shopId }) => {
                           <div>
                             <span className="text-xl font-900"
                               style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
-                              ${service.price}
+                              ₱{service.price}
                             </span>
                             <span className="text-xs ml-1" style={{ color: "var(--fur-slate-light)" }}>
                               {service.priceUnit}
