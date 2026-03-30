@@ -8,7 +8,7 @@ import TopNavbar from "../components/TopNavbar";
 import SuccessModal from "../components/SuccessModal";
 
 const ProfilePage: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { user, bookings, updateUser } = useAppContext();
   const [formData, setFormData] = useState({
     name: user.name,
@@ -26,22 +26,11 @@ const ProfilePage: React.FC = () => {
     message: "",
   });
 
-  // Keep formData in sync if user loads asynchronously
-  React.useEffect(() => {
-    if (user.name && user.name !== "Loading...") {
-      setFormData({
-        name: user.name,
-        email: user.email,
-        phone: user.phone || "",
-      });
-    }
-  }, [user.name, user.email, user.phone]);
-
   const upcomingCount = bookings.filter(
     (b) =>
       (b.status === "pending" || b.status === "confirmed") &&
       new Date(b.date + "T00:00:00") >=
-        new Date(new Date().setHours(0, 0, 0, 0))
+        new Date(new Date().setHours(0, 0, 0, 0)),
   ).length;
 
   const handleSaveProfile = () => {
@@ -118,9 +107,7 @@ const ProfilePage: React.FC = () => {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center space-x-6 mb-6">
                 <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-4xl font-bold">
-                  {user.name && user.name !== "Loading..."
-                    ? user.name.charAt(0).toUpperCase()
-                    : "?"}
+                  {user.name.charAt(0)}
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">

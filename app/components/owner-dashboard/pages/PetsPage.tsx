@@ -47,7 +47,7 @@ const emptyVaccinationForm = {
 };
 
 const PetsPage: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [editingPet, setEditingPet] = useState<Pet | null>(null);
   const [isAddingPet, setIsAddingPet] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);

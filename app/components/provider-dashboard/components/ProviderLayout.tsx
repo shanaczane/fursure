@@ -9,7 +9,7 @@ interface ProviderLayoutProps {
 }
 
 const ProviderLayout: React.FC<ProviderLayoutProps> = ({ children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -13,19 +13,14 @@ interface SidebarProps {
 const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const pathname = usePathname();
   const { bookings } = useProviderContext();
-  const pendingCount = bookings.filter((b) => b.status === "pending").length;
+  const pendingCount = bookings.filter(b => b.status === "pending").length;
 
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: "📊", path: "/provider" },
-    {
-      id: "bookings",
-      label: "Manage Bookings",
-      icon: "📅",
-      path: "/provider/bookings",
-      badge: pendingCount,
-    },
+    { id: "bookings", label: "Manage Bookings", icon: "📅", path: "/provider/bookings", badge: pendingCount },
     { id: "services", label: "My Services", icon: "🐾", path: "/provider/services" },
     { id: "schedule", label: "Schedule", icon: "🗓️", path: "/provider/schedule" },
+    { id: "profile", label: "Profile", icon: "👤", path: "/provider/profile" },
   ];
 
   const handleLogout = () => {
@@ -36,10 +31,10 @@ const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
 
   return (
     <>
-      {/* Overlay (all screen sizes when open) */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="fixed inset-0 z-40 lg:hidden"
+          style={{ background: "rgba(26,35,50,0.5)", backdropFilter: "blur(4px)" }}
           onClick={onToggle}
         />
       )}
@@ -53,36 +48,30 @@ const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         }}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b border-gray-200">
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl">🐕</span>
+        <div className="h-16 flex items-center px-6 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🐾</span>
             <div>
-              <span className="text-xl font-bold text-gray-900">FurSure</span>
-              <p className="text-xs text-blue-600 font-medium -mt-0.5">Provider</p>
+              <span className="text-xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>FurSure</span>
+              <p className="text-xs font-700" style={{ color: "var(--fur-amber)", marginTop: -2 }}>Provider</p>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <p className="text-xs font-700 uppercase tracking-widest px-3 mb-4 mt-2" style={{ color: "#4A6280" }}>
+            Service Provider
+          </p>
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
             return (
-              <Link
-                key={item.id}
-                href={item.path}
-                className={`flex items-center justify-between px-4 py-3 rounded-lg transition-colors duration-200 ${
-                  isActive
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="font-medium">{item.label}</span>
-                </div>
+              <Link key={item.id} href={item.path} className={`sidebar-item ${isActive ? "active" : ""}`}>
+                <span className="text-lg w-6 text-center flex-shrink-0">{item.icon}</span>
+                <span className="flex-1">{item.label}</span>
                 {item.badge !== undefined && item.badge > 0 && (
-                  <span className="bg-amber-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-700 px-2 py-0.5 rounded-full"
+                    style={{ background: isActive ? "rgba(26,35,50,0.3)" : "#F59E0B", color: "#1A2332" }}>
                     {item.badge}
                   </span>
                 )}

@@ -53,7 +53,7 @@ const DEFAULT_USER: User = {
   name: "",
   email: "",
   role: "owner" as const,
-  avatar: "",
+  avatar: "👤",
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
@@ -116,14 +116,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const updateBooking = async (id: string, updates: Partial<Booking>) => {
     await updateBookingRecord(id, updates);
     setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, ...updates } : b))
+      prev.map((b) => (b.id === id ? { ...b, ...updates } : b)),
     );
   };
 
   const cancelBooking = async (id: string) => {
     await updateBookingRecord(id, { status: "cancelled" });
     setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b))
+      prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
     );
   };
 
@@ -140,7 +140,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const updatePet = async (id: string, updates: Partial<Pet>) => {
     setPets((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+      prev.map((p) => (p.id === id ? { ...p, ...updates } : p)),
     );
     await updatePetRecord(id, updates);
   };

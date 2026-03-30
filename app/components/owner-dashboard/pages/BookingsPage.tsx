@@ -21,7 +21,7 @@ import {
 } from "@/app/lib/api";
 
 const BookingsPage: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(null);

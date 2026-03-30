@@ -4,26 +4,14 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppContext } from "@/app/contexts/AppContext";
 import { useDashboard } from "@/app/hooks/useDashboard";
-import { type Service } from "@/app/types";
+import { type Service, SERVICE_CATEGORIES } from "@/app/types";
 import Sidebar from "../components/Sidebar";
 import TopNavbar from "../components/TopNavbar";
-import ServiceSearch from "../components/ServiceSearch";
-import ServiceList from "../components/ServiceList";
-import ServiceModal from "../components/ServiceModal";
-import BookingForm from "../components/BookingForm";
-import SuccessModal from "../components/SuccessModal";
 
 const ServicesPage: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
-  const [serviceToBook, setServiceToBook] = useState<Service | null>(null);
-  const [successModal, setSuccessModal] = useState({
-    isOpen: false,
-    title: "",
-    message: "",
-  });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const router = useRouter();
-  const { user, services, bookings, pets, addBooking } = useAppContext();
+  const { user, services, bookings, pets } = useAppContext();
 
   const {
     services: filteredServices,
@@ -31,62 +19,28 @@ const ServicesPage: React.FC = () => {
     handleFilterChange,
     handleResetFilters,
     handleSearchChange,
-    selectedService,
-    isServiceModalOpen,
-    handleServiceClick,
-    handleCloseServiceModal,
   } = useDashboard({ services, bookings, pets, user });
 
-  const handleBookService = (serviceId: string) => {
-    const service = services.find((s) => s.id === serviceId);
-    if (!service) return;
-    if (pets.length === 0) {
-      alert("Please add a pet first before booking a service!");
-      router.push("/owner/pets");
-      return;
-    }
-    setServiceToBook(service);
-    setIsBookingFormOpen(true);
-    handleCloseServiceModal();
-  };
-
-  const handleConfirmBooking = (
-    serviceId: string,
-    petId: string,
-    date: string,
-    time: string,
-    notes: string
-  ) => {
-    const service = services.find((s) => s.id === serviceId);
-    const pet = pets.find((p) => p.id === petId);
-    if (!service || !pet) return;
-    addBooking({
-      serviceId: service.id,
-      serviceName: service.name,
-      providerName: service.provider,
-      date,
-      time,
-      status: "pending",
-      petName: pet.name,
-      notes: notes || "Booked via services page",
-    });
-    setSuccessModal({
-      isOpen: true,
-      title: "Booking Confirmed!",
-      message: `Successfully booked ${service.name} for ${pet.name} on ${date} at ${time}!`,
-    });
-    setTimeout(() => router.push("/owner/bookings"), 2500);
-  };
-
   const upcomingCount = bookings.filter(
-    (b) =>
-      (b.status === "pending" || b.status === "confirmed") &&
-      new Date(b.date + "T00:00:00") >=
-        new Date(new Date().setHours(0, 0, 0, 0))
+    b => (b.status === "pending" || b.status === "confirmed") &&
+      new Date(b.date + "T00:00:00") >= new Date(new Date().setHours(0, 0, 0, 0))
   ).length;
 
+  const handleServiceClick = (service: Service) => {
+    router.push(`/owner/services/${service.id}`);
+  };
+
+  const categoryColors: Record<string, string> = {
+    grooming: { bg: "var(--fur-amber-light)", accent: "var(--fur-amber-dark)" },
+    veterinary: { bg: "var(--fur-teal-light)", accent: "var(--fur-teal-dark)" },
+    training: { bg: "#EDE9FE", accent: "#5B21B6" },
+    boarding: { bg: "#E0E7FF", accent: "#3730A3" },
+    walking: { bg: "#D1FAE5", accent: "#065F46" },
+    daycare: { bg: "#FEF3C7", accent: "#92400E" },
+  } as unknown as Record<string, string>;
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -99,10 +53,11 @@ const ServicesPage: React.FC = () => {
           isSidebarOpen={isSidebarOpen}
         />
         <main className="p-4 md:p-6 mt-16">
-          <div className="max-w-7xl mx-auto space-y-4">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Header */}
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
-                Services
+              <h1 className="text-2xl md:text-3xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+                Find Services
               </h1>
               <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>Browse and book trusted pet care services near you</p>
             </div>
@@ -231,25 +186,6 @@ const ServicesPage: React.FC = () => {
           </div>
         </main>
       </div>
-      <ServiceModal
-        service={selectedService}
-        isOpen={isServiceModalOpen}
-        onClose={handleCloseServiceModal}
-        onBook={handleBookService}
-      />
-      <BookingForm
-        service={serviceToBook}
-        pets={pets}
-        isOpen={isBookingFormOpen}
-        onClose={() => setIsBookingFormOpen(false)}
-        onBook={handleConfirmBooking}
-      />
-      <SuccessModal
-        isOpen={successModal.isOpen}
-        title={successModal.title}
-        message={successModal.message}
-        onClose={() => setSuccessModal({ ...successModal, isOpen: false })}
-      />
     </div>
   );
 };
