@@ -9,6 +9,7 @@ import {
 } from "react";
 import { type Service, type Booking, type Pet, type User } from "@/app/types";
 import { MOCK_SERVICES, MOCK_BOOKINGS, MOCK_PETS } from "@/app/data/mockData";
+import { supabase } from "@/app/lib/supabase";
 
 interface AppContextType {
   user: User;
@@ -35,7 +36,6 @@ export const useAppContext = () => {
   return context;
 };
 
-// Safe localStorage helpers — guard against SSR (server has no window)
 const safeGetItem = (key: string): string | null => {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(key);
@@ -46,37 +46,13 @@ const safeSetItem = (key: string, value: string): void => {
   localStorage.setItem(key, value);
 };
 
-const getInitialBookings = (): Booking[] => {
-  const saved = safeGetItem("petcare_bookings");
-  return saved ? JSON.parse(saved) : MOCK_BOOKINGS;
-};
-
-const getInitialPets = (): Pet[] => {
-  const saved = safeGetItem("petcare_pets");
-  return saved ? JSON.parse(saved) : MOCK_PETS;
-};
-
-const getInitialUser = (): User => {
-  const saved = safeGetItem("petcare_user");
-  return saved
-    ? JSON.parse(saved)
-    : {
-        id: "1",
-        name: "John Doe",
-        email: "john.doe@example.com",
-        phone: "+1 (555) 123-4567",
-        role: "owner" as const,
-        avatar: "👤",
-      };
-};
-
 const DEFAULT_USER: User = {
   id: "1",
-  name: "John Doe",
-  email: "john.doe@example.com",
-  phone: "+1 (555) 123-4567",
+  name: "Loading...",
+  email: "",
+  phone: "",
   role: "owner" as const,
-  avatar: "👤",
+  avatar: "",
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
@@ -85,28 +61,60 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
   const [pets, setPets] = useState<Pet[]>(MOCK_PETS);
 
-  // Load from localStorage after mount to avoid SSR/client hydration mismatch
+  // Load from localStorage + Supabase auth after mount
   useEffect(() => {
-    const savedUser = safeGetItem("petcare_user");
-    if (savedUser) setUser(JSON.parse(savedUser));
+    const init = async () => {
+      // Load persisted data
+      const savedBookings = safeGetItem("petcare_bookings");
+      if (savedBookings) setBookings(JSON.parse(savedBookings));
 
-    const savedBookings = safeGetItem("petcare_bookings");
-    if (savedBookings) setBookings(JSON.parse(savedBookings));
+      const savedPets = safeGetItem("petcare_pets");
+      if (savedPets) setPets(JSON.parse(savedPets));
 
-    const savedPets = safeGetItem("petcare_pets");
-    if (savedPets) setPets(JSON.parse(savedPets));
+      // Get real user from Supabase auth — this is the source of truth for name/email
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        const firstName = data.user.user_metadata?.firstName || "";
+        const lastName = data.user.user_metadata?.lastName || "";
+        const fullName = [firstName, lastName].filter(Boolean).join(" ");
+        const email = data.user.email || "";
+
+        // Check if there's a saved phone in localStorage
+        const savedUser = safeGetItem("petcare_user");
+        const savedPhone = savedUser ? JSON.parse(savedUser).phone || "" : "";
+
+        setUser({
+          id: data.user.id,
+          name: fullName || email,
+          email,
+          phone: savedPhone,
+          role: "owner" as const,
+          avatar: "",
+        });
+      } else {
+        // Fallback to localStorage if no auth session
+        const savedUser = safeGetItem("petcare_user");
+        if (savedUser) setUser(JSON.parse(savedUser));
+      }
+    };
+    init();
   }, []);
 
-  // Persist to localStorage whenever state changes
-  useEffect(() => {
-    safeSetItem("petcare_user", JSON.stringify(user));
-  }, [user]);
+  // Persist bookings and pets to localStorage
   useEffect(() => {
     safeSetItem("petcare_bookings", JSON.stringify(bookings));
   }, [bookings]);
+
   useEffect(() => {
     safeSetItem("petcare_pets", JSON.stringify(pets));
   }, [pets]);
+
+  // Persist user changes (phone etc.) to localStorage
+  useEffect(() => {
+    if (user.name && user.name !== "Loading...") {
+      safeSetItem("petcare_user", JSON.stringify(user));
+    }
+  }, [user]);
 
   const updateUser = (updates: Partial<User>) =>
     setUser((prev) => ({ ...prev, ...updates }));
@@ -116,12 +124,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const updateBooking = (id: string, updates: Partial<Booking>) =>
     setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, ...updates } : b)),
+      prev.map((b) => (b.id === id ? { ...b, ...updates } : b))
     );
 
   const cancelBooking = (id: string) =>
     setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
+      prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b))
     );
 
   const deleteBooking = (id: string) =>
@@ -132,7 +140,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const updatePet = (id: string, updates: Partial<Pet>) =>
     setPets((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
     );
 
   const deletePet = (id: string) =>

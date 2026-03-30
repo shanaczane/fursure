@@ -9,7 +9,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import SuccessModal from "../components/SuccessModal";
 
 const PetsPage: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editingPet, setEditingPet] = useState<Pet | null>(null);
   const [isAddingPet, setIsAddingPet] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({
@@ -36,7 +36,7 @@ const PetsPage: React.FC = () => {
     (b) =>
       (b.status === "pending" || b.status === "confirmed") &&
       new Date(b.date + "T00:00:00") >=
-        new Date(new Date().setHours(0, 0, 0, 0)),
+        new Date(new Date().setHours(0, 0, 0, 0))
   ).length;
 
   const handleStartAdd = () => {
@@ -107,9 +107,7 @@ const PetsPage: React.FC = () => {
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         upcomingBookingsCount={upcomingCount}
       />
-      <div
-        className={`transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : "lg:ml-0"}`}
-      >
+      <div className="transition-all duration-300">
         <TopNavbar
           user={user}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -235,8 +233,8 @@ const PetsPage: React.FC = () => {
                     {pet.type === "dog"
                       ? "🐕"
                       : pet.type === "cat"
-                        ? "🐈"
-                        : "🐾"}
+                      ? "🐈"
+                      : "🐾"}
                   </div>
                   <div className="text-center">
                     <h3 className="text-xl font-bold text-gray-900 mb-2">

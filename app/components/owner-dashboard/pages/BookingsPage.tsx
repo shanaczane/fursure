@@ -14,16 +14,12 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import SuccessModal from "../components/SuccessModal";
 
 const BookingsPage: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
-  const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(
-    null,
-  );
+  const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(null);
   const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
-  const [bookAgainBooking, setBookAgainBooking] = useState<Booking | null>(
-    null,
-  );
+  const [bookAgainBooking, setBookAgainBooking] = useState<Booking | null>(null);
   const [isBookAgainFormOpen, setIsBookAgainFormOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -102,7 +98,7 @@ const BookingsPage: React.FC = () => {
     petId: string,
     date: string,
     time: string,
-    notes: string,
+    notes: string
   ) => {
     if (!editingBooking) return;
     const pet = pets.find((p) => p.id === petId);
@@ -127,7 +123,7 @@ const BookingsPage: React.FC = () => {
     petId: string,
     date: string,
     time: string,
-    notes: string,
+    notes: string
   ) => {
     const service = services.find((s) => s.id === serviceId);
     const pet = pets.find((p) => p.id === petId);
@@ -159,7 +155,7 @@ const BookingsPage: React.FC = () => {
   const handleSubmitReview = (
     bookingId: string,
     rating: number,
-    comment: string,
+    comment: string
   ) => {
     console.log("Review submitted:", { bookingId, rating, comment });
     setIsReviewFormOpen(false);
@@ -178,9 +174,7 @@ const BookingsPage: React.FC = () => {
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         upcomingBookingsCount={upcomingBookings.length}
       />
-      <div
-        className={`transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : "lg:ml-0"}`}
-      >
+      <div className="transition-all duration-300">
         <TopNavbar
           user={user}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}

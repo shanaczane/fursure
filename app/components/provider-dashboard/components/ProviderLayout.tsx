@@ -9,7 +9,7 @@ interface ProviderLayoutProps {
 }
 
 const ProviderLayout: React.FC<ProviderLayoutProps> = ({ children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -17,11 +17,7 @@ const ProviderLayout: React.FC<ProviderLayoutProps> = ({ children }) => {
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
       />
-      <div
-        className={`transition-all duration-300 ${
-          isSidebarOpen ? "lg:ml-64" : "lg:ml-0"
-        }`}
-      >
+      <div className="transition-all duration-300">
         <ProviderTopNavbar
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           isSidebarOpen={isSidebarOpen}
