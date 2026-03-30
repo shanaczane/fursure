@@ -72,29 +72,6 @@ export default function Login() {
         throw new Error(`This account is registered as a ${label}. Please select the correct role tab.`);
       }
 
-      // 2. Fetch the user's actual role from the database
-      const { data: profile, error: profileError } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", authData.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        await supabase.auth.signOut();
-        throw new Error("Account not found. Please register first.");
-      }
-
-      const actualRole = roleMap[profile.role] ?? "PET_OWNER";
-
-      // 3. Validate that the selected tab matches the real role
-      if (actualRole !== selectedRole) {
-        await supabase.auth.signOut();
-        const correctLabel = tabs.find((t) => t.role === actualRole)?.label ?? profile.role;
-        throw new Error(
-          `This account is registered as a ${correctLabel}. Please select the correct role tab.`
-        );
-      }
-
       // 4. Persist session cookies
       const token = authData.session.access_token;
       document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
