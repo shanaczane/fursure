@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useProviderContext } from "../context/ProviderAppContext";
 import {
   generateCalendarDays,
@@ -70,6 +70,25 @@ const SchedulePage: React.FC = () => {
     });
   };
 
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(viewDate.getFullYear());
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowPicker(false);
+      }
+    };
+    if (showPicker) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showPicker]);
+
+  const handlePickerSelect = (month: number) => {
+    setViewDate(new Date(pickerYear, month, 1));
+    setShowPicker(false);
+  };
+
   const isToday = (d: Date) => toLocalDateStr(d) === toLocalDateStr(today);
   const isSelected = (d: Date) => toLocalDateStr(d) === selectedDate;
 
@@ -103,9 +122,64 @@ const SchedulePage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <h2 className="text-lg font-bold text-gray-900">
-                {MONTH_NAMES[viewDate.getMonth()]} {viewDate.getFullYear()}
-              </h2>
+              <div className="relative" ref={pickerRef}>
+                <button
+                  onClick={() => { setShowPicker(!showPicker); setPickerYear(viewDate.getFullYear()); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <span className="text-lg font-bold text-gray-900">
+                    {MONTH_NAMES[viewDate.getMonth()]} {viewDate.getFullYear()}
+                  </span>
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {showPicker && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-white border border-gray-200 rounded-xl shadow-xl p-4 w-72">
+                    {/* Year selector */}
+                    <div className="flex items-center justify-between mb-3">
+                      <button
+                        onClick={() => setPickerYear(y => y - 1)}
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <span className="font-bold text-gray-900">{pickerYear}</span>
+                      <button
+                        onClick={() => setPickerYear(y => y + 1)}
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                    {/* Month grid */}
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {MONTH_NAMES.map((m, i) => {
+                        const isCurrent = i === viewDate.getMonth() && pickerYear === viewDate.getFullYear();
+                        return (
+                          <button
+                            key={m}
+                            onClick={() => handlePickerSelect(i)}
+                            className="py-1.5 rounded-lg text-sm font-medium transition-colors"
+                            style={isCurrent
+                              ? { background: "#2563EB", color: "white" }
+                              : { color: "#374151" }}
+                            onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = "#F3F4F6"; }}
+                            onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = "transparent"; }}
+                          >
+                            {m.slice(0, 3)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={nextMonth}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
