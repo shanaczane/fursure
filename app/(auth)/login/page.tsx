@@ -95,7 +95,7 @@ export default function Login() {
             Welcome back to<br />your pet care hub
           </h2>
           <p className="text-lg" style={{ color: "#7A90A8" }}>
-            Manage bookings, track your pets' care history, and connect with trusted service providers.
+            Manage bookings, track your pets&apos; care history, and connect with trusted service providers.
           </p>
         </div>
         <div className="relative space-y-3">
@@ -132,7 +132,7 @@ export default function Login() {
           {/* Role tabs */}
           <div className="flex gap-2 mb-8 p-1 rounded-xl" style={{ background: "var(--fur-mist)" }}>
             {tabs.map((tab) => (
-              <button
+              <button 
                 key={tab.role}
                 type="button"
                 onClick={() => setSelectedRole(tab.role)}
@@ -202,7 +202,7 @@ export default function Login() {
           </form>
 
           <div className="mt-8 pt-8 border-t text-center" style={{ borderColor: "var(--border)" }}>
-            <p className="text-sm mb-4" style={{ color: "var(--fur-slate-light)" }}>Don't have an account?</p>
+            <p className="text-sm mb-4" style={{ color: "var(--fur-slate-light)" }}>Don&apos;t have an account?</p>
             <button
               onClick={() => router.push("/register")}
               className="btn-amber w-full py-3 text-base"
