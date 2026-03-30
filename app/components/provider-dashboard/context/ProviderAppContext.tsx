@@ -85,19 +85,21 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
         .select("name, email, phone")
         .eq("id", authUser.id)
         .maybeSingle()
-        .then(({ data: profile }) => {
-          setUser({
-            ...EMPTY_USER,
-            id: authUser.id,
-            name: profile?.name ?? authUser.email ?? "",
-            email: profile?.email ?? authUser.email ?? "",
-            phone: profile?.phone ?? undefined,
-            joinedAt: authUser.created_at ?? new Date().toISOString(),
-          });
-        })
-        .catch(() => {
-          setUser({ ...EMPTY_USER, id: authUser.id, email: authUser.email ?? "" });
-        });
+        .then(
+          ({ data: profile }) => {
+            setUser({
+              ...EMPTY_USER,
+              id: authUser.id,
+              name: profile?.name ?? authUser.email ?? "",
+              email: profile?.email ?? authUser.email ?? "",
+              phone: profile?.phone ?? undefined,
+              joinedAt: authUser.created_at ?? new Date().toISOString(),
+            });
+          },
+          () => {
+            setUser({ ...EMPTY_USER, id: authUser.id, email: authUser.email ?? "" });
+          }
+        );
 
       // Load policy
       fetchProviderPolicy(authUser.id)

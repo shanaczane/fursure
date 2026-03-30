@@ -23,9 +23,11 @@ export const getProviderDashboardStats = (
   return {
     totalBookings: bookings.length,
     pendingBookings: bookings.filter((b) => b.status === "pending").length,
+    awaitingDownPaymentBookings: bookings.filter((b) => b.status === "awaiting_downpayment").length,
     confirmedBookings: bookings.filter((b) => b.status === "confirmed").length,
     completedBookings: completed.length,
     cancelledBookings: bookings.filter((b) => b.status === "cancelled").length,
+    declinedBookings: bookings.filter((b) => b.status === "declined").length,
     totalServices: services.length,
     activeServices: services.filter((s) => s.isActive).length,
     totalEarnings,

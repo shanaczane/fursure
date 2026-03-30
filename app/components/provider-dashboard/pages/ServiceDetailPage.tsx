@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppContext } from "@/app/contexts/AppContext";
 import { type Service } from "@/app/types";
-import BookingForm from "../components/BookingForm";
-import SuccessModal from "../components/SuccessModal";
+import BookingForm from "@/app/components/owner-dashboard/components/BookingForm";
+import SuccessModal from "@/app/components/owner-dashboard/components/SuccessModal";
 
 interface ServiceDetailPageProps {
   serviceId: string;
@@ -223,6 +223,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
       <BookingForm
         service={service}
         pets={pets}
+        policy={null}
         isOpen={isBookingOpen}
         onClose={() => setIsBookingOpen(false)}
         onBook={handleConfirmBooking}
