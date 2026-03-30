@@ -57,6 +57,7 @@ export interface ProviderBooking {
   providerNotes?: string;
   rescheduleDate?: string;
   rescheduleTime?: string;
+  rescheduleStatus?: "none" | "pending" | "confirmed" | "declined"; // ← added
   price: number;
   createdAt: string;
 

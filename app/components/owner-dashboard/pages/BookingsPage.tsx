@@ -18,6 +18,8 @@ import {
   requestBookingCancel,
   payDownPayment,
   updateBookingRecord,
+  confirmReschedule,
+  declineReschedule,
 } from "@/app/lib/api";
 
 const BookingsPage: React.FC = () => {
@@ -53,6 +55,17 @@ const BookingsPage: React.FC = () => {
   } = useAppContext();
   const { upcomingBookings, pastBookings } = useDashboard({ services, bookings, pets, user });
 
+  // Make sure rescheduled bookings always appear in upcoming even if useDashboard
+  // doesn't include them — merge them in so the owner can respond to the proposal.
+  const rescheduledPending = bookings.filter(
+    (b) =>
+      b.status === "rescheduled" &&
+      !!b.rescheduleDate &&
+      !!b.rescheduleTime &&
+      !upcomingBookings.find((u) => u.id === b.id)
+  );
+  const visibleUpcoming = [...upcomingBookings, ...rescheduledPending];
+
   const closeConfirm = () => setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
   const showSuccess = (title: string, message: string) =>
     setSuccessModal({ isOpen: true, title, message });
@@ -63,7 +76,6 @@ const BookingsPage: React.FC = () => {
     const { canEdit, editNeedsProviderApproval } = getBookingPermissions(booking);
     if (!canEdit) return;
 
-    // Provider already approved the edit request — open form directly
     if (booking.editRequestStatus === "approved") {
       setEditingBooking(booking);
       setIsEditFormOpen(true);
@@ -136,10 +148,6 @@ const BookingsPage: React.FC = () => {
     }
   };
 
-  /**
-   * Adapter for BookingHistory which only passes bookingId.
-   * Derives needsApproval from the booking data itself.
-   */
   const handleCancelBookingById = (bookingId: string) => {
     const booking = bookings.find((b) => b.id === bookingId);
     if (!booking) return;
@@ -199,13 +207,73 @@ const BookingsPage: React.FC = () => {
     });
   };
 
+  // ── Confirm reschedule proposal ────────────────────────────────────────────
+
+  const handleConfirmReschedule = (bookingId: string) => {
+    const booking = bookings.find((b) => b.id === bookingId);
+    if (!booking?.rescheduleDate || !booking.rescheduleTime) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: "Confirm New Schedule",
+      message: `Accept the provider's proposed time: ${booking.rescheduleDate} at ${booking.rescheduleTime}? This will become your confirmed appointment.`,
+      confirmColor: "green",
+      onConfirm: async () => {
+        closeConfirm();
+        try {
+          await confirmReschedule(bookingId, booking.rescheduleDate!, booking.rescheduleTime!);
+          // Promote proposed date/time → actual booking date/time, keep status confirmed
+          updateBooking(bookingId, {
+            status: "confirmed",
+            date: booking.rescheduleDate!,
+            time: booking.rescheduleTime!,
+            rescheduleDate: undefined,
+            rescheduleTime: undefined,
+            rescheduleStatus: "confirmed",
+          });
+          showSuccess(
+            "Schedule Confirmed",
+            "Your appointment has been confirmed with the new time. See you then!"
+          );
+        } catch {
+          showSuccess("Error", "Failed to confirm the new schedule. Please try again.");
+        }
+      },
+    });
+  };
+
+  // ── Decline reschedule proposal ────────────────────────────────────────────
+
+  const handleDeclineReschedule = (bookingId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Decline Reschedule",
+      message:
+        "Are you sure you want to decline the provider's reschedule proposal? The booking will be cancelled.",
+      confirmColor: "red",
+      onConfirm: async () => {
+        closeConfirm();
+        try {
+          await declineReschedule(bookingId);
+          // Mark as cancelled AND clear reschedule fields so it moves to history
+          updateBooking(bookingId, {
+            status: "cancelled",
+            rescheduleDate: undefined,
+            rescheduleTime: undefined,
+            rescheduleStatus: "declined",
+          });
+          showSuccess(
+            "Reschedule Declined",
+            "You've declined the new schedule. The booking has been cancelled."
+          );
+        } catch {
+          showSuccess("Error", "Failed to decline the reschedule. Please try again.");
+        }
+      },
+    });
+  };
+
   // ── Update booking (from edit form) ───────────────────────────────────────
-  //
-  // After the owner submits edits:
-  //   • If the edit was provider-approved (editRequestStatus === "approved"),
-  //     the booking goes back to "pending" so the provider re-confirms it,
-  //     and editRequestStatus resets to "none".
-  //   • Otherwise it's a free edit (within grace period) — just update fields.
 
   const handleUpdateBooking = async (
     serviceId: string,
@@ -226,15 +294,13 @@ const BookingsPage: React.FC = () => {
       petName: pet.name,
       notes,
       ...(wasApprovedEdit && {
-        status: "pending",        // back to pending — provider must re-confirm
+        status: "pending",
         editRequestStatus: "none",
       }),
     };
 
     try {
-      // Persist to Supabase
       await updateBookingRecord(editingBooking.id, localUpdates);
-      // Update local state
       updateBooking(editingBooking.id, localUpdates);
 
       setIsEditFormOpen(false);
@@ -283,7 +349,10 @@ const BookingsPage: React.FC = () => {
     });
     setIsBookAgainFormOpen(false);
     setBookAgainBooking(null);
-    showSuccess("Booking Confirmed", `Successfully booked ${service.name} for ${pet.name} on ${date}!`);
+    showSuccess(
+      "Booking Confirmed",
+      `Successfully booked ${service.name} for ${pet.name} on ${date}!`
+    );
   };
 
   // ── Review ─────────────────────────────────────────────────────────────────
@@ -300,7 +369,10 @@ const BookingsPage: React.FC = () => {
     }
     setIsReviewFormOpen(false);
     setReviewingBooking(null);
-    showSuccess("Review Submitted", `Thank you for your ${rating}-star review! Your feedback helps others.`);
+    showSuccess(
+      "Review Submitted",
+      `Thank you for your ${rating}-star review! Your feedback helps others.`
+    );
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -310,9 +382,14 @@ const BookingsPage: React.FC = () => {
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        upcomingBookingsCount={upcomingBookings.length}
+        upcomingBookingsCount={visibleUpcoming.length}
       />
-      <div style={{ marginLeft: isSidebarOpen ? "16rem" : "0", transition: "margin-left 300ms ease-in-out" }}>
+      <div
+        style={{
+          marginLeft: isSidebarOpen ? "16rem" : "0",
+          transition: "margin-left 300ms ease-in-out",
+        }}
+      >
         <TopNavbar
           user={user}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -327,14 +404,16 @@ const BookingsPage: React.FC = () => {
               </p>
             </div>
 
-            {upcomingBookings.length > 0 ? (
+            {visibleUpcoming.length > 0 ? (
               <UpcomingBookings
-                bookings={upcomingBookings}
+                bookings={visibleUpcoming}
                 showViewAll={false}
                 onEdit={handleEditBooking}
-                onCancel={handleCancelBooking}       // (bookingId, needsApproval) — matches UpcomingBookings
+                onCancel={handleCancelBooking}
                 onDelete={handleDeleteBooking}
                 onPayDownPayment={handlePayDownPayment}
+                onConfirmReschedule={handleConfirmReschedule}
+                onDeclineReschedule={handleDeclineReschedule}
               />
             ) : (
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
@@ -354,7 +433,7 @@ const BookingsPage: React.FC = () => {
               bookings={pastBookings}
               onEdit={handleEditBooking}
               onDelete={handleDeleteBooking}
-              onCancel={handleCancelBookingById}   // (bookingId) — matches BookingHistory's prop type
+              onCancel={handleCancelBookingById}
               onBookAgain={handleBookAgain}
               onLeaveReview={handleLeaveReview}
             />
@@ -363,27 +442,44 @@ const BookingsPage: React.FC = () => {
       </div>
 
       <BookingForm
-        service={editingBooking ? services.find((s) => s.id === editingBooking.serviceId) || null : null}
+        service={
+          editingBooking
+            ? services.find((s) => s.id === editingBooking.serviceId) || null
+            : null
+        }
         pets={pets}
         policy={null}
         isOpen={isEditFormOpen}
-        onClose={() => { setIsEditFormOpen(false); setEditingBooking(null); }}
+        onClose={() => {
+          setIsEditFormOpen(false);
+          setEditingBooking(null);
+        }}
         onBook={handleUpdateBooking}
       />
 
       <BookingForm
-        service={bookAgainBooking ? services.find((s) => s.id === bookAgainBooking.serviceId) || null : null}
+        service={
+          bookAgainBooking
+            ? services.find((s) => s.id === bookAgainBooking.serviceId) || null
+            : null
+        }
         pets={pets}
         policy={null}
         isOpen={isBookAgainFormOpen}
-        onClose={() => { setIsBookAgainFormOpen(false); setBookAgainBooking(null); }}
+        onClose={() => {
+          setIsBookAgainFormOpen(false);
+          setBookAgainBooking(null);
+        }}
         onBook={handleConfirmBookAgain}
       />
 
       <ReviewForm
         booking={reviewingBooking}
         isOpen={isReviewFormOpen}
-        onClose={() => { setIsReviewFormOpen(false); setReviewingBooking(null); }}
+        onClose={() => {
+          setIsReviewFormOpen(false);
+          setReviewingBooking(null);
+        }}
         onSubmit={handleSubmitReview}
       />
 

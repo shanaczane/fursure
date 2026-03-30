@@ -20,6 +20,39 @@ interface BookingFormProps {
   ) => void;
 }
 
+const TIME_SLOTS = [
+  { value: "08:00", label: "8:00 AM" },
+  { value: "09:00", label: "9:00 AM" },
+  { value: "10:00", label: "10:00 AM" },
+  { value: "11:00", label: "11:00 AM" },
+  { value: "12:00", label: "12:00 PM" },
+  { value: "13:00", label: "1:00 PM" },
+  { value: "14:00", label: "2:00 PM" },
+  { value: "15:00", label: "3:00 PM" },
+  { value: "16:00", label: "4:00 PM" },
+  { value: "17:00", label: "5:00 PM" },
+];
+
+/** Returns the first available time slot for a given date (skips past times for today). */
+function getFirstAvailableTime(dateStr: string): string {
+  const today = new Date().toISOString().split("T")[0];
+  if (dateStr !== today) return TIME_SLOTS[0].value; // not today — all slots open
+
+  const nowHour = new Date().getHours();
+  // Find first slot whose hour is strictly after current hour
+  const available = TIME_SLOTS.find((s) => parseInt(s.value) > nowHour);
+  return available ? available.value : ""; // "" signals no slots left today
+}
+
+/** Returns time slots that are still valid for the selected date. */
+function getAvailableSlots(dateStr: string) {
+  const today = new Date().toISOString().split("T")[0];
+  if (dateStr !== today) return TIME_SLOTS;
+
+  const nowHour = new Date().getHours();
+  return TIME_SLOTS.filter((s) => parseInt(s.value) > nowHour);
+}
+
 const BookingForm: React.FC<BookingFormProps> = ({
   service,
   pets,
@@ -31,22 +64,37 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const [step, setStep] = useState<"details" | "policy">("details");
   const [selectedPetId, setSelectedPetId] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTime, setSelectedTime] = useState("10:00");
+  const [selectedTime, setSelectedTime] = useState("");
   const [notes, setNotes] = useState("");
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+
+  // Min date is always today (owner can pick today if slots remain, tomorrow otherwise)
+  const todayStr = new Date().toISOString().split("T")[0];
 
   React.useEffect(() => {
     if (isOpen && pets.length > 0) {
       setStep("details");
       setSelectedPetId(pets[0].id);
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      setSelectedDate(tomorrow.toISOString().split("T")[0]);
-      setSelectedTime("10:00");
       setNotes("");
       setAgreedToPolicy(false);
+
+      // Default to tomorrow so there's always a full day of slots available
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split("T")[0];
+      setSelectedDate(tomorrowStr);
+      setSelectedTime(getFirstAvailableTime(tomorrowStr));
     }
   }, [isOpen, pets]);
+
+  // When the date changes, reset time to the first available slot for that day
+  const handleDateChange = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    setSelectedTime(getFirstAvailableTime(dateStr));
+  };
+
+  const availableSlots = getAvailableSlots(selectedDate);
+  const noSlotsLeft = selectedDate === todayStr && availableSlots.length === 0;
 
   const handleDetailsNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +102,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
       alert("Please fill in all required fields");
       return;
     }
-    // If provider has a policy, show it; otherwise confirm directly
     if (policy) {
       setStep("policy");
     } else {
@@ -146,6 +193,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                       </select>
                     )}
                   </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Select Date *
@@ -153,34 +201,39 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     <input
                       type="date"
                       value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(e) => handleDateChange(e.target.value)}
+                      min={todayStr}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                     />
                   </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Select Time *
                     </label>
-                    <select
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="08:00">8:00 AM</option>
-                      <option value="09:00">9:00 AM</option>
-                      <option value="10:00">10:00 AM</option>
-                      <option value="11:00">11:00 AM</option>
-                      <option value="12:00">12:00 PM</option>
-                      <option value="13:00">1:00 PM</option>
-                      <option value="14:00">2:00 PM</option>
-                      <option value="15:00">3:00 PM</option>
-                      <option value="16:00">4:00 PM</option>
-                      <option value="17:00">5:00 PM</option>
-                    </select>
+                    {noSlotsLeft ? (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
+                        <p className="text-sm text-yellow-800 font-medium">
+                          ⏰ No available time slots left for today. Please select a future date.
+                        </p>
+                      </div>
+                    ) : (
+                      <select
+                        value={selectedTime}
+                        onChange={(e) => setSelectedTime(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        {availableSlots.map((slot) => (
+                          <option key={slot.value} value={slot.value}>
+                            {slot.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Special Instructions (Optional)
@@ -193,6 +246,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
+
                   <div className="bg-blue-50 rounded-lg p-4">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-700 font-medium">Total Price:</span>
@@ -201,10 +255,11 @@ const BookingForm: React.FC<BookingFormProps> = ({
                       </span>
                     </div>
                   </div>
+
                   <div className="flex space-x-4">
                     <button
                       type="submit"
-                      disabled={pets.length === 0}
+                      disabled={pets.length === 0 || noSlotsLeft || !selectedTime}
                       className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
                     >
                       {policy ? "Next: Review Payment Terms →" : "Confirm Booking"}

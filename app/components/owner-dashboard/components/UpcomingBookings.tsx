@@ -2,7 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
-import { type Booking, BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, getBookingPermissions, gracePeriodHoursRemaining, isDownPaymentExpired } from "@/app/types";
+import {
+  type Booking,
+  BOOKING_STATUS_COLORS,
+  BOOKING_STATUS_LABELS,
+  getBookingPermissions,
+  gracePeriodHoursRemaining,
+  isDownPaymentExpired,
+} from "@/app/types";
 import { formatRelativeDate, formatBookingDate } from "@/app/utils/dashboardUtils";
 
 interface UpcomingBookingsProps {
@@ -12,6 +19,10 @@ interface UpcomingBookingsProps {
   onCancel?: (bookingId: string, needsApproval: boolean) => void;
   onDelete?: (bookingId: string) => void;
   onPayDownPayment?: (bookingId: string) => void;
+  /** Called when the owner confirms the provider's reschedule proposal */
+  onConfirmReschedule?: (bookingId: string) => void;
+  /** Called when the owner declines the provider's reschedule proposal */
+  onDeclineReschedule?: (bookingId: string) => void;
 }
 
 const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
@@ -21,6 +32,8 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
   onCancel,
   onDelete,
   onPayDownPayment,
+  onConfirmReschedule,
+  onDeclineReschedule,
 }) => {
   const displayBookings = showViewAll ? bookings.slice(0, 3) : bookings;
 
@@ -43,9 +56,13 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
           const permissions = getBookingPermissions(booking);
           const hoursLeft = gracePeriodHoursRemaining(booking);
           const downPaymentExpired = isDownPaymentExpired(booking);
-
-          // Provider approved the edit request — owner can now freely edit
           const editApproved = booking.editRequestStatus === "approved";
+
+          // ── Reschedule proposal helpers ───────────────────────────────────
+          const hasRescheduleProposal =
+            booking.status === "rescheduled" &&
+            !!booking.rescheduleDate &&
+            !!booking.rescheduleTime;
 
           return (
             <div
@@ -76,19 +93,59 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     </p>
                     <p className="flex items-center space-x-2">
                       <span>📅</span>
-                      <span>{formatBookingDate(booking.date, booking.time)}</span>
+                      {/* Show original date/time with strikethrough when a proposal is pending */}
+                      {hasRescheduleProposal ? (
+                        <span className="line-through text-gray-400">
+                          {formatBookingDate(booking.date, booking.time)}
+                        </span>
+                      ) : (
+                        <span>{formatBookingDate(booking.date, booking.time)}</span>
+                      )}
                     </p>
                   </div>
 
                   {booking.notes && (
-                    <p className="mt-2 text-sm text-gray-500 italic">
-                      Note: {booking.notes}
-                    </p>
+                    <p className="mt-2 text-sm text-gray-500 italic">Note: {booking.notes}</p>
+                  )}
+
+                  {/* ── Reschedule proposal banner ────────────────────────── */}
+                  {hasRescheduleProposal && (
+                    <div className="mt-3 pt-3 border-t border-purple-200 bg-purple-50 rounded-lg px-3 py-3">
+                      <p className="text-sm font-semibold text-purple-800 mb-1">
+                        📅 The provider proposed a new schedule
+                      </p>
+                      <p className="text-sm text-purple-700 mb-3">
+                        <span className="font-medium">New time: </span>
+                        {formatBookingDate(booking.rescheduleDate!, booking.rescheduleTime!)}
+                      </p>
+                      <div className="flex gap-2">
+                        {onConfirmReschedule && (
+                          <button
+                            onClick={() => onConfirmReschedule(booking.id)}
+                            className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                          >
+                            ✓ Confirm New Schedule
+                          </button>
+                        )}
+                        {onDeclineReschedule && (
+                          <button
+                            onClick={() => onDeclineReschedule(booking.id)}
+                            className="px-4 py-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-semibold transition-colors"
+                          >
+                            ✗ Decline
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   )}
 
                   {/* ── Down payment banner ───────────────────────────────── */}
                   {booking.status === "awaiting_downpayment" && (
-                    <div className={`mt-3 pt-3 border-t ${downPaymentExpired ? "border-red-100" : "border-orange-100"}`}>
+                    <div
+                      className={`mt-3 pt-3 border-t ${
+                        downPaymentExpired ? "border-red-100" : "border-orange-100"
+                      }`}
+                    >
                       {downPaymentExpired ? (
                         <p className="text-xs text-red-600 font-medium">
                           ⛔ Down payment deadline passed. This booking will be automatically declined.
@@ -114,29 +171,32 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                   )}
 
                   {/* ── Grace period notice for pending bookings ──────────── */}
-                  {(booking.status === "pending") && !permissions.withinGracePeriod && (
+                  {booking.status === "pending" && !permissions.withinGracePeriod && (
                     <p className="mt-2 text-xs text-gray-400 italic">
                       Grace period expired — edits/cancellations no longer available.
                     </p>
                   )}
 
-                  {/* ── Approved edit notice — action required ────────────── */}
+                  {/* ── Approved edit notice ──────────────────────────────── */}
                   {editApproved && (
                     <div className="mt-3 pt-3 border-t border-green-100">
                       <p className="text-xs text-green-700 font-medium">
-                        ✅ Edit approved by provider — please update your booking details. Once submitted, the provider will re-confirm.
+                        ✅ Edit approved by provider — please update your booking details. Once
+                        submitted, the provider will re-confirm.
                       </p>
                     </div>
                   )}
 
-                  {/* ── Approval notice for confirmed bookings (no pending requests) ── */}
-                  {booking.status === "confirmed" && !editApproved && booking.editRequestStatus !== "pending" && (
-                    <p className="mt-2 text-xs text-blue-600">
-                      ℹ️ Edits or cancellations require provider approval.
-                    </p>
-                  )}
+                  {/* ── Approval notice for confirmed bookings ────────────── */}
+                  {booking.status === "confirmed" &&
+                    !editApproved &&
+                    booking.editRequestStatus !== "pending" && (
+                      <p className="mt-2 text-xs text-blue-600">
+                        ℹ️ Edits or cancellations require provider approval.
+                      </p>
+                    )}
 
-                  {/* Pending edit/cancel request notice */}
+                  {/* Pending edit/cancel request notices */}
                   {booking.editRequestStatus === "pending" && (
                     <p className="mt-1 text-xs text-yellow-600">
                       🕐 Edit request sent — awaiting provider approval.
@@ -150,7 +210,9 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
 
                   {/* ── Contact provider (confirmed only) ────────────────── */}
                   {booking.status === "confirmed" &&
-                    (booking.providerPhone || booking.providerEmail || booking.providerContactLink) && (
+                    (booking.providerPhone ||
+                      booking.providerEmail ||
+                      booking.providerContactLink) && (
                       <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
                         <p className="text-xs font-semibold text-green-700">📞 Contact Provider</p>
                         {booking.providerPhone && (
@@ -197,66 +259,74 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     )}
                 </div>
 
-                {/* ── Right column: date badge + actions ─────────────────── */}
+                {/* ── Right column: date badge + action buttons ──────────── */}
                 <div className="ml-4 text-right space-y-2 shrink-0">
                   <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
-                    {formatRelativeDate(booking.date)}
-                  </div>
-
-                  <div className="flex flex-col space-y-1">
-                    {/* Edit — approved path: show prominent green "Edit Now" button */}
-                    {onEdit && editApproved && (
-                      <button
-                        onClick={() => onEdit(booking)}
-                        className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-semibold transition-colors"
-                        title="Provider approved your edit — update your booking now"
-                      >
-                        ✏️ Edit Now
-                      </button>
-                    )}
-
-                    {/* Edit — normal path (grace period or no-approval needed) */}
-                    {onEdit && !editApproved && permissions.canEdit && (
-                      <button
-                        onClick={() => onEdit(booking)}
-                        className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-medium transition-colors"
-                        title={
-                          permissions.editNeedsProviderApproval
-                            ? "Request edit — provider must approve"
-                            : "Edit booking"
-                        }
-                      >
-                        {permissions.editNeedsProviderApproval ? "Request Edit" : "Edit"}
-                      </button>
-                    )}
-
-                    {/* Cancel */}
-                    {onCancel && permissions.canCancel && (
-                      <button
-                        onClick={() =>
-                          onCancel(booking.id, permissions.cancelNeedsProviderApproval)
-                        }
-                        className="px-3 py-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded text-xs font-medium transition-colors"
-                        title={
-                          permissions.cancelNeedsProviderApproval
-                            ? "Request cancellation — provider must approve"
-                            : "Cancel booking"
-                        }
-                      >
-                        {permissions.cancelNeedsProviderApproval ? "Request Cancel" : "Cancel"}
-                      </button>
-                    )}
-
-                    {/* Delete */}
-                    {onDelete && permissions.canDelete && (
-                      <button
-                        onClick={() => onDelete(booking.id)}
-                        className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded text-xs font-medium transition-colors"
-                      >
-                        Delete
-                      </button>
+                    {formatRelativeDate(
+                      // Show proposed date in the badge when rescheduled
+                      hasRescheduleProposal ? booking.rescheduleDate! : booking.date
                     )}
                   </div>
+
+                  {/* Hide normal edit/cancel buttons while a reschedule is pending */}
+                  {!hasRescheduleProposal && (
+                    <div className="flex flex-col space-y-1">
+                      {/* Edit — approved path */}
+                      {onEdit && editApproved && (
+                        <button
+                          onClick={() => onEdit(booking)}
+                          className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-semibold transition-colors"
+                          title="Provider approved your edit — update your booking now"
+                        >
+                          ✏️ Edit Now
+                        </button>
+                      )}
+
+                      {/* Edit — normal path */}
+                      {onEdit && !editApproved && permissions.canEdit && (
+                        <button
+                          onClick={() => onEdit(booking)}
+                          className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-medium transition-colors"
+                          title={
+                            permissions.editNeedsProviderApproval
+                              ? "Request edit — provider must approve"
+                              : "Edit booking"
+                          }
+                        >
+                          {permissions.editNeedsProviderApproval ? "Request Edit" : "Edit"}
+                        </button>
+                      )}
+
+                      {/* Cancel */}
+                      {onCancel && permissions.canCancel && (
+                        <button
+                          onClick={() =>
+                            onCancel(booking.id, permissions.cancelNeedsProviderApproval)
+                          }
+                          className="px-3 py-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded text-xs font-medium transition-colors"
+                          title={
+                            permissions.cancelNeedsProviderApproval
+                              ? "Request cancellation — provider must approve"
+                              : "Cancel booking"
+                          }
+                        >
+                          {permissions.cancelNeedsProviderApproval
+                            ? "Request Cancel"
+                            : "Cancel"}
+                        </button>
+                      )}
+
+                      {/* Delete */}
+                      {onDelete && permissions.canDelete && (
+                        <button
+                          onClick={() => onDelete(booking.id)}
+                          className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded text-xs font-medium transition-colors"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

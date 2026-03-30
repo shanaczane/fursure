@@ -70,6 +70,12 @@ export interface Booking {
   // Provider approval for edit/cancel after confirmation
   editRequestStatus?: "none" | "pending" | "approved" | "rejected";
   cancelRequestStatus?: "none" | "pending" | "approved" | "rejected";
+
+  // Reschedule proposal (set by provider)
+  rescheduleDate?: string;
+  rescheduleTime?: string;
+  // Owner response to reschedule proposal
+  rescheduleStatus?: "none" | "pending" | "confirmed" | "declined";
 }
 
 export interface User {
@@ -94,6 +100,7 @@ export type BookingStatus =
   | "pending"
   | "awaiting_downpayment"
   | "confirmed"
+  | "rescheduled"
   | "completed"
   | "cancelled"
   | "declined";
@@ -215,6 +222,7 @@ export const BOOKING_STATUS_COLORS: Record<BookingStatus, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   awaiting_downpayment: "bg-orange-100 text-orange-800",
   confirmed: "bg-blue-100 text-blue-800",
+  rescheduled: "bg-purple-100 text-purple-800",
   completed: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
   declined: "bg-gray-100 text-gray-700",
@@ -224,6 +232,7 @@ export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   pending: "Pending",
   awaiting_downpayment: "Awaiting Down Payment",
   confirmed: "Confirmed",
+  rescheduled: "Reschedule Proposed",
   completed: "Completed",
   cancelled: "Cancelled",
   declined: "Declined",
@@ -270,6 +279,10 @@ export function getBookingPermissions(booking: Booking) {
   // Can only delete cancelled, completed, or declined bookings
   const canDelete = status === "cancelled" || status === "completed" || status === "declined";
 
+  // Rescheduled bookings: owner can confirm or decline the new schedule
+  const canConfirmReschedule = status === "rescheduled";
+  const canDeclineReschedule = status === "rescheduled";
+
   let canEdit = false;
   let canCancel = false;
   let editNeedsProviderApproval = false;
@@ -278,15 +291,12 @@ export function getBookingPermissions(booking: Booking) {
   if (requiresDownPayment) {
     // ── Down payment required flow ──────────────────────────────────────────
     if (status === "awaiting_downpayment") {
-      // Free to cancel/edit within grace period (payment not yet made)
       canEdit = editApproved || withinGracePeriod;
       canCancel = withinGracePeriod;
     } else if (status === "pending" && downPaymentPaid) {
-      // Down payment paid, waiting for provider — free to edit/cancel within grace
       canEdit = editApproved || withinGracePeriod;
       canCancel = withinGracePeriod;
     } else if (status === "confirmed") {
-      // Provider confirmed — needs approval to edit/cancel (unless edit already approved)
       canEdit = true;
       canCancel = true;
       editNeedsProviderApproval = !editApproved;
@@ -295,11 +305,9 @@ export function getBookingPermissions(booking: Booking) {
   } else {
     // ── No down payment flow ────────────────────────────────────────────────
     if (status === "pending") {
-      // Free to edit/cancel within grace period
       canEdit = editApproved || withinGracePeriod;
       canCancel = withinGracePeriod;
     } else if (status === "confirmed") {
-      // Needs provider approval (unless edit already approved)
       canEdit = true;
       canCancel = true;
       editNeedsProviderApproval = !editApproved;
@@ -311,9 +319,11 @@ export function getBookingPermissions(booking: Booking) {
     canEdit,
     canCancel,
     canDelete,
+    canConfirmReschedule,
+    canDeclineReschedule,
     editNeedsProviderApproval,
     cancelNeedsProviderApproval,
     withinGracePeriod,
-    editApproved, // expose so components can render the "Edit Now" state
+    editApproved,
   };
 }
