@@ -333,6 +333,7 @@ const ShopProfilePage: React.FC<ShopProfilePageProps> = ({ shopId }) => {
       <BookingForm
         service={serviceToBook}
         pets={pets}
+        policy={null}
         isOpen={isBookingOpen}
         onClose={() => { setIsBookingOpen(false); setServiceToBook(null); }}
         onBook={handleConfirmBooking}
