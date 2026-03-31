@@ -319,10 +319,10 @@ const BookingsPage: React.FC = () => {
           isSidebarOpen={isSidebarOpen}
         />
         <main className="p-4 md:p-6 mt-16">
-          <div className="max-w-7xl mx-auto space-y-4">
+          <div className="max-w-7xl mx-auto space-y-5">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">My Bookings</h1>
-              <p className="text-gray-600 text-sm md:text-base">
+              <h1 className="text-2xl md:text-3xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>My Bookings</h1>
+              <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
                 Manage your appointments and booking history
               </p>
             </div>
@@ -337,14 +337,16 @@ const BookingsPage: React.FC = () => {
                 onPayDownPayment={handlePayDownPayment}
               />
             ) : (
-              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                <div className="text-6xl mb-4">📅</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No upcoming bookings</h3>
-                <p className="text-gray-500 mb-4">Book a service to get started</p>
-                <a
-                  href="/owner/services"
-                  className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
+              <div className="rounded-2xl border p-12 text-center" style={{ background: "white", borderColor: "var(--border)" }}>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                  style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal)" }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                  </svg>
+                </div>
+                <h3 className="font-900 text-lg mb-2" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>No upcoming bookings</h3>
+                <p className="text-sm mb-5" style={{ color: "var(--fur-slate-light)" }}>Book a service to get started</p>
+                <a href="/owner/services" className="btn-primary inline-block px-6 py-2.5 text-sm">
                   Browse Services
                 </a>
               </div>

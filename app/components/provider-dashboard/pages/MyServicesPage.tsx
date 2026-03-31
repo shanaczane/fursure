@@ -74,7 +74,9 @@ const MyServicesPage: React.FC = () => {
             onClick={() => router.push("/provider/services/new")}
             className="btn-primary flex items-center gap-2 px-6 py-3"
           >
-            <span>➕</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
             <span>Add New Service</span>
           </button>
         </div>
@@ -134,7 +136,12 @@ const MyServicesPage: React.FC = () => {
         {/* Services grid */}
         {filtered.length === 0 ? (
           <div className="rounded-2xl p-16 text-center border" style={{ background: "white", borderColor: "var(--border)" }}>
-            <p className="text-5xl mb-4">🐾</p>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal)" }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+              </svg>
+            </div>
             <p className="font-700 text-lg mb-2" style={{ color: "var(--fur-slate)" }}>No services found</p>
             <p className="text-sm mb-6" style={{ color: "var(--fur-slate-light)" }}>
               {services.length === 0 ? "Add your first service to get started" : "Try adjusting your filters"}
@@ -181,7 +188,12 @@ const MyServicesPage: React.FC = () => {
                         </span>
                         <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{service.duration} min</span>
                         {service.rating > 0 && (
-                          <span className="text-xs" style={{ color: "#F59E0B" }}>⭐ {service.rating}</span>
+                          <span className="text-xs flex items-center gap-0.5" style={{ color: "#F59E0B" }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                            {service.rating}
+                          </span>
                         )}
                       </div>
                     </div>
