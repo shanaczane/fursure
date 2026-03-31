@@ -33,25 +33,54 @@ const TIME_SLOTS = [
   { value: "17:00", label: "5:00 PM" },
 ];
 
-/** Returns the first available time slot for a given date (skips past times for today). */
 function getFirstAvailableTime(dateStr: string): string {
   const today = new Date().toISOString().split("T")[0];
-  if (dateStr !== today) return TIME_SLOTS[0].value; // not today — all slots open
-
+  if (dateStr !== today) return TIME_SLOTS[0].value;
   const nowHour = new Date().getHours();
-  // Find first slot whose hour is strictly after current hour
   const available = TIME_SLOTS.find((s) => parseInt(s.value) > nowHour);
-  return available ? available.value : ""; // "" signals no slots left today
+  return available ? available.value : "";
 }
 
-/** Returns time slots that are still valid for the selected date. */
 function getAvailableSlots(dateStr: string) {
   const today = new Date().toISOString().split("T")[0];
   if (dateStr !== today) return TIME_SLOTS;
-
   const nowHour = new Date().getHours();
   return TIME_SLOTS.filter((s) => parseInt(s.value) > nowHour);
 }
+
+// ── Rule card ────────────────────────────────────────────────────
+
+interface RuleCardProps {
+  icon: string;
+  title: string;
+  description: string;
+  variant?: "default" | "warning" | "success" | "info";
+}
+
+const RuleCard: React.FC<RuleCardProps> = ({ icon, title, description, variant = "default" }) => {
+  const styles: Record<string, { bg: string; border: string; titleColor: string; descColor: string }> = {
+    default: { bg: "#F9FAFB", border: "#E5E7EB", titleColor: "#111827", descColor: "#6B7280" },
+    warning: { bg: "#FFFBEB", border: "#FDE68A", titleColor: "#92400E", descColor: "#B45309" },
+    success: { bg: "#F0FDF4", border: "#BBF7D0", titleColor: "#065F46", descColor: "#059669" },
+    info:    { bg: "#EFF6FF", border: "#BFDBFE", titleColor: "#1E3A8A", descColor: "#2563EB" },
+  };
+  const s = styles[variant];
+
+  return (
+    <div
+      className="flex items-start gap-3 p-4 rounded-xl border"
+      style={{ background: s.bg, borderColor: s.border }}
+    >
+      <span className="text-xl mt-0.5 flex-shrink-0">{icon}</span>
+      <div>
+        <p className="text-sm font-semibold" style={{ color: s.titleColor }}>{title}</p>
+        <p className="text-sm mt-0.5 leading-relaxed" style={{ color: s.descColor }}>{description}</p>
+      </div>
+    </div>
+  );
+};
+
+// ── Main component ───────────────────────────────────────────────
 
 const BookingForm: React.FC<BookingFormProps> = ({
   service,
@@ -68,7 +97,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const [notes, setNotes] = useState("");
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
 
-  // Min date is always today (owner can pick today if slots remain, tomorrow otherwise)
   const todayStr = new Date().toISOString().split("T")[0];
 
   React.useEffect(() => {
@@ -77,8 +105,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
       setSelectedPetId(pets[0].id);
       setNotes("");
       setAgreedToPolicy(false);
-
-      // Default to tomorrow so there's always a full day of slots available
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowStr = tomorrow.toISOString().split("T")[0];
@@ -87,7 +113,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
     }
   }, [isOpen, pets]);
 
-  // When the date changes, reset time to the first available slot for that day
   const handleDateChange = (dateStr: string) => {
     setSelectedDate(dateStr);
     setSelectedTime(getFirstAvailableTime(dateStr));
@@ -118,10 +143,23 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
   if (!isOpen || !service) return null;
 
-  const depositLabel = () => {
-    if (!policy?.depositRequired) return "No deposit required";
-    if (policy.fullPaymentRequiredUpfront) return "Full payment required upfront";
-    return `${policy.depositPercentage}% deposit required — ${policy.depositRefundable ? "refundable" : "non-refundable"}`;
+  // ── Derive from policy ──
+  const requiresDownPayment   = Boolean(policy?.depositRequired);
+  const depositPct            = policy?.depositPercentage ?? 0;
+  const isFullUpfront         = policy?.fullPaymentRequiredUpfront ?? false;
+  const depositRefundable     = policy?.depositRefundable ?? false;
+  const cancellationHours     = policy?.cancellationHoursNotice ?? 0;
+  const paymentMethods        = policy?.paymentMethodsAccepted ?? [];
+  const additionalNotes       = policy?.additionalNotes ?? "";
+
+  const depositLabel = isFullUpfront
+    ? "Full payment required upfront (cash)"
+    : `${depositPct}% cash down payment required`;
+
+  const formattedTime = (t: string) => {
+    const [h] = t.split(":");
+    const hr = parseInt(h);
+    return `${hr % 12 || 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
   };
 
   return (
@@ -131,44 +169,51 @@ const BookingForm: React.FC<BookingFormProps> = ({
         onClick={onClose}
       />
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full">
+        <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full">
+
+          {/* Close */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+            className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors z-10"
           >
-            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
 
           {/* Step indicator */}
           {policy && (
-            <div className="flex items-center gap-2 px-8 pt-8 pb-0">
-              {(["details", "policy"] as const).map((s, i) => (
-                <React.Fragment key={s}>
-                  <div className={`flex items-center gap-1.5 text-xs font-semibold ${step === s ? "text-blue-600" : i < (step === "policy" ? 1 : 0) ? "text-green-600" : "text-gray-400"}`}>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${step === s ? "bg-blue-600 text-white" : i < (step === "policy" ? 1 : 0) ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500"}`}>
-                      {i < (step === "policy" ? 1 : 0) ? "✓" : i + 1}
-                    </span>
-                    {s === "details" ? "Booking Details" : "Payment Terms"}
-                  </div>
-                  {i === 0 && <div className="flex-1 h-px bg-gray-200" />}
-                </React.Fragment>
-              ))}
+            <div className="flex items-center gap-2 px-8 pt-8 pb-4">
+              {(["details", "policy"] as const).map((s, i) => {
+                const done = i === 0 && step === "policy";
+                const active = step === s;
+                return (
+                  <React.Fragment key={s}>
+                    <div className={`flex items-center gap-1.5 text-xs font-semibold ${active ? "text-blue-600" : done ? "text-green-600" : "text-gray-400"}`}>
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${active ? "bg-blue-600 text-white" : done ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500"}`}>
+                        {done ? "✓" : i + 1}
+                      </span>
+                      {s === "details" ? "Booking Details" : "Payment Terms"}
+                    </div>
+                    {i === 0 && <div className="flex-1 h-px bg-gray-200" />}
+                  </React.Fragment>
+                );
+              })}
             </div>
           )}
 
-          <div className="p-8 pt-5">
+          <div className={`p-8 ${policy ? "pt-2" : "pt-8"}`}>
+
             {/* ── Step 1: Details ── */}
             {step === "details" && (
               <>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">Book {service.name}</h2>
-                <p className="text-gray-600 mb-6">{service.provider}</p>
-                <form onSubmit={handleDetailsNext} className="space-y-6">
+                <p className="text-gray-500 mb-6">{service.provider}</p>
+                <form onSubmit={handleDetailsNext} className="space-y-5">
+
+                  {/* Pet */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Select Pet *
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Select Pet *</label>
                     {pets.length === 0 ? (
                       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <p className="text-yellow-800 text-sm">
@@ -194,10 +239,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     )}
                   </div>
 
+                  {/* Date */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Select Date *
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Select Date *</label>
                     <input
                       type="date"
                       value={selectedDate}
@@ -208,14 +252,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     />
                   </div>
 
+                  {/* Time */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Select Time *
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Select Time *</label>
                     {noSlotsLeft ? (
                       <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
                         <p className="text-sm text-yellow-800 font-medium">
-                          ⏰ No available time slots left for today. Please select a future date.
+                          ⏰ No time slots left for today. Please select a future date.
                         </p>
                       </div>
                     ) : (
@@ -226,48 +269,46 @@ const BookingForm: React.FC<BookingFormProps> = ({
                         required
                       >
                         {availableSlots.map((slot) => (
-                          <option key={slot.value} value={slot.value}>
-                            {slot.label}
-                          </option>
+                          <option key={slot.value} value={slot.value}>{slot.label}</option>
                         ))}
                       </select>
                     )}
                   </div>
 
+                  {/* Notes */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Special Instructions (Optional)
+                      Special Instructions <span className="font-normal text-gray-400">(optional)</span>
                     </label>
                     <textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       rows={3}
                       placeholder="Any special requests or notes for the service provider..."
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
                   </div>
 
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 font-medium">Total Price:</span>
-                      <span className="text-2xl font-bold text-blue-600">
-                        ₱{service.price} {service.priceUnit}
-                      </span>
-                    </div>
+                  {/* Price */}
+                  <div className="bg-blue-50 rounded-xl p-4 flex justify-between items-center">
+                    <span className="text-gray-700 font-medium">Total Price</span>
+                    <span className="text-2xl font-bold text-blue-600">
+                      ₱{service.price} <span className="text-sm font-medium text-blue-400">{service.priceUnit}</span>
+                    </span>
                   </div>
 
-                  <div className="flex space-x-4">
+                  <div className="flex gap-3">
                     <button
                       type="submit"
                       disabled={pets.length === 0 || noSlotsLeft || !selectedTime}
-                      className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+                      className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors"
                     >
                       {policy ? "Next: Review Payment Terms →" : "Confirm Booking"}
                     </button>
                     <button
                       type="button"
                       onClick={onClose}
-                      className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors"
+                      className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors"
                     >
                       Cancel
                     </button>
@@ -276,102 +317,186 @@ const BookingForm: React.FC<BookingFormProps> = ({
               </>
             )}
 
-            {/* ── Step 2: Policy ── */}
+            {/* ── Step 2: Payment Terms ── */}
             {step === "policy" && policy && (
               <>
-                <h2 className="text-2xl font-bold text-gray-900 mb-1">Payment Terms</h2>
-                <p className="text-gray-500 text-sm mb-6">
-                  Review the provider's payment and cancellation policy before confirming.
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">Payment & Booking Terms</h2>
+                <p className="text-gray-500 text-sm mb-5">
+                  Read the provider's terms carefully before confirming your booking.
                 </p>
 
                 {/* Booking summary */}
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-5">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Your Booking</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Your Booking</p>
                   <p className="font-semibold text-gray-900">{service.name}</p>
-                  <p className="text-sm text-gray-600">
-                    {pets.find(p => p.id === selectedPetId)?.name} · {selectedDate} at{" "}
-                    {(() => {
-                      const [h] = selectedTime.split(":");
-                      const hr = parseInt(h);
-                      return `${hr % 12 || 12}:00 ${hr >= 12 ? "PM" : "AM"}`;
-                    })()}
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {pets.find((p) => p.id === selectedPetId)?.name}&nbsp;·&nbsp;
+                    {selectedDate} at {formattedTime(selectedTime)}
                   </p>
                 </div>
 
-                {/* Policy cards */}
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-start gap-3 p-4 rounded-lg border border-gray-200">
-                    <span className="text-xl">💳</span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">Accepted Payments</p>
-                      <p className="text-sm text-gray-600">
-                        {policy.paymentMethodsAccepted.length > 0
-                          ? policy.paymentMethodsAccepted.join(", ")
-                          : "Not specified"}
-                      </p>
-                    </div>
-                  </div>
+                {/* ── PAYMENT ── */}
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Payment</p>
+                  <div className="space-y-2">
 
-                  <div className="flex items-start gap-3 p-4 rounded-lg border border-gray-200">
-                    <span className="text-xl">💰</span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">Deposit Policy</p>
-                      <p className="text-sm text-gray-600">{depositLabel()}</p>
-                      {policy.depositRequired && (
-                        <p className="text-xs mt-1 font-medium" style={{ color: policy.depositRefundable ? "#059669" : "#DC2626" }}>
-                          {policy.depositRefundable ? "✓ Refundable upon cancellation" : "✗ Non-refundable"}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                    {/* Cash only — always shown */}
+                    <RuleCard
+                      icon="💵"
+                      title="Cash Payment Only"
+                      description="All payments are made directly in cash to the provider — no online or card payments."
+                    />
 
-                  <div className="flex items-start gap-3 p-4 rounded-lg border border-gray-200">
-                    <span className="text-xl">⏰</span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">Cancellation Policy</p>
-                      <p className="text-sm text-gray-600">
-                        {policy.cancellationHoursNotice === 0
-                          ? "No advance notice required"
-                          : `${policy.cancellationHoursNotice}-hour notice required to cancel`}
-                      </p>
-                    </div>
-                  </div>
+                    {/* Accepted methods if specified */}
+                    {paymentMethods.length > 0 && (
+                      <RuleCard
+                        icon="💳"
+                        title="Accepted Payment Methods"
+                        description={paymentMethods.join(", ")}
+                      />
+                    )}
 
-                  {policy.additionalNotes && (
-                    <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50">
-                      <span className="text-xl">📝</span>
-                      <div>
-                        <p className="text-sm font-semibold text-amber-800">Additional Notes</p>
-                        <p className="text-sm text-amber-700">{policy.additionalNotes}</p>
-                      </div>
-                    </div>
-                  )}
+                    {/* Down payment or none */}
+                    {requiresDownPayment ? (
+                      <RuleCard
+                        icon="💰"
+                        title={depositLabel}
+                        description={
+                          depositRefundable
+                            ? `You must pay ${isFullUpfront ? "the full amount" : `${depositPct}% of the total`} in cash within 24 hours of booking. This deposit is refundable if you cancel within the allowed window.`
+                            : `You must pay ${isFullUpfront ? "the full amount" : `${depositPct}% of the total`} in cash within 24 hours of booking. Note: this deposit is non-refundable.`
+                        }
+                        variant={depositRefundable ? "info" : "warning"}
+                      />
+                    ) : (
+                      <RuleCard
+                        icon="✅"
+                        title="No Down Payment Required"
+                        description="No deposit needed. Pay the full amount in cash on the day of service."
+                        variant="success"
+                      />
+                    )}
+                  </div>
                 </div>
 
+                {/* ── BOOKING FLOW ── */}
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">How Your Booking Works</p>
+                  <div className="space-y-2">
+
+                    {requiresDownPayment ? (
+                      <>
+                        {/* Rule 1 — pending until down payment received */}
+                        <RuleCard
+                          icon="⏳"
+                          title="Booking stays Pending until down payment is received"
+                          description={`Your booking will remain Pending after submission. It will only be confirmed once the provider receives your ${isFullUpfront ? "full payment" : `${depositPct}% down payment`} in cash.`}
+                          variant="warning"
+                        />
+
+                        {/* Rule 2 — auto-declined after 24 hrs */}
+                        <RuleCard
+                          icon="❌"
+                          title="Automatically declined if no payment within 24 hours"
+                          description="If the down payment is not made within 24 hours of booking, your booking will be automatically declined. You will need to rebook."
+                          variant="warning"
+                        />
+
+                        {/* Rule 3 — free to cancel/edit within 24 hrs, no approval needed */}
+                        <RuleCard
+                          icon="✏️"
+                          title="Cancel or edit freely within 24 hours"
+                          description="Within the first 24 hours after booking, you can cancel or edit your booking on your own — no approval from the provider is needed."
+                          variant="info"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {/* Rule 1 — pending until provider accepts */}
+                        <RuleCard
+                          icon="⏳"
+                          title="Booking stays Pending until the provider accepts"
+                          description="After submitting, your booking will remain Pending until the provider manually confirms or declines it."
+                          variant="info"
+                        />
+
+                        {/* Rule 2 — self-cancel/edit while pending within 24 hrs */}
+                        <RuleCard
+                          icon="✏️"
+                          title="Cancel or edit on your own while Pending (within 24 hrs)"
+                          description="You can cancel or edit your booking without asking the provider — as long as it is still Pending and within 24 hours of submission."
+                          variant="info"
+                        />
+
+                        {/* Rule 3 — need provider approval once confirmed */}
+                        <RuleCard
+                          icon="🤝"
+                          title="Provider approval required after booking is confirmed"
+                          description="Once the provider has confirmed your booking, any edits or cancellations will require the provider's approval before they take effect."
+                          variant="warning"
+                        />
+                      </>
+                    )}
+
+                    {/* Rule — shared by both flows */}
+                    <RuleCard
+                      icon="🗑️"
+                      title="Booking can only be deleted when Cancelled or Completed"
+                      description="You cannot delete an active or pending booking. It must be cancelled first or already completed before it can be removed from your records."
+                    />
+                  </div>
+                </div>
+
+                {/* ── CANCELLATION NOTICE ── */}
+                {cancellationHours > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Cancellation Notice</p>
+                    <RuleCard
+                      icon="🔔"
+                      title={`${cancellationHours}-hour advance notice required`}
+                      description={`You must inform the provider at least ${cancellationHours} hour${cancellationHours > 1 ? "s" : ""} before your appointment if you need to cancel.`}
+                      variant="warning"
+                    />
+                  </div>
+                )}
+
+                {/* ── PROVIDER NOTES ── */}
+                {additionalNotes && (
+                  <div className="mb-4">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Provider Notes</p>
+                    <RuleCard
+                      icon="📌"
+                      title="Additional Instructions from Provider"
+                      description={additionalNotes}
+                      variant="warning"
+                    />
+                  </div>
+                )}
+
                 {/* Agree checkbox */}
-                <label className="flex items-start gap-3 cursor-pointer mb-6 select-none">
+                <label className="flex items-start gap-3 cursor-pointer mt-5 mb-5 select-none">
                   <input
                     type="checkbox"
                     checked={agreedToPolicy}
                     onChange={(e) => setAgreedToPolicy(e.target.checked)}
                     className="mt-0.5 w-4 h-4 accent-blue-600 shrink-0"
                   />
-                  <span className="text-sm text-gray-700">
-                    I understand and agree to the payment and cancellation terms above.
+                  <span className="text-sm text-gray-700 leading-relaxed">
+                    I understand and agree to the payment terms, booking rules, and cancellation policy above.
                   </span>
                 </label>
 
-                <div className="flex space-x-4">
+                <div className="flex gap-3">
                   <button
                     onClick={handleConfirm}
                     disabled={!agreedToPolicy}
-                    className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+                    className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors"
                   >
                     Confirm Booking
                   </button>
                   <button
                     onClick={() => setStep("details")}
-                    className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors"
+                    className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors"
                   >
                     ← Back
                   </button>

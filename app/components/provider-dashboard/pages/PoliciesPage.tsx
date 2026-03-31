@@ -69,7 +69,7 @@ const PoliciesPage: React.FC = () => {
               A down payment is a partial cash payment made before the service date to confirm a
               booking. If you require one, the pet owner must pay it within{" "}
               <strong>24 hours</strong> of booking — or their booking will be{" "}
-              <strong className="text-red-600">automatically cancelled</strong>.
+              <strong className="text-red-600">automatically declined</strong>.
             </p>
           </div>
 
@@ -108,7 +108,7 @@ const PoliciesPage: React.FC = () => {
                   <p className="text-sm text-red-700 mt-0.5">
                     Once a booking is made, the pet owner has exactly{" "}
                     <strong>24 hours</strong> to hand over the down payment in cash. If they miss
-                    this window, the booking is <strong>automatically cancelled</strong> — no action
+                    this window, the booking is <strong>automatically declined</strong> — no action
                     needed from you.
                   </p>
                 </div>
@@ -225,8 +225,7 @@ const PoliciesPage: React.FC = () => {
           <div>
             <h2 className="text-lg font-bold text-gray-900">⏰ Cancellation Policy</h2>
             <p className="text-sm text-gray-500 mt-1">
-              How much advance notice do you need before a pet owner can cancel their booking without
-              penalty?
+              How much advance notice do you need before a pet owner can cancel their booking?
             </p>
           </div>
           <div className="space-y-2">
@@ -287,10 +286,14 @@ const PoliciesPage: React.FC = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-5 space-y-3">
           <p className="text-sm font-bold text-blue-900">📋 What pet owners will see:</p>
           <ul className="text-sm text-blue-800 space-y-1.5">
+
+            {/* Cash only — always */}
             <li className="flex gap-2">
               <span>💵</span>
               <span>Payment is <strong>cash only</strong> — paid directly to the provider.</span>
             </li>
+
+            {/* Down payment terms */}
             {form.depositRequired ? (
               <>
                 <li className="flex gap-2">
@@ -305,19 +308,65 @@ const PoliciesPage: React.FC = () => {
                   </span>
                 </li>
                 <li className="flex gap-2">
-                  <span>⏰</span>
+                  <span>⏳</span>
                   <span>
-                    You have <strong>24 hours</strong> to complete the down payment after booking.
-                    If not paid in time, your booking will be <strong>automatically cancelled</strong>.
+                    Your booking stays <strong>Pending</strong> until the down payment is received in cash.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span>❌</span>
+                  <span>
+                    If the down payment is not made within <strong>24 hours</strong>, your booking
+                    will be <strong>automatically declined</strong>.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span>✏️</span>
+                  <span>
+                    You can cancel or edit your booking on your own within <strong>24 hours</strong>{" "}
+                    of submission — no provider approval needed.
                   </span>
                 </li>
               </>
             ) : (
-              <li className="flex gap-2">
-                <span>✅</span>
-                <span>No down payment required — pay in full on the day of service.</span>
-              </li>
+              <>
+                <li className="flex gap-2">
+                  <span>✅</span>
+                  <span>No down payment required — pay in full on the day of service.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span>⏳</span>
+                  <span>
+                    Your booking stays <strong>Pending</strong> until the provider manually accepts it.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span>✏️</span>
+                  <span>
+                    You can cancel or edit on your own while the booking is still{" "}
+                    <strong>Pending</strong> and within <strong>24 hours</strong> of submission.
+                  </span>
+                </li>
+                <li className="flex gap-2">
+                  <span>🤝</span>
+                  <span>
+                    Once <strong>confirmed</strong>, any edits or cancellations require the
+                    provider's approval.
+                  </span>
+                </li>
+              </>
             )}
+
+            {/* Delete rule — always */}
+            <li className="flex gap-2">
+              <span>🗑️</span>
+              <span>
+                A booking can only be deleted once it is <strong>Cancelled</strong> or{" "}
+                <strong>Completed</strong>.
+              </span>
+            </li>
+
+            {/* Cancellation notice */}
             <li className="flex gap-2">
               <span>🚫</span>
               <span>
@@ -326,6 +375,8 @@ const PoliciesPage: React.FC = () => {
                   : `Cancellations must be made at least ${form.cancellationHoursNotice} hours in advance.`}
               </span>
             </li>
+
+            {/* Additional notes */}
             {form.additionalNotes && (
               <li className="flex gap-2">
                 <span>📌</span>

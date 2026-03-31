@@ -10,6 +10,7 @@ interface WelcomeSectionProps {
     completedBookings: number;
     totalPets: number;
     totalServices: number;
+    pendingBookings?: number;
   };
 }
 
@@ -24,7 +25,7 @@ const WelcomeSection: React.FC<WelcomeSectionProps> = ({ user, stats }) => {
   const statCards = [
     { label: "Upcoming", value: stats.upcomingBookings, icon: "📅", color: "var(--fur-teal)", bg: "var(--fur-teal-light)" },
     { label: "My Pets", value: stats.totalPets, icon: "🐾", color: "#8B5CF6", bg: "#EDE9FE" },
-    { label: "Services", value: stats.totalServices, icon: "🔍", color: "var(--fur-amber-dark)", bg: "var(--fur-amber-light)" },
+    { label: "Pending", value: stats.pendingBookings ?? 0, icon: "⏳", color: "#D97706", bg: "#FEF3C7" },
     { label: "Completed", value: stats.completedBookings, icon: "✅", color: "#059669", bg: "#D1FAE5" },
   ];
 
