@@ -60,9 +60,18 @@ export const getServiceById = (
 export const getUpcomingBookings = (bookings: Booking[]): Booking[] => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  const activeStatuses: BookingStatus[] = [
+    "pending",
+    "confirmed",
+    "awaiting_downpayment",
+    "payment_submitted",
+    "rescheduled",
+  ];
+
   return bookings
     .filter((b) => {
-      if (b.status !== "pending" && b.status !== "confirmed") return false;
+      if (!activeStatuses.includes(b.status)) return false;
       return new Date(b.date + "T00:00:00") >= today;
     })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
