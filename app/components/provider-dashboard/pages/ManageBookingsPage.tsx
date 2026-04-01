@@ -71,7 +71,6 @@ const ManageBookingsPage: React.FC = () => {
     rescheduleBooking,
     completeBooking,
     updateBooking,
-    updateBooking,
   } = useProviderContext();
 
   const [filters, setFilters] = useState({
@@ -126,7 +125,6 @@ const ManageBookingsPage: React.FC = () => {
     [bookings]
   );
 
-  // Bookings where provider proposed a reschedule but owner hasn't responded yet
   const pendingReschedules = useMemo(() =>
     bookings.filter(
       (b) => b.status === "rescheduled" && b.rescheduleStatus === "pending"
@@ -176,18 +174,7 @@ const ManageBookingsPage: React.FC = () => {
             <span className="text-purple-600 text-lg">📅</span>
             <p className="text-sm font-medium text-purple-800">
               {pendingReschedules} reschedule proposal{pendingReschedules > 1 ? "s are" : " is"} awaiting
-              the owner's response.
-            </p>
-          </div>
-        )}
-
-        {/* Pending reschedule proposals banner */}
-        {pendingReschedules > 0 && (
-          <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-xl px-4 py-3">
-            <span className="text-purple-600 text-lg">📅</span>
-            <p className="text-sm font-medium text-purple-800">
-              {pendingReschedules} reschedule proposal{pendingReschedules > 1 ? "s are" : " is"} awaiting
-              the owner's response.
+              the owner&apos;s response.
             </p>
           </div>
         )}
@@ -206,16 +193,19 @@ const ManageBookingsPage: React.FC = () => {
               >
                 <span>{tab.label}</span>
                 {tab.count > 0 && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full font-700"
-                    style={tab.value === "pending"
-                      ? { background: "#FEF3C7", color: "#92400E" }
-                      : tab.value === "awaiting_downpayment"
-                      ? { background: "#FFEDD5", color: "#9A3412" }
+                  <span
+                    className="text-xs px-1.5 py-0.5 rounded-full font-700"
+                    style={
+                      tab.value === "pending"
+                        ? { background: "#FEF3C7", color: "#92400E" }
+                        : tab.value === "awaiting_downpayment"
+                        ? { background: "#FFEDD5", color: "#9A3412" }
                         : tab.value === "rescheduled"
-                        ? "bg-purple-100 text-purple-700"
-                      : filters.status === tab.value
-                      ? { background: "rgba(0,0,0,0.08)", color: "var(--fur-teal-dark)" }
-                      : { background: "var(--fur-mist)", color: "var(--fur-slate-mid)" }}
+                        ? { background: "#EDE9FE", color: "#5B21B6" }
+                        : filters.status === tab.value
+                        ? { background: "rgba(0,0,0,0.08)", color: "var(--fur-teal-dark)" }
+                        : { background: "var(--fur-mist)", color: "var(--fur-slate-mid)" }
+                    }
                   >
                     {tab.count}
                   </span>
@@ -237,9 +227,9 @@ const ManageBookingsPage: React.FC = () => {
                 className="fur-input"
                 style={{ paddingLeft: "2.5rem" }}
               />
-              <svg className="w-4 h-4 absolute left-3 top-3.5" style={{ color: "var(--fur-slate-light)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <svg
-                className="w-4 h-4 text-gray-400 absolute left-3 top-3"
+                className="w-4 h-4 absolute left-3 top-3.5"
+                style={{ color: "var(--fur-slate-light)" }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -297,7 +287,6 @@ const ManageBookingsPage: React.FC = () => {
               const hasPendingEdit = booking.editRequestStatus === "pending";
               const hasPendingCancel = booking.cancelRequestStatus === "pending";
 
-              // Provider sent a reschedule proposal and owner hasn't responded yet
               const hasRescheduleProposal =
                 booking.status === "rescheduled" &&
                 !!booking.rescheduleDate &&
@@ -311,7 +300,6 @@ const ManageBookingsPage: React.FC = () => {
                   {/* Main Row */}
                   <div
                     className="flex items-center p-4 cursor-pointer transition-colors"
-                    style={{ ["--hover-bg" as string]: "var(--fur-cream)" }}
                     onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "white")}
                     onClick={() => setExpandedId(isExpanded ? null : booking.id)}
@@ -338,13 +326,6 @@ const ManageBookingsPage: React.FC = () => {
                             <CancelIcon /> Cancel Request
                           </span>
                         )}
-                        {/* Badge: awaiting owner's reschedule response */}
-                        {hasRescheduleProposal && !ownerRespondedToReschedule && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200 font-medium">
-                            ⏳ Awaiting Owner
-                          </span>
-                        )}
-                        {/* Badge: awaiting owner's reschedule response */}
                         {hasRescheduleProposal && !ownerRespondedToReschedule && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200 font-medium">
                             ⏳ Awaiting Owner
@@ -354,18 +335,16 @@ const ManageBookingsPage: React.FC = () => {
                       <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
                         {booking.petName} ({booking.petBreed}) · {booking.ownerName}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        📅 {formatBookingDateTime(effectiveDate, effectiveTime)}
-                        {booking.rescheduleDate && !ownerRespondedToReschedule && (
-                          <span className="ml-1 text-purple-600 font-medium">(proposal pending)</span>
                       <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--fur-slate-light)" }}>
                         <CalendarIcon /> {formatBookingDateTime(effectiveDate, effectiveTime)}
                         {booking.rescheduleDate && (
-                          <span className="ml-1" style={{ color: "#7C3AED" }}>(rescheduled)</span>
+                          <span className="ml-1" style={{ color: "#7C3AED" }}>
+                            {ownerRespondedToReschedule ? "(rescheduled)" : "(proposal pending)"}
+                          </span>
                         )}
                       </p>
                       {booking.status === "awaiting_downpayment" && (
-                        <p className={`text-xs mt-1 font-700 flex items-center gap-1`}
+                        <p className="text-xs mt-1 font-700 flex items-center gap-1"
                           style={{ color: dpExpired ? "var(--fur-rose)" : "#D97706" }}>
                           <ClockIcon />
                           {dpExpired
@@ -454,23 +433,7 @@ const ManageBookingsPage: React.FC = () => {
                         )}
                       </div>
 
-                      {/* ── Reschedule proposal status banner ────────────── */}
-                      {hasRescheduleProposal && !ownerRespondedToReschedule && (
-                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                          <p className="text-sm font-semibold text-purple-800 mb-1">
-                            📅 Reschedule proposal sent — awaiting owner response
-                          </p>
-                          <p className="text-sm text-purple-700">
-                            <span className="font-medium">Proposed time: </span>
-                            {formatBookingDateTime(booking.rescheduleDate!, booking.rescheduleTime!)}
-                          </p>
-                          <p className="text-xs text-purple-500 mt-1">
-                            The owner will confirm or decline this proposal from their dashboard.
-                          </p>
-                        </div>
-                      )}
-
-                      {/* ── Reschedule proposal status banner ────────────── */}
+                      {/* Reschedule proposal status banner */}
                       {hasRescheduleProposal && !ownerRespondedToReschedule && (
                         <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                           <p className="text-sm font-semibold text-purple-800 mb-1">
@@ -492,8 +455,6 @@ const ManageBookingsPage: React.FC = () => {
                           <p className="text-sm font-700 mb-1" style={{ color: "#92400E" }}>
                             The owner is requesting to edit this booking.
                           </p>
-                          <p className="text-xs text-yellow-700 mb-3">
-                            Approve to let them update their booking details.
                           <p className="text-xs mb-3" style={{ color: "#B45309" }}>
                             Review the changes and approve or reject their request.
                           </p>
@@ -619,16 +580,11 @@ const ManageBookingsPage: React.FC = () => {
                           </>
                         )}
 
-                        {/*
-                         * Rescheduled: proposal is pending owner response.
-                         * Provider can send a new proposal (overwrite) or cancel.
-                         * They CANNOT mark it complete until the owner confirms.
-                         */}
                         {booking.status === "rescheduled" && (
                           <>
                             <button
                               onClick={() => openModal(booking, "reschedule")}
-                              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+                              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-700 rounded-xl transition-colors"
                             >
                               📅 Change Proposal
                             </button>
@@ -636,28 +592,6 @@ const ManageBookingsPage: React.FC = () => {
                               onClick={() => openModal(booking, "reject")}
                               className="px-4 py-2 text-sm font-700 rounded-xl border transition-colors"
                               style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}
-                            >
-                              ✗ Cancel Booking
-                            </button>
-                          </>
-                        )}
-
-                        {/*
-                         * Rescheduled: proposal is pending owner response.
-                         * Provider can send a new proposal (overwrite) or cancel.
-                         * They CANNOT mark it complete until the owner confirms.
-                         */}
-                        {booking.status === "rescheduled" && (
-                          <>
-                            <button
-                              onClick={() => openModal(booking, "reschedule")}
-                              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
-                            >
-                              📅 Change Proposal
-                            </button>
-                            <button
-                              onClick={() => openModal(booking, "reject")}
-                              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-medium rounded-lg transition-colors border border-red-200"
                             >
                               ✗ Cancel Booking
                             </button>
