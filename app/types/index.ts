@@ -76,6 +76,20 @@ export interface Service {
 }
 
 // ─────────────────────────────────────────────────────────────
+// SERVICE CATEGORIES  (was missing — fixes ServiceSearch.tsx)
+// ─────────────────────────────────────────────────────────────
+
+export const SERVICE_CATEGORIES: { value: ServiceCategory; label: string; emoji: string }[] = [
+  { value: "all",        label: "All",        emoji: "🐾" },
+  { value: "grooming",   label: "Grooming",   emoji: "✂️" },
+  { value: "veterinary", label: "Veterinary", emoji: "🏥" },
+  { value: "training",   label: "Training",   emoji: "🎓" },
+  { value: "boarding",   label: "Boarding",   emoji: "🏠" },
+  { value: "walking",    label: "Walking",    emoji: "🚶" },
+  { value: "daycare",    label: "Daycare",    emoji: "🎾" },
+];
+
+// ─────────────────────────────────────────────────────────────
 // BOOKING STATUS
 // ─────────────────────────────────────────────────────────────
 

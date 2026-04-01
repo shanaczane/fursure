@@ -108,7 +108,7 @@ const ServicesPage: React.FC = () => {
                   value={filters.sortBy}
                   onChange={(e) =>
                     handleFilterChange({
-                      sortBy: e.target.value as "rating" | "price_asc" | "price_desc" | "distance",
+                      sortBy: e.target.value as "rating" | "price_asc" |"price_desc" | "distance",
                     })
                   }
                   className="fur-input md:w-48"
