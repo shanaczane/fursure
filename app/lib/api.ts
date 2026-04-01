@@ -179,8 +179,12 @@ export const fetchUserBookings = async (userId: string): Promise<Booking[]> => {
     downPaymentDeadlineHours: row.down_payment_deadline_hours ?? 24,
     editCancelGracePeriodHours: row.edit_cancel_grace_period_hours ?? 24,
     createdAt: row.created_at ?? undefined,
+    // ── Down payment fields ──────────────────────────────────────────────────
     downPaymentPaid: row.down_payment_paid ?? false,
     downPaymentPaidAt: row.down_payment_paid_at ?? undefined,
+    downPaymentConfirmed: row.down_payment_confirmed ?? false,
+    downPaymentConfirmedAt: row.down_payment_confirmed_at ?? undefined,
+    // ── Request fields ───────────────────────────────────────────────────────
     editRequestStatus: row.edit_request_status ?? "none",
     cancelRequestStatus: row.cancel_request_status ?? "none",
     // ── Reschedule proposal fields ──────────────────────────────────────────
@@ -194,6 +198,47 @@ export const insertBooking = async (
   userId: string,
   booking: Omit<Booking, "id">,
 ): Promise<Booking> => {
+  // Get owner profile for name/email/phone
+  const { data: ownerProfile } = await supabase
+    .from("users")
+    .select("name, email, phone")
+    .eq("id", userId)
+    .maybeSingle();
+
+  // Get pet details for type/breed
+  const { data: petRow } = await supabase
+    .from("pets")
+    .select("type, breed")
+    .eq("owner_id", userId)
+    .eq("name", booking.petName)
+    .maybeSingle();
+
+  // Get provider policy to set down payment fields
+  let requiresDownPayment = false;
+  let downPaymentDeadlineHours = 24;
+  let editCancelGracePeriodHours = 24;
+  let price = 0;
+
+  if (booking.providerUserId) {
+    const [policyRow, serviceRow] = await Promise.all([
+      supabase
+        .from("provider_policies")
+        .select("deposit_required, down_payment_deadline_hours, cancellation_hours_notice")
+        .eq("user_id", booking.providerUserId)
+        .maybeSingle(),
+      supabase
+        .from("services")
+        .select("price")
+        .eq("id", booking.serviceId)
+        .maybeSingle(),
+    ]);
+
+    requiresDownPayment = policyRow.data?.deposit_required ?? false;
+    downPaymentDeadlineHours = policyRow.data?.down_payment_deadline_hours ?? 24;
+    editCancelGracePeriodHours = policyRow.data?.cancellation_hours_notice ?? 24;
+    price = serviceRow.data?.price ?? 0;
+  }
+
   let providerId = null;
   if (booking.providerUserId) {
     const { data: provRow } = await supabase
@@ -204,6 +249,12 @@ export const insertBooking = async (
     if (provRow) providerId = provRow.id;
   }
 
+  // If provider requires down payment → awaiting_downpayment
+  // Otherwise → pending (provider must accept/reject)
+  const initialStatus: BookingStatus = requiresDownPayment
+    ? "awaiting_downpayment"
+    : "pending";
+
   const { data, error } = await supabase
     .from("bookings")
     .insert({
@@ -213,16 +264,31 @@ export const insertBooking = async (
       service_name: booking.serviceName,
       provider_name: booking.providerName,
       pet_name: booking.petName,
+      pet_type: petRow?.type ?? "",
+      pet_breed: petRow?.breed ?? "",
+      owner_name: ownerProfile?.name ?? "",
+      owner_email: ownerProfile?.email ?? "",
+      owner_phone: ownerProfile?.phone ?? null,
       date: booking.date,
       time: booking.time,
-      status: booking.status,
+      status: initialStatus,
       notes: booking.notes ?? null,
       provider_phone: booking.providerPhone ?? null,
       provider_email: booking.providerEmail ?? null,
       provider_contact_link: booking.providerContactLink ?? null,
+      price,
+      requires_down_payment: requiresDownPayment,
+      down_payment_deadline_hours: downPaymentDeadlineHours,
+      edit_cancel_grace_period_hours: editCancelGracePeriodHours,
+      down_payment_paid: false,
+      down_payment_confirmed: false,
+      edit_request_status: "none",
+      cancel_request_status: "none",
+      created_at: new Date().toISOString(),
     })
     .select()
     .single();
+
   if (error) throw new Error(error.message);
 
   return {
@@ -238,11 +304,12 @@ export const insertBooking = async (
     providerPhone: data.provider_phone ?? undefined,
     providerEmail: data.provider_email ?? undefined,
     providerContactLink: data.provider_contact_link ?? undefined,
-    requiresDownPayment: false,
-    downPaymentDeadlineHours: 24,
-    editCancelGracePeriodHours: 24,
+    requiresDownPayment,
+    downPaymentDeadlineHours,
+    editCancelGracePeriodHours,
     createdAt: data.created_at ?? undefined,
     downPaymentPaid: false,
+    downPaymentConfirmed: false,
     editRequestStatus: "none",
     cancelRequestStatus: "none",
     rescheduleDate: undefined,
@@ -262,9 +329,10 @@ export const updateBookingRecord = async (
   if (updates.notes !== undefined) payload.notes = updates.notes;
   if (updates.downPaymentPaid !== undefined) payload.down_payment_paid = updates.downPaymentPaid;
   if (updates.downPaymentPaidAt !== undefined) payload.down_payment_paid_at = updates.downPaymentPaidAt;
+  if (updates.downPaymentConfirmed !== undefined) payload.down_payment_confirmed = updates.downPaymentConfirmed;
+  if (updates.downPaymentConfirmedAt !== undefined) payload.down_payment_confirmed_at = updates.downPaymentConfirmedAt;
   if (updates.editRequestStatus !== undefined) payload.edit_request_status = updates.editRequestStatus;
   if (updates.cancelRequestStatus !== undefined) payload.cancel_request_status = updates.cancelRequestStatus;
-  // ── Reschedule fields ────────────────────────────────────────────────────
   if (updates.rescheduleDate !== undefined) payload.reschedule_date = updates.rescheduleDate ?? null;
   if (updates.rescheduleTime !== undefined) payload.reschedule_time = updates.rescheduleTime ?? null;
   if (updates.rescheduleStatus !== undefined) payload.reschedule_status = updates.rescheduleStatus ?? null;
@@ -295,13 +363,48 @@ export const requestBookingCancel = async (bookingId: string): Promise<void> => 
   if (error) throw new Error(error.message);
 };
 
+/**
+ * Owner marks down payment as paid (cash handed to provider).
+ * Status moves to "payment_submitted" — provider must still confirm.
+ */
 export const payDownPayment = async (bookingId: string): Promise<void> => {
   const { error } = await supabase
     .from("bookings")
     .update({
       down_payment_paid: true,
       down_payment_paid_at: new Date().toISOString(),
-      status: "pending",
+      status: "payment_submitted",
+    })
+    .eq("id", bookingId);
+  if (error) throw new Error(error.message);
+};
+
+/**
+ * Provider confirms they received the down payment → booking becomes confirmed.
+ */
+export const confirmDownPayment = async (bookingId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      down_payment_confirmed: true,
+      down_payment_confirmed_at: new Date().toISOString(),
+      status: "confirmed",
+    })
+    .eq("id", bookingId);
+  if (error) throw new Error(error.message);
+};
+
+/**
+ * Provider rejects the down payment claim (e.g. payment not actually received).
+ * Booking reverts to awaiting_downpayment.
+ */
+export const rejectDownPayment = async (bookingId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      down_payment_paid: false,
+      down_payment_paid_at: null,
+      status: "awaiting_downpayment",
     })
     .eq("id", bookingId);
   if (error) throw new Error(error.message);
@@ -640,6 +743,8 @@ export const fetchProviderOwnBookings = async (userId: string) => {
     downPaymentDeadlineHours: row.down_payment_deadline_hours ?? 24,
     downPaymentPaid: row.down_payment_paid ?? false,
     downPaymentPaidAt: row.down_payment_paid_at ?? undefined,
+    downPaymentConfirmed: row.down_payment_confirmed ?? false,
+    downPaymentConfirmedAt: row.down_payment_confirmed_at ?? undefined,
     editCancelGracePeriodHours: row.edit_cancel_grace_period_hours ?? 24,
     editRequestStatus: row.edit_request_status ?? "none",
     cancelRequestStatus: row.cancel_request_status ?? "none",
@@ -663,7 +768,6 @@ export const updateProviderBookingStatus = async (
   if (extras?.rescheduleTime !== undefined) payload.reschedule_time = extras.rescheduleTime;
   if (extras?.editRequestStatus !== undefined) payload.edit_request_status = extras.editRequestStatus;
   if (extras?.cancelRequestStatus !== undefined) payload.cancel_request_status = extras.cancelRequestStatus;
-  // When the provider sends a reschedule proposal, mark it as pending owner response
   if (status === "rescheduled") payload.reschedule_status = "pending";
   const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
   if (error) throw new Error(error.message);

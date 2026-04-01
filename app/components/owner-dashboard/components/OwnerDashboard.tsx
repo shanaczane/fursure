@@ -66,10 +66,13 @@ const OwnerDashboard: React.FC = () => {
   ];
 
   const statusConfig: Record<string, { label: string; bg: string; color: string; icon: React.ReactNode }> = {
-    pending:   { label: "Pending",   bg: "#FEF3C7", color: "#92400E", icon: <ClockIcon /> },
-    confirmed: { label: "Confirmed", bg: "#DBEAFE", color: "#1E40AF", icon: <CalendarIcon /> },
-    completed: { label: "Completed", bg: "#D1FAE5", color: "#065F46", icon: <CheckIcon /> },
-    cancelled: { label: "Cancelled", bg: "#FEE2E2", color: "#991B1B", icon: <XIcon /> },
+    pending:              { label: "Pending",           bg: "#FEF3C7", color: "#92400E", icon: <ClockIcon /> },
+    awaiting_downpayment: { label: "Awaiting Payment",  bg: "#FFEDD5", color: "#9A3412", icon: <ClockIcon /> },
+    confirmed:            { label: "Confirmed",         bg: "#DBEAFE", color: "#1E40AF", icon: <CalendarIcon /> },
+    rescheduled:          { label: "Rescheduled",       bg: "#EDE9FE", color: "#5B21B6", icon: <CalendarIcon /> },
+    completed:            { label: "Completed",         bg: "#D1FAE5", color: "#065F46", icon: <CheckIcon /> },
+    cancelled:            { label: "Cancelled",         bg: "#FEE2E2", color: "#991B1B", icon: <XIcon /> },
+    declined:             { label: "Declined",          bg: "#F3F4F6", color: "#374151", icon: <XIcon /> },
   };
 
   return (
@@ -144,7 +147,7 @@ const OwnerDashboard: React.FC = () => {
                 ) : (
                   <div className="space-y-3">
                     {upcomingBookings.slice(0, 3).map((booking) => {
-                      const status = statusConfig[booking.status] || statusConfig.pending;
+                      const status = statusConfig[booking.status] ?? statusConfig.pending;
                       return (
                         <div key={booking.id} className="rounded-2xl p-5 border flex items-center gap-4"
                           style={{ background: "white", borderColor: "var(--border)" }}>
@@ -222,7 +225,7 @@ const OwnerDashboard: React.FC = () => {
                     <h2 className="font-800 text-base mb-4" style={{ color: "var(--fur-slate)" }}>Recent Activity</h2>
                     <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
                       {recentBookings.map((booking, idx) => {
-                        const status = statusConfig[booking.status] || statusConfig.pending;
+                        const status = statusConfig[booking.status] ?? statusConfig.pending;
                         return (
                           <div key={booking.id}
                             className={`flex items-center gap-3 p-4 ${idx < recentBookings.length - 1 ? "border-b" : ""}`}

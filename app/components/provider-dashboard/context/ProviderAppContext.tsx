@@ -138,6 +138,45 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
+  // Add this useEffect inside ProviderAppProvider, after the existing useEffect
+  useEffect(() => {
+    if (bookings.length === 0) return;
+
+    const expireDownPayments = async () => {
+      const now = Date.now();
+
+      const expiredIds = bookings
+        .filter((b) => {
+          if (b.status !== "awaiting_downpayment") return false;
+          if (b.downPaymentPaid) return false;
+          const deadlineMs = (b.downPaymentDeadlineHours ?? 24) * 60 * 60 * 1000;
+          return now - new Date(b.createdAt).getTime() > deadlineMs;
+        })
+        .map((b) => b.id);
+
+      if (expiredIds.length === 0) return;
+
+      // Update DB and local state for each expired booking
+      await Promise.all(
+        expiredIds.map((id) =>
+          updateProviderBookingStatus(id, "declined").catch(console.error)
+        )
+      );
+
+      setBookings((prev) =>
+        prev.map((b) =>
+          expiredIds.includes(b.id) ? { ...b, status: "declined" } : b
+        )
+      );
+    };
+
+    expireDownPayments();
+
+  // Re-check every 5 minutes while the provider is on the page
+  const interval = setInterval(expireDownPayments, 5 * 60 * 1000);
+  return () => clearInterval(interval);
+  }, [bookings]);
+
   const updateUser = (updates: Partial<ProviderUser>) =>
     setUser((prev) => ({ ...prev, ...updates }));
 
@@ -245,9 +284,9 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const rejectBooking = (id: string, providerNotes?: string) => {
-    setBookingStatus(id, "cancelled", { providerNotes });
+    setBookingStatus(id, "declined", { providerNotes });
 
-    updateProviderBookingStatus(id, "cancelled", {
+    updateProviderBookingStatus(id, "declined", {
       providerNotes,
     }).catch(console.error);
   };

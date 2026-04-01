@@ -19,9 +19,7 @@ interface UpcomingBookingsProps {
   onCancel?: (bookingId: string, needsApproval: boolean) => void;
   onDelete?: (bookingId: string) => void;
   onPayDownPayment?: (bookingId: string) => void;
-  /** Called when the owner confirms the provider's reschedule proposal */
   onConfirmReschedule?: (bookingId: string) => void;
-  /** Called when the owner declines the provider's reschedule proposal */
   onDeclineReschedule?: (bookingId: string) => void;
 }
 
@@ -58,11 +56,15 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
           const downPaymentExpired = isDownPaymentExpired(booking);
           const editApproved = booking.editRequestStatus === "approved";
 
-          // ── Reschedule proposal helpers ───────────────────────────────────
+          // ── Reschedule proposal helpers ────────────────────────────────────
           const hasRescheduleProposal =
             booking.status === "rescheduled" &&
             !!booking.rescheduleDate &&
             !!booking.rescheduleTime;
+
+          // ── Down payment state helpers ─────────────────────────────────────
+          // Owner has clicked "Mark as Paid" → waiting for provider to confirm
+          const paymentSubmitted = booking.status === "payment_submitted";
 
           return (
             <div
@@ -71,7 +73,7 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  {/* Header: name + status badge */}
+                  {/* Header: service name + status badge */}
                   <div className="flex items-center flex-wrap gap-2 mb-2">
                     <h3 className="font-semibold text-gray-900">{booking.serviceName}</h3>
                     <span
@@ -93,7 +95,6 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     </p>
                     <p className="flex items-center space-x-2">
                       <span>📅</span>
-                      {/* Show original date/time with strikethrough when a proposal is pending */}
                       {hasRescheduleProposal ? (
                         <span className="line-through text-gray-400">
                           {formatBookingDate(booking.date, booking.time)}
@@ -108,7 +109,7 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     <p className="mt-2 text-sm text-gray-500 italic">Note: {booking.notes}</p>
                   )}
 
-                  {/* ── Reschedule proposal banner ────────────────────────── */}
+                  {/* ── Reschedule proposal banner ──────────────────────────── */}
                   {hasRescheduleProposal && (
                     <div className="mt-3 pt-3 border-t border-purple-200 bg-purple-50 rounded-lg px-3 py-3">
                       <p className="text-sm font-semibold text-purple-800 mb-1">
@@ -139,7 +140,9 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     </div>
                   )}
 
-                  {/* ── Down payment banner ───────────────────────────────── */}
+                  {/* ── Down payment banners ────────────────────────────────── */}
+
+                  {/* State 1: Awaiting payment — owner needs to pay cash */}
                   {booking.status === "awaiting_downpayment" && (
                     <div
                       className={`mt-3 pt-3 border-t rounded-lg px-3 py-3 ${
@@ -154,7 +157,7 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                             ⛔ Down payment window closed
                           </p>
                           <p className="text-xs text-red-600">
-                            The 24-hour cash payment deadline has passed. This booking has been
+                            The payment deadline has passed. This booking has been
                             automatically cancelled.
                           </p>
                         </div>
@@ -166,7 +169,7 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                             </p>
                             <p className="text-xs text-orange-700 mt-0.5">
                               Pay the provider in cash within{" "}
-                              <strong>24 hours</strong> to confirm your booking.
+                              <strong>24 hours</strong> to hold your booking.
                               {hoursLeft > 0 && (
                                 <span className="font-bold">
                                   {" "}
@@ -174,8 +177,8 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                                   {Math.ceil(hoursLeft) !== 1 ? "s" : ""} left.
                                 </span>
                               )}{" "}
-                              If not paid in time, your booking will be{" "}
-                              <strong>automatically cancelled</strong>.
+                              Once paid, click the button below — the provider will
+                              verify and confirm your booking.
                             </p>
                           </div>
                           {onPayDownPayment && (
@@ -183,7 +186,7 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                               onClick={() => onPayDownPayment(booking.id)}
                               className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold transition-colors"
                             >
-                              Mark as Paid
+                              ✓ I've Paid — Notify Provider
                             </button>
                           )}
                         </div>
@@ -191,24 +194,34 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     </div>
                   )}
 
-                  {/* ── Grace period notice for pending bookings ──────────── */}
+                  {/* State 2: Payment submitted — waiting for provider to confirm */}
+                  {paymentSubmitted && (
+                    <div className="mt-3 pt-3 border-t border-blue-200 bg-blue-50 rounded-lg px-3 py-3">
+                      <p className="text-sm font-semibold text-blue-800 mb-1">
+                        🕐 Payment submitted — awaiting provider confirmation
+                      </p>
+                      <p className="text-xs text-blue-700">
+                        You've marked the down payment as paid. The provider will verify
+                        and confirm your booking shortly.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* ── Grace period / edit notices ─────────────────────────── */}
                   {booking.status === "pending" && !permissions.withinGracePeriod && (
                     <p className="mt-2 text-xs text-gray-400 italic">
                       Grace period expired — edits/cancellations no longer available.
                     </p>
                   )}
 
-                  {/* ── Approved edit notice ──────────────────────────────── */}
                   {editApproved && (
                     <div className="mt-3 pt-3 border-t border-green-100">
                       <p className="text-xs text-green-700 font-medium">
-                        ✅ Edit approved by provider — please update your booking details. Once
-                        submitted, the provider will re-confirm.
+                        ✅ Edit approved by provider — please update your booking details.
                       </p>
                     </div>
                   )}
 
-                  {/* ── Approval notice for confirmed bookings ────────────── */}
                   {booking.status === "confirmed" &&
                     !editApproved &&
                     booking.editRequestStatus !== "pending" && (
@@ -217,7 +230,6 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                       </p>
                     )}
 
-                  {/* Pending edit/cancel request notices */}
                   {booking.editRequestStatus === "pending" && (
                     <p className="mt-1 text-xs text-yellow-600">
                       🕐 Edit request sent — awaiting provider approval.
@@ -229,7 +241,7 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     </p>
                   )}
 
-                  {/* ── Contact provider (confirmed only) ────────────────── */}
+                  {/* ── Contact provider (confirmed only) ──────────────────── */}
                   {booking.status === "confirmed" &&
                     (booking.providerPhone ||
                       booking.providerEmail ||
@@ -280,56 +292,41 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                     )}
                 </div>
 
-                {/* ── Right column: date badge + action buttons ──────────── */}
+                {/* ── Right column: date badge + action buttons ─────────────── */}
                 <div className="ml-4 text-right space-y-2 shrink-0">
                   <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
                     {formatRelativeDate(
-                      // Show proposed date in the badge when rescheduled
                       hasRescheduleProposal ? booking.rescheduleDate! : booking.date
                     )}
                   </div>
 
-                  {/* Hide normal edit/cancel buttons while a reschedule is pending */}
-                  {!hasRescheduleProposal && (
+                  {/* Hide edit/cancel buttons while a reschedule or payment is pending */}
+                  {!hasRescheduleProposal && !paymentSubmitted && (
                     <div className="flex flex-col space-y-1">
-                      {/* Edit — approved path */}
                       {onEdit && editApproved && (
                         <button
                           onClick={() => onEdit(booking)}
                           className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-xs font-semibold transition-colors"
-                          title="Provider approved your edit — update your booking now"
                         >
                           ✏️ Edit Now
                         </button>
                       )}
 
-                      {/* Edit — normal path */}
                       {onEdit && !editApproved && permissions.canEdit && (
                         <button
                           onClick={() => onEdit(booking)}
                           className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-xs font-medium transition-colors"
-                          title={
-                            permissions.editNeedsProviderApproval
-                              ? "Request edit — provider must approve"
-                              : "Edit booking"
-                          }
                         >
                           {permissions.editNeedsProviderApproval ? "Request Edit" : "Edit"}
                         </button>
                       )}
 
-                      {/* Cancel */}
                       {onCancel && permissions.canCancel && (
                         <button
                           onClick={() =>
                             onCancel(booking.id, permissions.cancelNeedsProviderApproval)
                           }
                           className="px-3 py-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded text-xs font-medium transition-colors"
-                          title={
-                            permissions.cancelNeedsProviderApproval
-                              ? "Request cancellation — provider must approve"
-                              : "Cancel booking"
-                          }
                         >
                           {permissions.cancelNeedsProviderApproval
                             ? "Request Cancel"
@@ -337,7 +334,6 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
                         </button>
                       )}
 
-                      {/* Delete */}
                       {onDelete && permissions.canDelete && (
                         <button
                           onClick={() => onDelete(booking.id)}

@@ -601,9 +601,8 @@ const ProviderProfilePage: React.FC = () => {
                       <span className="shrink-0">🔔</span>
                       <span>
                         {policyForm.cancellationHoursNotice === 0
-                          ? <span>Owner may cancel at any time — no advance notice required.</span>
-                          : <span>Once confirmed, cancellations must be made at least <strong>{policyForm.cancellationHoursNotice} hour{policyForm.cancellationHoursNotice > 1 ? "s" : ""}</strong> before the appointment. Free cancellation is allowed while still <strong>Pending</strong> and within <strong>24 hours</strong> of submission.</span>
-                        }
+                          ? "Owner may cancel at any time."
+                          : `Cancellations must be made at least ${policyForm.cancellationHoursNotice} hours in advance.`}
                       </span>
                     </li>
                     {policyForm.additionalNotes && (

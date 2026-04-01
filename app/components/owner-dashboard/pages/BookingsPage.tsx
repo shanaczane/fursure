@@ -183,9 +183,9 @@ const BookingsPage: React.FC = () => {
   const handlePayDownPayment = (bookingId: string) => {
     setConfirmDialog({
       isOpen: true,
-      title: "Pay Down Payment",
+      title: "Confirm Down Payment",
       message:
-        "You'll be redirected to complete the down payment. Once paid, your booking will be submitted to the provider for confirmation.",
+        "By clicking confirm, you're confirming that you have already paid the down payment in cash to the provider. Your booking will be automatically confirmed.",
       confirmColor: "green",
       onConfirm: async () => {
         closeConfirm();
@@ -194,14 +194,14 @@ const BookingsPage: React.FC = () => {
           updateBooking(bookingId, {
             downPaymentPaid: true,
             downPaymentPaidAt: new Date().toISOString(),
-            status: "pending",
+            status: "confirmed", // ← was "pending"
           });
           showSuccess(
-            "Down Payment Received",
-            "Your down payment was successful. The provider will now review and confirm your booking."
+            "Down Payment Confirmed",
+            "Your booking is now confirmed. See you at your appointment!"
           );
         } catch {
-          showSuccess("Payment Failed", "Unable to process payment. Please try again.");
+          showSuccess("Error", "Unable to confirm payment. Please try again.");
         }
       },
     });

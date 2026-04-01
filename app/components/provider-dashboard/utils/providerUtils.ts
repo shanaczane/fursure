@@ -41,7 +41,12 @@ export const getUpcomingBookings = (bookings: ProviderBooking[]): ProviderBookin
   today.setHours(0, 0, 0, 0);
   return bookings
     .filter((b) => {
-      if (b.status !== "pending" && b.status !== "confirmed" && b.status !== "rescheduled") return false;
+      if (
+        b.status !== "pending" &&
+        b.status !== "awaiting_downpayment" &&
+        b.status !== "confirmed" &&
+        b.status !== "rescheduled"
+      ) return false;
       const bookingDate = new Date((b.rescheduleDate || b.date) + "T00:00:00");
       return bookingDate >= today;
     })

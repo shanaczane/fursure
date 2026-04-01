@@ -3,6 +3,7 @@ import {
   type Booking,
   type ServiceFilters,
   type BookingStatus,
+  type SortOption,
 } from "@/app/types";
 
 export const filterServices = (
@@ -18,7 +19,7 @@ export const filterServices = (
     )
       return false;
     if (service.rating < filters.minRating) return false;
-    if (parseFloat(service.distance) > filters.maxDistance) return false;
+    if (parseFloat(service.distance ?? "0") > filters.maxDistance) return false;
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       const text =
@@ -31,17 +32,20 @@ export const filterServices = (
 
 export const sortServices = (
   services: Service[],
-  sortBy: "rating" | "price" | "distance",
+  sortBy: SortOption,
 ): Service[] => {
   const sorted = [...services];
   switch (sortBy) {
     case "rating":
       return sorted.sort((a, b) => b.rating - a.rating);
-    case "price":
+    case "price_asc":
       return sorted.sort((a, b) => a.price - b.price);
+    case "price_desc":
+      return sorted.sort((a, b) => b.price - a.price);
     case "distance":
       return sorted.sort(
-        (a, b) => parseFloat(a.distance) - parseFloat(b.distance),
+        (a, b) =>
+          parseFloat(a.distance ?? "0") - parseFloat(b.distance ?? "0"),
       );
     default:
       return sorted;
