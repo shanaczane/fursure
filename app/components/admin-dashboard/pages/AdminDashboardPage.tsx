@@ -98,10 +98,7 @@ const AdminDashboardPage: React.FC = () => {
   const statCards = [
     { label: "Total Users", value: stats.totalUsers, icon: <UsersIcon />, color: "#3B82F6", bg: "#DBEAFE" },
     { label: "Providers", value: stats.totalProviders, icon: <BuildingIcon />, color: "#8B5CF6", bg: "#EDE9FE" },
-    { label: "Total Bookings", value: stats.totalBookings, icon: <CalendarIcon />, color: "var(--fur-teal)", bg: "var(--fur-teal-light)" },
     { label: "Pending Verify", value: stats.pendingVerifications, icon: <ClockIcon />, color: "#F59E0B", bg: "#FEF3C7" },
-    { label: "Active Services", value: stats.activeServices, icon: <WrenchIcon />, color: "#059669", bg: "#D1FAE5" },
-    { label: "Revenue (PHP)", value: formatCurrency(stats.totalRevenue), icon: <EarningsIcon />, color: "#DC2626", bg: "#FEE2E2" },
   ];
 
   const quickActions = [
@@ -168,7 +165,7 @@ const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {statCards.map((s) => (
                 <div key={s.label} className="rounded-xl p-4"
                   style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>

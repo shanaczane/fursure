@@ -34,7 +34,7 @@ const SearchIcon = () => (
 const UserAccountsPage: React.FC = () => {
   const { users, deleteUser, isLoading } = useAdminContext();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterRole, setFilterRole] = useState<"all" | "owner" | "provider" | "admin">("all");
+  const [filterRole, setFilterRole] = useState<"all" | "owner" | "provider">("all");
   const [sortBy, setSortBy] = useState<"name" | "date" | "bookings">("date");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -42,6 +42,7 @@ const UserAccountsPage: React.FC = () => {
 
   const filtered = useMemo(() => {
     let result = users.filter((u) => {
+      if (u.role === "admin") return false;
       if (filterRole !== "all" && u.role !== filterRole) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -80,18 +81,15 @@ const UserAccountsPage: React.FC = () => {
   const roleColors: Record<string, { bg: string; color: string }> = {
     owner: { bg: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" },
     provider: { bg: "#EDE9FE", color: "#5B21B6" },
-    admin: { bg: "#FEE2E2", color: "#991B1B" },
   };
 
   const ownerCount = users.filter((u) => u.role === "owner").length;
   const providerCount = users.filter((u) => u.role === "provider").length;
-  const adminCount = users.filter((u) => u.role === "admin").length;
 
-  const roleFilterOptions: { value: "all" | "owner" | "provider" | "admin"; label: string; icon: React.ReactNode }[] = [
+  const roleFilterOptions: { value: "all" | "owner" | "provider"; label: string; icon: React.ReactNode }[] = [
     { value: "all", label: "All", icon: <UsersIcon size={13} /> },
     { value: "owner", label: "Pet Owners", icon: <PersonIcon size={13} /> },
     { value: "provider", label: "Providers", icon: <BuildingIcon size={13} /> },
-    { value: "admin", label: "Admins", icon: <KeyIcon size={13} /> },
   ];
 
   return (
@@ -119,12 +117,11 @@ const UserAccountsPage: React.FC = () => {
         )}
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: "Total Users", value: users.length, bg: "#DBEAFE", color: "#1E40AF", icon: <UsersIcon /> },
+            { label: "Total Users", value: ownerCount + providerCount, bg: "#DBEAFE", color: "#1E40AF", icon: <UsersIcon /> },
             { label: "Pet Owners", value: ownerCount, bg: "var(--fur-teal-light)", color: "var(--fur-teal-dark)", icon: <PersonIcon /> },
             { label: "Providers", value: providerCount, bg: "#EDE9FE", color: "#5B21B6", icon: <BuildingIcon /> },
-            { label: "Admins", value: adminCount, bg: "#FEE2E2", color: "#991B1B", icon: <KeyIcon /> },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl p-5 border" style={{ background: "white", borderColor: "var(--border)" }}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: s.bg, color: s.color }}>
