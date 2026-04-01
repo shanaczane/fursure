@@ -1,8 +1,35 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useAdminContext, type UserRecord } from "../context/AdminContext";
+import { useAdminContext } from "../context/AdminContext";
 import AdminLayout from "../components/AdminLayout";
+
+const UsersIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+const PersonIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.582-7 8-7s8 3 8 7" />
+  </svg>
+);
+const BuildingIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+  </svg>
+);
+const KeyIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+  </svg>
+);
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
 
 const UserAccountsPage: React.FC = () => {
   const { users, deleteUser, isLoading } = useAdminContext();
@@ -60,6 +87,13 @@ const UserAccountsPage: React.FC = () => {
   const providerCount = users.filter((u) => u.role === "provider").length;
   const adminCount = users.filter((u) => u.role === "admin").length;
 
+  const roleFilterOptions: { value: "all" | "owner" | "provider" | "admin"; label: string; icon: React.ReactNode }[] = [
+    { value: "all", label: "All", icon: <UsersIcon size={13} /> },
+    { value: "owner", label: "Pet Owners", icon: <PersonIcon size={13} /> },
+    { value: "provider", label: "Providers", icon: <BuildingIcon size={13} /> },
+    { value: "admin", label: "Admins", icon: <KeyIcon size={13} /> },
+  ];
+
   return (
     <AdminLayout>
       <div className="space-y-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
@@ -77,23 +111,24 @@ const UserAccountsPage: React.FC = () => {
         {successMsg && (
           <div className="flex items-center gap-3 p-4 rounded-xl border"
             style={{ background: "#D1FAE5", borderColor: "#6EE7B7", color: "#065F46" }}>
-            <span className="text-sm font-700">{successMsg}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span className="font-700 text-sm">{successMsg}</span>
           </div>
         )}
 
         {/* Stats row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Total Users", value: users.length, bg: "#DBEAFE", color: "#1E40AF", icon: "👥" },
-            { label: "Pet Owners", value: ownerCount, bg: "var(--fur-teal-light)", color: "var(--fur-teal-dark)", icon: "🐾" },
-            { label: "Providers", value: providerCount, bg: "#EDE9FE", color: "#5B21B6", icon: "🏢" },
-            { label: "Admins", value: adminCount, bg: "#FEE2E2", color: "#991B1B", icon: "🔑" },
+            { label: "Total Users", value: users.length, bg: "#DBEAFE", color: "#1E40AF", icon: <UsersIcon /> },
+            { label: "Pet Owners", value: ownerCount, bg: "var(--fur-teal-light)", color: "var(--fur-teal-dark)", icon: <PersonIcon /> },
+            { label: "Providers", value: providerCount, bg: "#EDE9FE", color: "#5B21B6", icon: <BuildingIcon /> },
+            { label: "Admins", value: adminCount, bg: "#FEE2E2", color: "#991B1B", icon: <KeyIcon /> },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl p-5 border" style={{ background: "white", borderColor: "var(--border)" }}>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl" style={{ background: s.bg }}>
-                  {s.icon}
-                </div>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: s.bg, color: s.color }}>
+                {s.icon}
               </div>
               <p className="text-2xl font-900 mb-0.5" style={{ fontFamily: "'Fraunces', serif", color: s.color }}>{s.value}</p>
               <p className="text-xs font-600" style={{ color: "var(--fur-slate-light)" }}>{s.label}</p>
@@ -110,11 +145,10 @@ const UserAccountsPage: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name or email..."
-                className="fur-input pl-10"
+                className="fur-input"
+                style={{ paddingLeft: "2.5rem" }}
               />
-              <svg className="w-4 h-4 absolute left-3 top-3.5" style={{ color: "var(--fur-slate-light)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <span className="absolute left-3 top-3.5" style={{ color: "var(--fur-slate-light)" }}><SearchIcon /></span>
             </div>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="fur-input md:w-44">
               <option value="date">Newest First</option>
@@ -123,16 +157,17 @@ const UserAccountsPage: React.FC = () => {
             </select>
           </div>
           <div className="flex flex-wrap gap-2">
-            {(["all", "owner", "provider", "admin"] as const).map((role) => (
+            {roleFilterOptions.map((opt) => (
               <button
-                key={role}
-                onClick={() => setFilterRole(role)}
-                className="px-4 py-1.5 rounded-full text-sm font-700 border-2 transition-all capitalize"
-                style={filterRole === role
+                key={opt.value}
+                onClick={() => setFilterRole(opt.value)}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-700 border-2 transition-all"
+                style={filterRole === opt.value
                   ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
                   : { background: "white", color: "var(--fur-slate-mid)", borderColor: "var(--border)" }}
               >
-                {role === "all" ? "🐾 All" : role === "owner" ? "🐾 Pet Owners" : role === "provider" ? "🏢 Providers" : "🔑 Admins"}
+                {opt.icon}
+                {opt.label}
               </button>
             ))}
           </div>
@@ -148,7 +183,10 @@ const UserAccountsPage: React.FC = () => {
 
           {isLoading ? (
             <div className="p-12 text-center">
-              <p className="text-3xl mb-3 animate-pulse">👥</p>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 animate-pulse"
+                style={{ background: "#DBEAFE", color: "#3B82F6" }}>
+                <UsersIcon size={22} />
+              </div>
               <p className="font-700" style={{ color: "var(--fur-slate)" }}>Loading users...</p>
             </div>
           ) : (
@@ -168,10 +206,12 @@ const UserAccountsPage: React.FC = () => {
                   {filtered.map((user) => {
                     const rc = roleColors[user.role] ?? roleColors.owner;
                     return (
-                      <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={user.id}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-700 flex-shrink-0"
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-700 shrink-0"
                               style={{ background: "linear-gradient(135deg, var(--fur-teal), var(--fur-teal-dark))" }}>
                               {(user.name || "?").charAt(0).toUpperCase()}
                             </div>
@@ -208,13 +248,13 @@ const UserAccountsPage: React.FC = () => {
                               <button
                                 onClick={() => handleDelete(user.id, user.name)}
                                 disabled={actionLoading === user.id}
-                                className="text-xs font-700 px-3 py-1.5 rounded-lg text-white transition-colors disabled:opacity-60"
+                                className="text-xs font-700 px-3 py-1.5 rounded-xl text-white transition-colors disabled:opacity-60"
                                 style={{ background: "#EF4444" }}>
                                 {actionLoading === user.id ? "..." : "Confirm"}
                               </button>
                               <button
                                 onClick={() => setConfirmDelete(null)}
-                                className="text-xs font-700 px-3 py-1.5 rounded-lg border transition-colors"
+                                className="text-xs font-700 px-3 py-1.5 rounded-xl border transition-colors"
                                 style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}>
                                 Cancel
                               </button>
@@ -222,7 +262,7 @@ const UserAccountsPage: React.FC = () => {
                           ) : (
                             <button
                               onClick={() => setConfirmDelete(user.id)}
-                              className="text-xs font-700 px-3 py-1.5 rounded-lg border transition-colors"
+                              className="text-xs font-700 px-3 py-1.5 rounded-xl border transition-colors"
                               style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEE2E2" }}>
                               Remove
                             </button>
@@ -234,7 +274,10 @@ const UserAccountsPage: React.FC = () => {
                   {filtered.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-6 py-16 text-center">
-                        <p className="text-4xl mb-3">🔍</p>
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                          style={{ background: "var(--fur-mist)", color: "var(--fur-slate-light)" }}>
+                          <SearchIcon />
+                        </div>
                         <p className="font-700" style={{ color: "var(--fur-slate)" }}>No users found</p>
                         <p className="text-sm mt-1" style={{ color: "var(--fur-slate-light)" }}>Try adjusting your search or filters</p>
                       </td>
