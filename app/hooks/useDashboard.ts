@@ -53,13 +53,15 @@ export const useDashboard = ({
 
   const dashboardStats = useMemo(
     () => ({
-      upcomingBookings: upcomingBookings.length,
-      completedBookings: bookings.filter((b) => b.status === "completed")
-        .length,
+      upcomingBookings: bookings.filter((b) => b.status === "confirmed").length,
+      pendingBookings: bookings.filter(
+        (b) => b.status === "pending" || b.status === "awaiting_downpayment"
+      ).length,
+      completedBookings: bookings.filter((b) => b.status === "completed").length,
       totalPets: pets.length,
       totalServices: services.length,
     }),
-    [upcomingBookings, bookings, pets, services],
+    [bookings, pets, services],
   );
 
   const handleFilterChange = useCallback(
