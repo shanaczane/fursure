@@ -17,8 +17,8 @@ export default function Register() {
   const router = useRouter();
 
   const passwordRules = [
-    { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
-    { label: "Contains a number", test: (p: string) => /\d/.test(p) },
+    { label: "At least 8 characters",       test: (p: string) => p.length >= 8 },
+    { label: "Contains a number",            test: (p: string) => /\d/.test(p) },
     { label: "Contains a special character", test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
   ];
 
@@ -34,10 +34,7 @@ export default function Register() {
         password: formData.password,
         options: { data: { firstName: formData.firstName, lastName: formData.lastName, role: formData.role } },
       });
-      if (!isPasswordValid) {
-        setLoading(false);
-        return;
-      }
+      if (!isPasswordValid) { setLoading(false); return; }
       if (signupError) throw signupError;
       if (!authData.user) throw new Error("No user data returned");
 
@@ -64,66 +61,82 @@ export default function Register() {
     }
   };
 
-  const tabs: { role: RegisterRole; label: string; icon: string; desc: string }[] = [
-    { role: "PET_OWNER", label: "Pet Owner", icon: "🐾", desc: "Book and manage pet care services" },
-    { role: "SERVICE_PROVIDER", label: "Service Provider", icon: "🏢", desc: "List services and manage bookings" },
+  const tabs: { role: RegisterRole; label: string; desc: string }[] = [
+    { role: "PET_OWNER",        label: "Pet Owner",        desc: "Book and manage pet care services" },
+    { role: "SERVICE_PROVIDER", label: "Service Provider", desc: "List services and manage bookings"  },
   ];
 
   return (
-    <div className="min-h-screen flex" style={{ fontFamily: "'Nunito', sans-serif" }}>
-      {/* Left panel */}
-      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between p-12 auth-bg relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5" style={{
-          backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
-          backgroundSize: "32px 32px"
-        }} />
-        <div className="relative">
-          <div className="flex items-center gap-3 mb-16">
-            <span className="text-3xl">🐾</span>
-            <span className="text-3xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>FurSure</span>
+    <div className="min-h-screen flex flex-col" style={{
+      background: "linear-gradient(135deg, #1A2332 0%, #2D4A6B 100%)",
+      fontFamily: "'Nunito', sans-serif",
+    }}>
+      {/* Background texture */}
+      <div className="fixed inset-0 opacity-5 pointer-events-none" style={{
+        backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+        backgroundSize: "36px 36px",
+      }} />
+      <div className="fixed top-0 left-0 w-150 h-150 rounded-full opacity-10 blur-3xl pointer-events-none -translate-y-1/2 -translate-x-1/4"
+        style={{ background: "var(--fur-teal)" }} />
+
+      {/* Navbar */}
+      <nav className="relative z-10 flex items-center justify-between px-8 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: "var(--fur-teal)" }}>
+            <svg width="17" height="17" viewBox="0 0 100 100" fill="white">
+              <ellipse cx="50" cy="72" rx="22" ry="16" />
+              <ellipse cx="17" cy="44" rx="10" ry="13" />
+              <ellipse cx="37" cy="30" rx="10" ry="13" />
+              <ellipse cx="63" cy="30" rx="10" ry="13" />
+              <ellipse cx="83" cy="44" rx="10" ry="13" />
+            </svg>
           </div>
-          <h2 className="text-4xl font-900 text-white mb-6" style={{ fontFamily: "'Fraunces', serif" }}>
-            Join 10,000+ pet<br />lovers today
-          </h2>
-          <p style={{ color: "#7A90A8" }}>
-            Connect with the best local pet care providers and give your furry friend the life they deserve.
+          <span className="text-xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>FurSure</span>
+        </div>
+        <button
+          onClick={() => router.push("/login")}
+          className="text-sm font-700 px-5 py-2 rounded-full border transition-all"
+          style={{ borderColor: "rgba(255,255,255,0.3)", color: "white" }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.7)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; e.currentTarget.style.background = "transparent"; }}
+        >
+          Log In
+        </button>
+      </nav>
+
+      {/* Hero + Form */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12">
+        {/* Headline */}
+        <div className="text-center mb-8">
+          <p className="text-sm font-700 uppercase tracking-widest mb-4" style={{ color: "var(--fur-teal)" }}>
+            Get started
+          </p>
+          <h1 className="text-4xl md:text-6xl font-900 text-white mb-5 leading-tight"
+            style={{ fontFamily: "'Fraunces', serif" }}>
+            Join FurSure Today
+          </h1>
+          <p className="text-lg max-w-md mx-auto" style={{ color: "#7A90A8" }}>
+            Connect with trusted local pet care providers and give your furry friend the life they deserve.
           </p>
         </div>
-        <div className="relative space-y-4">
-          {["✂️ Professional Grooming", "🏥 Trusted Vets", "🎓 Expert Training", "🏠 Safe Boarding", "🚶 Daily Walking"].map((item) => (
-            <div key={item} className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full" style={{ background: "var(--fur-amber)" }} />
-              <span className="text-sm font-600" style={{ color: "#A0B8D0" }}>{item}</span>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto" style={{ background: "var(--fur-cream)" }}>
-        <div className="w-full max-w-lg py-8">
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <span className="text-2xl">🐾</span>
-            <span className="text-2xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-teal)" }}>FurSure</span>
-          </div>
+        {/* Form card */}
+        <div className="w-full max-w-lg rounded-3xl p-8 shadow-2xl" style={{ background: "white" }}>
 
-          <h1 className="text-3xl font-900 mb-2" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>Create Account</h1>
-          <p className="text-sm mb-8" style={{ color: "var(--fur-slate-light)" }}>Join FurSure and start booking trusted pet care.</p>
-
-          {/* Role selection cards */}
-          <div className="grid grid-cols-2 gap-3 mb-8">
+          {/* Role selection */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
             {tabs.map((tab) => (
               <button
                 key={tab.role}
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, role: tab.role }))}
-                className="p-4 rounded-xl border-2 text-left transition-all"
+                className="p-4 rounded-2xl border-2 text-left transition-all"
                 style={formData.role === tab.role
-                  ? { borderColor: "var(--fur-teal)", background: "var(--fur-teal-light)", boxShadow: "0 0 0 3px rgba(45,140,114,0.12)" }
-                  : { borderColor: "var(--border)", background: "white" }}
+                  ? { borderColor: "var(--fur-teal)", background: "var(--fur-teal-light)" }
+                  : { borderColor: "var(--border)", background: "var(--fur-cream)" }}
               >
-                <span className="text-2xl block mb-2">{tab.icon}</span>
-                <p className="font-700 text-sm mb-1" style={{ color: "var(--fur-slate)" }}>{tab.label}</p>
+                <p className="font-800 text-sm mb-1" style={{ color: "var(--fur-slate)" }}>{tab.label}</p>
                 <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{tab.desc}</p>
               </button>
             ))}
@@ -132,47 +145,29 @@ export default function Register() {
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>First Name</label>
-                <input
-                  type="text"
-                  value={formData.firstName}
+                <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>First Name</label>
+                <input type="text" value={formData.firstName}
                   onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                  required
-                  disabled={loading}
-                  placeholder="John"
-                  className="fur-input"
-                />
+                  required disabled={loading} placeholder="John" className="fur-input" />
               </div>
               <div>
-                <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Last Name</label>
-                <input
-                  type="text"
-                  value={formData.lastName}
+                <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Last Name</label>
+                <input type="text" value={formData.lastName}
                   onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                  required
-                  disabled={loading}
-                  placeholder="Doe"
-                  className="fur-input"
-                />
+                  required disabled={loading} placeholder="Doe" className="fur-input" />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>Email Address</label>
-              <input
-                type="email"
-                value={formData.email}
+              <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Email Address</label>
+              <input type="email" value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                required
-                disabled={loading}
-                placeholder="you@example.com"
-                className="fur-input"
-              />
+                required disabled={loading} placeholder="you@example.com" className="fur-input" />
             </div>
 
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Password</label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs font-700 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Password</label>
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="text-xs font-600" style={{ color: "var(--fur-slate-light)" }}>
                   {showPassword ? "Hide" : "Show"}
@@ -182,20 +177,21 @@ export default function Register() {
                 type={showPassword ? "text" : "password"}
                 value={formData.password}
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                minLength={8}
-                required
-                disabled={loading}
-                placeholder="Min. 8 characters"
-                className="fur-input"
-              />
+                minLength={8} required disabled={loading}
+                placeholder="Min. 8 characters" className="fur-input" />
               {formData.password.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {passwordRules.map((rule) => {
                     const passed = rule.test(formData.password);
                     return (
-                      <p key={rule.label} className="text-xs font-600 flex items-center gap-1"
+                      <p key={rule.label} className="text-xs font-600 flex items-center gap-1.5"
                         style={{ color: passed ? "var(--fur-teal)" : "var(--fur-rose)" }}>
-                        <span className="text-sm">{passed ? "✓" : "✗"}</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          {passed
+                            ? <><polyline points="20 6 9 17 4 12"/></>
+                            : <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+                          }
+                        </svg>
                         {rule.label}
                       </p>
                     );
@@ -205,23 +201,28 @@ export default function Register() {
             </div>
 
             {error && (
-              <div className="p-4 rounded-xl text-sm font-600" style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5" }}>
-                ⚠️ {error}
+              <div className="p-3 rounded-xl text-sm font-600 border" style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
+                {error}
               </div>
             )}
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-base disabled:opacity-60">
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-sm disabled:opacity-60">
               {loading ? "Creating account..." : `Create Account as ${formData.role === "SERVICE_PROVIDER" ? "Provider" : "Pet Owner"}`}
             </button>
           </form>
 
           <div className="mt-6 pt-6 border-t text-center" style={{ borderColor: "var(--border)" }}>
             <p className="text-sm mb-4" style={{ color: "var(--fur-slate-light)" }}>Already have an account?</p>
-            <button onClick={() => router.push("/login")} className="btn-secondary w-full py-3">
+            <button onClick={() => router.push("/login")} className="btn-secondary w-full py-2.5 text-sm">
               Log In
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="relative z-10 text-center py-5 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <p className="text-xs" style={{ color: "#4A6280" }}>© 2025 FurSure · Making pet care easy, one booking at a time</p>
       </div>
     </div>
   );

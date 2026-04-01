@@ -13,6 +13,58 @@ import {
 import { BOOKING_STATUS_CONFIG } from "../types";
 import ProviderLayout from "../components/ProviderLayout";
 
+const PendingIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+const CalendarIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+  </svg>
+);
+const WrenchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+  </svg>
+);
+const EarningsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+  </svg>
+);
+const PlusIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+const ScheduleIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
+  </svg>
+);
+const PersonIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.582-7 8-7s8 3 8 7" />
+  </svg>
+);
+const StarIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+const ClockIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+const PetIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+    <line x1="7" y1="7" x2="7.01" y2="7"/>
+  </svg>
+);
+
 const ProviderDashboardPage: React.FC = () => {
   const { user, services, bookings } = useProviderContext();
   const stats = getProviderDashboardStats(bookings, services);
@@ -27,17 +79,17 @@ const ProviderDashboardPage: React.FC = () => {
   };
 
   const statCards = [
-    { label: "Pending", value: stats.pendingBookings, icon: "⏳", color: "#F59E0B", bg: "#FEF3C7" },
-    { label: "Confirmed", value: stats.confirmedBookings, icon: "📅", color: "var(--fur-teal)", bg: "var(--fur-teal-light)" },
-    { label: "Active Services", value: stats.activeServices, icon: "🐾", color: "#8B5CF6", bg: "#EDE9FE" },
-    { label: "This Month", value: formatCurrency(stats.monthlyEarnings), icon: "💰", color: "#059669", bg: "#D1FAE5" },
+    { label: "Pending", value: stats.pendingBookings, icon: <PendingIcon />, color: "#F59E0B", bg: "#FEF3C7" },
+    { label: "Confirmed", value: stats.confirmedBookings, icon: <CalendarIcon />, color: "var(--fur-teal)", bg: "var(--fur-teal-light)" },
+    { label: "Active Services", value: stats.activeServices, icon: <WrenchIcon />, color: "#8B5CF6", bg: "#EDE9FE" },
+    { label: "This Month", value: formatCurrency(stats.monthlyEarnings), icon: <EarningsIcon />, color: "#059669", bg: "#D1FAE5" },
   ];
 
   const quickActions = [
-    { label: "Add Service", icon: "➕", href: "/provider/services/new", color: "var(--fur-teal-light)", accent: "var(--fur-teal)" },
-    { label: "View Bookings", icon: "📅", href: "/provider/bookings", color: "#FEF3C7", accent: "#92400E" },
-    { label: "My Schedule", icon: "🗓️", href: "/provider/schedule", color: "#EDE9FE", accent: "#5B21B6" },
-    { label: "Edit Profile", icon: "👤", href: "/provider/profile", color: "#D1FAE5", accent: "#065F46" },
+    { label: "Add Service", icon: <PlusIcon />, href: "/provider/services/new", color: "var(--fur-teal-light)", accent: "var(--fur-teal)" },
+    { label: "View Bookings", icon: <CalendarIcon />, href: "/provider/bookings", color: "#FEF3C7", accent: "#92400E" },
+    { label: "My Schedule", icon: <ScheduleIcon />, href: "/provider/schedule", color: "#EDE9FE", accent: "#5B21B6" },
+    { label: "Edit Profile", icon: <PersonIcon />, href: "/provider/profile", color: "#D1FAE5", accent: "#065F46" },
   ];
 
   return (
@@ -54,7 +106,7 @@ const ProviderDashboardPage: React.FC = () => {
           <div className="relative p-6 md:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
               <div>
-                <p className="text-sm font-600 mb-1" style={{ color: "#7A90A8" }}>{getGreeting()} 👋</p>
+                <p className="text-sm font-600 mb-1" style={{ color: "#7A90A8" }}>{getGreeting()}</p>
                 <h1 className="text-2xl md:text-3xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>
                   {user.businessName}
                 </h1>
@@ -67,7 +119,7 @@ const ProviderDashboardPage: React.FC = () => {
               {stats.averageRating > 0 && (
                 <div className="flex items-center gap-2 px-4 py-2 rounded-xl"
                   style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <span className="text-xl">⭐</span>
+                  <StarIcon />
                   <div>
                     <p className="text-xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>
                       {stats.averageRating}
@@ -82,7 +134,7 @@ const ProviderDashboardPage: React.FC = () => {
               {statCards.map((s) => (
                 <div key={s.label} className="rounded-xl p-4"
                   style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base mb-3" style={{ background: s.bg }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3" style={{ background: s.bg, color: s.color }}>
                     {s.icon}
                   </div>
                   <p className="text-xl font-900 text-white mb-0.5" style={{ fontFamily: "'Fraunces', serif" }}>{s.value}</p>
@@ -113,9 +165,9 @@ const ProviderDashboardPage: React.FC = () => {
               {pendingBookings.map((booking) => (
                 <div key={booking.id} className="px-6 py-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                      style={{ background: "#FEF3C7" }}>
-                      {booking.petType === "cat" ? "🐈" : "🐕"}
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: "#FEF3C7", color: "#92400E" }}>
+                      <PetIcon />
                     </div>
                     <div>
                       <p className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{booking.serviceName}</p>
@@ -146,7 +198,10 @@ const ProviderDashboardPage: React.FC = () => {
             </div>
             {upcomingBookings.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-4xl mb-3">📅</p>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                  style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal)" }}>
+                  <CalendarIcon />
+                </div>
                 <p className="font-700 mb-1" style={{ color: "var(--fur-slate)" }}>No upcoming bookings</p>
                 <Link href="/provider/services" className="text-sm font-700" style={{ color: "var(--fur-teal)" }}>
                   Activate your services
@@ -178,8 +233,8 @@ const ProviderDashboardPage: React.FC = () => {
                         <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
                           {booking.petName} · {booking.ownerName}
                         </p>
-                        <p className="text-xs font-700 mt-1" style={{ color: "var(--fur-teal)" }}>
-                          🕐 {formatRelativeDate(effectiveDate)} at {effectiveTime}
+                        <p className="text-xs font-700 mt-1 flex items-center gap-1" style={{ color: "var(--fur-teal)" }}>
+                          <ClockIcon /> {formatRelativeDate(effectiveDate)} at {effectiveTime}
                         </p>
                       </div>
                     </div>
@@ -230,8 +285,8 @@ const ProviderDashboardPage: React.FC = () => {
                   <Link key={action.label} href={action.href}
                     className="flex items-center gap-3 p-4 rounded-xl border-2 transition-all card-hover"
                     style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}>
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-                      style={{ background: action.color }}>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center"
+                      style={{ background: action.color, color: action.accent }}>
                       {action.icon}
                     </div>
                     <span className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{action.label}</span>

@@ -30,14 +30,14 @@ const ServicesPage: React.FC = () => {
     router.push(`/owner/services/${service.id}`);
   };
 
-  const categoryColors: Record<string, string> = {
-    grooming: { bg: "var(--fur-amber-light)", accent: "var(--fur-amber-dark)" },
-    veterinary: { bg: "var(--fur-teal-light)", accent: "var(--fur-teal-dark)" },
-    training: { bg: "#EDE9FE", accent: "#5B21B6" },
-    boarding: { bg: "#E0E7FF", accent: "#3730A3" },
-    walking: { bg: "#D1FAE5", accent: "#065F46" },
-    daycare: { bg: "#FEF3C7", accent: "#92400E" },
-  } as unknown as Record<string, string>;
+  const categoryColors: Record<string, { bg: string; accent: string }> = {
+    grooming:   { bg: "var(--fur-amber-light)",  accent: "var(--fur-amber-dark)" },
+    veterinary: { bg: "var(--fur-teal-light)",   accent: "var(--fur-teal-dark)" },
+    training:   { bg: "#EDE9FE",                 accent: "#5B21B6" },
+    boarding:   { bg: "#E0E7FF",                 accent: "#3730A3" },
+    walking:    { bg: "#D1FAE5",                 accent: "#065F46" },
+    daycare:    { bg: "#FEF3C7",                 accent: "#92400E" },
+  };
 
   return (
     <div className="min-h-screen" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
@@ -106,10 +106,13 @@ const ServicesPage: React.FC = () => {
                 {(filters.category !== "all" || filters.searchQuery) && (
                   <button
                     onClick={handleResetFilters}
-                    className="px-4 py-1.5 rounded-full text-sm font-700 border-2 transition-all"
+                    className="px-4 py-1.5 rounded-full text-sm font-700 border-2 transition-all flex items-center gap-1"
                     style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}
                   >
-                    ✕ Reset
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                    Reset
                   </button>
                 )}
               </div>
@@ -125,14 +128,19 @@ const ServicesPage: React.FC = () => {
             {/* Service grid */}
             {filteredServices.length === 0 ? (
               <div className="rounded-2xl p-16 text-center border" style={{ background: "white", borderColor: "var(--border)" }}>
-                <p className="text-5xl mb-4">🔍</p>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                  style={{ background: "var(--fur-mist)", color: "var(--fur-slate-light)" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                  </svg>
+                </div>
                 <p className="font-700 text-lg mb-2" style={{ color: "var(--fur-slate)" }}>No services found</p>
                 <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>Try adjusting your filters</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {filteredServices.map((service) => {
-                  const colors = (categoryColors[service.category] as unknown as { bg: string; accent: string }) || { bg: "var(--fur-sand)", accent: "var(--fur-brown)" };
+                  const colors = categoryColors[service.category] || { bg: "var(--fur-sand)", accent: "var(--fur-brown)" };
                   return (
                     <div
                       key={service.id}
@@ -146,7 +154,7 @@ const ServicesPage: React.FC = () => {
                           backgroundImage: "radial-gradient(circle at 80% 20%, rgba(255,255,255,0.8) 0%, transparent 60%)"
                         }} />
                         <span className="text-5xl relative z-10">{service.image}</span>
-                        <span className="absolute top-3 right-3 text-xs font-700 px-3 py-1 rounded-full bg-white"
+                        <span className="absolute top-3 right-3 text-xs font-700 px-3 py-1 rounded-full bg-white capitalize"
                           style={{ color: colors.accent }}>
                           {service.category}
                         </span>
@@ -154,15 +162,27 @@ const ServicesPage: React.FC = () => {
 
                       <div className="p-5">
                         <h3 className="font-800 text-base mb-1 truncate" style={{ color: "var(--fur-slate)" }}>{service.name}</h3>
-                        <p className="text-xs mb-3 truncate" style={{ color: "var(--fur-slate-light)" }}>🏢 {service.provider}</p>
+                        <div className="flex items-center gap-1.5 mb-3">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--fur-slate-light)", flexShrink: 0 }}>
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                          </svg>
+                          <p className="text-xs truncate" style={{ color: "var(--fur-slate-light)" }}>{service.provider}</p>
+                        </div>
 
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-1">
-                            <span className="text-amber-400">⭐</span>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
                             <span className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{service.rating}</span>
                             <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>({service.reviews})</span>
                           </div>
-                          <span className="text-xs font-600" style={{ color: "var(--fur-teal)" }}>📍 {service.distance}</span>
+                          <div className="flex items-center gap-1" style={{ color: "var(--fur-teal)" }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                            </svg>
+                            <span className="text-xs font-600">{service.distance}</span>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: "var(--border)" }}>

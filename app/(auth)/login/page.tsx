@@ -15,17 +15,11 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  const tabs: { role: UserRole; label: string; icon: string; desc: string }[] = [
-    { role: "PET_OWNER",        label: "Pet Owner",  icon: "🐾", desc: "Book & manage services"    },
-    { role: "SERVICE_PROVIDER", label: "Provider",   icon: "🏢", desc: "Manage your business"      },
-    { role: "ADMIN",            label: "Admin",      icon: "🔑", desc: "System administration"     },
+  const tabs: { role: UserRole; label: string }[] = [
+    { role: "PET_OWNER",        label: "Pet Owner"  },
+    { role: "SERVICE_PROVIDER", label: "Provider"   },
+    { role: "ADMIN",            label: "Admin"      },
   ];
-
-  const roleMap: Record<string, UserRole> = {
-    owner:    "PET_OWNER",
-    provider: "SERVICE_PROVIDER",
-    admin:    "ADMIN",
-  };
 
   const routes: Record<UserRole, string> = {
     PET_OWNER:        "/owner",
@@ -39,7 +33,6 @@ export default function Login() {
     setError(null);
 
     try {
-      // 1. Sign in with Supabase Auth
       const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password,
@@ -47,7 +40,6 @@ export default function Login() {
       if (loginError) throw loginError;
       if (!authData.session) throw new Error("No session returned");
 
-      // Fetch the user's actual role from the database
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("role")
@@ -72,12 +64,10 @@ export default function Login() {
         throw new Error(`This account is registered as a ${label}. Please select the correct role tab.`);
       }
 
-      // 4. Persist session cookies
       const token = authData.session.access_token;
       document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
       document.cookie = `role=${selectedRole}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Strict`;
 
-      // 5. Verify token via API then redirect
       const response = await fetch("/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -95,137 +85,78 @@ export default function Login() {
     }
   };
 
-  // Per-role accent colours used in the form
-  const roleAccent: Record<UserRole, { ring: string; btn: string; badge: string; badgeText: string }> = {
-    PET_OWNER:        { ring: "#2563EB", btn: "linear-gradient(135deg,#2563EB,#1D4ED8)",        badge: "#DBEAFE", badgeText: "#1E40AF" },
-    SERVICE_PROVIDER: { ring: "#7C3AED", btn: "linear-gradient(135deg,#7C3AED,#5B21B6)",        badge: "#EDE9FE", badgeText: "#5B21B6" },
-    ADMIN:            { ring: "#DC2626", btn: "linear-gradient(135deg,#EF4444,#DC2626)",        badge: "#FEE2E2", badgeText: "#991B1B" },
-  };
-
-  const accent = roleAccent[selectedRole];
-
-  // Left-panel flavour per role
-  const panelMeta: Record<UserRole, { headline: string; sub: string; cards: { emoji: string; name: string; detail: string; color: string }[] }> = {
-    PET_OWNER: {
-      headline: "Welcome back to\nyour pet care hub",
-      sub: "Manage bookings, track your pets' care history, and connect with trusted service providers.",
-      cards: [
-        { emoji: "🐕", name: "Max's Grooming",    detail: "Confirmed · Tomorrow 10am", color: "#FEF3C7" },
-        { emoji: "🐈", name: "Luna's Vet Visit",  detail: "Completed · Last week",     color: "#D1FAE5" },
-        { emoji: "🦴", name: "Charlie's Training",detail: "Pending · Friday 2pm",      color: "#EDE9FE" },
-      ],
-    },
-    SERVICE_PROVIDER: {
-      headline: "Manage your\nbusiness with ease",
-      sub: "Handle bookings, showcase your services, and grow your client base — all in one place.",
-      cards: [
-        { emoji: "📅", name: "3 bookings today",  detail: "2 confirmed · 1 pending",  color: "#DBEAFE" },
-        { emoji: "⭐", name: "Rating: 4.9",       detail: "127 total reviews",         color: "#FEF3C7" },
-        { emoji: "💰", name: "₱12,480 earned",    detail: "This month",               color: "#D1FAE5" },
-      ],
-    },
-    ADMIN: {
-      headline: "System\nAdministration",
-      sub: "Verify providers, monitor users, and keep the FurSure platform running smoothly.",
-      cards: [
-        { emoji: "✅", name: "Provider Queue",    detail: "3 awaiting verification",  color: "#FEE2E2" },
-        { emoji: "👥", name: "Active Users",      detail: "1,240 registered",         color: "#EDE9FE" },
-        { emoji: "📋", name: "System Activity",   detail: "48 events today",          color: "#FEF3C7" },
-      ],
-    },
-  };
-
-  const panel = panelMeta[selectedRole];
-
   return (
-    <div className="min-h-screen flex" style={{ fontFamily: "'Nunito', sans-serif" }}>
+    <div className="min-h-screen flex flex-col" style={{
+      background: "linear-gradient(135deg, #1A2332 0%, #2D4A6B 100%)",
+      fontFamily: "'Nunito', sans-serif",
+    }}>
+      {/* Subtle background texture */}
+      <div className="fixed inset-0 opacity-5 pointer-events-none" style={{
+        backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
+        backgroundSize: "36px 36px",
+      }} />
+      <div className="fixed top-0 right-0 w-150 h-150 rounded-full opacity-10 blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/4"
+        style={{ background: "var(--fur-teal)" }} />
 
-      {/* ── Left panel ── */}
-      <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden transition-all duration-500"
-        style={{ background: "linear-gradient(145deg,#0F172A 0%,#1E293B 100%)" }}
-      >
-        {/* dot grid */}
-        <div className="absolute inset-0 opacity-5" style={{
-          backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }} />
-        {/* accent blob */}
-        <div
-          className="absolute -top-32 -right-32 w-96 h-96 rounded-full opacity-20 blur-3xl transition-all duration-700"
-          style={{ background: accent.ring }}
-        />
-
-        <div className="relative">
-          <div className="flex items-center gap-3 mb-16">
-            <span className="text-3xl">🐾</span>
-            <span className="text-3xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>
-              FurSure
-            </span>
+      {/* Navbar */}
+      <nav className="relative z-10 flex items-center justify-between px-8 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: "var(--fur-teal)" }}>
+            <svg width="17" height="17" viewBox="0 0 100 100" fill="white">
+              <ellipse cx="50" cy="72" rx="22" ry="16" />
+              <ellipse cx="17" cy="44" rx="10" ry="13" />
+              <ellipse cx="37" cy="30" rx="10" ry="13" />
+              <ellipse cx="63" cy="30" rx="10" ry="13" />
+              <ellipse cx="83" cy="44" rx="10" ry="13" />
+            </svg>
           </div>
-          <h2
-            className="text-4xl font-900 text-white mb-6 leading-tight whitespace-pre-line"
-            style={{ fontFamily: "'Fraunces', serif" }}
-          >
-            {panel.headline}
-          </h2>
-          <p className="text-lg" style={{ color: "#7A90A8" }}>
-            Manage bookings, track your pets&apos; care history, and connect with trusted service providers.
+          <span className="text-xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>FurSure</span>
+        </div>
+        <button
+          onClick={() => router.push("/register")}
+          className="text-sm font-700 px-5 py-2 rounded-full border transition-all"
+          style={{ borderColor: "rgba(255,255,255,0.3)", color: "white" }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.7)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; e.currentTarget.style.background = "transparent"; }}
+        >
+          Create Account
+        </button>
+      </nav>
+
+      {/* Hero + Form */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-16">
+        {/* Headline */}
+        <div className="text-center mb-10">
+          <p className="text-sm font-700 uppercase tracking-widest mb-4" style={{ color: "var(--fur-teal)" }}>
+            Welcome back
           </p>
-        </div>
-
-        <div className="relative space-y-3">
-          {panel.cards.map((card) => (
-            <div
-              key={card.name}
-              className="flex items-center gap-4 p-4 rounded-2xl"
-              style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
-            >
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl" style={{ background: card.color }}>
-                {card.emoji}
-              </div>
-              <div>
-                <p className="font-700 text-white text-sm">{card.name}</p>
-                <p className="text-xs" style={{ color: "#7A90A8" }}>{card.detail}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Right panel ── */}
-      <div className="flex-1 flex items-center justify-center p-8" style={{ background: "var(--fur-cream)" }}>
-        <div className="w-full max-w-md">
-
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <span className="text-2xl">🐾</span>
-            <span className="text-2xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-teal)" }}>
-              FurSure
-            </span>
-          </div>
-
-          <h1 className="text-3xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
-            Log In
+          <h1 className="text-4xl md:text-6xl font-900 text-white mb-5 leading-tight"
+            style={{ fontFamily: "'Fraunces', serif" }}>
+            Your Pet Hub Awaits
           </h1>
-          <p className="text-sm mb-8" style={{ color: "var(--fur-slate-light)" }}>
-            Select your role and sign in to continue.
+          <p className="text-lg max-w-md mx-auto" style={{ color: "#7A90A8" }}>
+            Sign in to manage bookings, track your pets&apos; care, and connect with trusted providers.
           </p>
+        </div>
+
+        {/* Form card */}
+        <div className="w-full max-w-md rounded-3xl p-8 shadow-2xl"
+          style={{ background: "white" }}>
 
           {/* Role tabs */}
-          <div className="flex gap-2 mb-8 p-1 rounded-xl" style={{ background: "var(--fur-mist)" }}>
+          <div className="flex gap-1.5 mb-7 p-1 rounded-xl" style={{ background: "var(--fur-mist)" }}>
             {tabs.map((tab) => (
-              <button 
+              <button
                 key={tab.role}
                 type="button"
                 onClick={() => setSelectedRole(tab.role)}
-                className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-700 transition-all"
+                className="flex-1 py-2 px-3 rounded-lg text-sm font-700 transition-all"
                 style={selectedRole === tab.role
                   ? { background: "white", color: "var(--fur-teal)", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }
                   : { color: "var(--fur-slate-light)" }}
               >
-                <span>{tab.icon}</span>
-                <span>{tab.label}</span>
+                {tab.label}
               </button>
             ))}
           </div>
@@ -233,7 +164,7 @@ export default function Login() {
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Email */}
             <div>
-              <label className="block text-sm font-700 mb-2" style={{ color: "var(--fur-slate)" }}>
+              <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>
                 Email Address
               </label>
               <input
@@ -244,15 +175,14 @@ export default function Login() {
                 disabled={loading}
                 placeholder="you@example.com"
                 className="fur-input"
-                style={{ "--tw-ring-color": accent.ring } as React.CSSProperties}
               />
             </div>
 
             {/* Password */}
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Password</label>
-                <a href="/forgot-password" className="text-xs font-600 hover:underline" style={{ color: accent.ring }}>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs font-700 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Password</label>
+                <a href="/forgot-password" className="text-xs font-600 hover:underline" style={{ color: "var(--fur-teal)" }}>
                   Forgot password?
                 </a>
               </div>
@@ -264,7 +194,7 @@ export default function Login() {
                   required
                   disabled={loading}
                   placeholder="••••••••"
-                  className="fur-input pr-12"
+                  className="fur-input pr-16"
                 />
                 <button
                   type="button"
@@ -277,31 +207,36 @@ export default function Login() {
               </div>
             </div>
 
-            <p className="text-xs font-600 min-h-4" style={{ color: "var(--fur-rose)" }}>
-              {error ? `✗ ${error}` : ""}
-            </p>
+            {error && (
+              <p className="text-xs font-600" style={{ color: "var(--fur-rose)" }}>
+                {error}
+              </p>
+            )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full py-3 text-base disabled:opacity-60"
+              className="btn-primary w-full py-3 text-sm disabled:opacity-60"
             >
-              <span className="invisible absolute">{`Log In as ${tabs.find(t => t.role === selectedRole)?.label}`}</span>
-              <span>{loading ? "Logging in..." : `Log In as ${tabs.find(t => t.role === selectedRole)?.label}`}</span>
+              {loading ? "Logging in..." : `Log In as ${tabs.find(t => t.role === selectedRole)?.label}`}
             </button>
           </form>
 
-          <div className="mt-8 pt-8 border-t text-center" style={{ borderColor: "var(--border)" }}>
+          <div className="mt-6 pt-6 border-t text-center" style={{ borderColor: "var(--border)" }}>
             <p className="text-sm mb-4" style={{ color: "var(--fur-slate-light)" }}>Don&apos;t have an account?</p>
             <button
               onClick={() => router.push("/register")}
-              className="btn-secondary w-full py-3 text-base"
+              className="btn-secondary w-full py-2.5 text-sm"
             >
               Create an Account
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="relative z-10 text-center py-5 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <p className="text-xs" style={{ color: "#4A6280" }}>© 2025 FurSure · Making pet care easy, one booking at a time</p>
       </div>
     </div>
   );
