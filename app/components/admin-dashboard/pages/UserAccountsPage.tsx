@@ -116,23 +116,6 @@ const UserAccountsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Stats row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { label: "Total Users", value: ownerCount + providerCount, bg: "#DBEAFE", color: "#1E40AF", icon: <UsersIcon /> },
-            { label: "Pet Owners", value: ownerCount, bg: "var(--fur-teal-light)", color: "var(--fur-teal-dark)", icon: <PersonIcon /> },
-            { label: "Providers", value: providerCount, bg: "#EDE9FE", color: "#5B21B6", icon: <BuildingIcon /> },
-          ].map((s) => (
-            <div key={s.label} className="rounded-2xl p-5 border" style={{ background: "white", borderColor: "var(--border)" }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: s.bg, color: s.color }}>
-                {s.icon}
-              </div>
-              <p className="text-2xl font-900 mb-0.5" style={{ fontFamily: "'Fraunces', serif", color: s.color }}>{s.value}</p>
-              <p className="text-xs font-600" style={{ color: "var(--fur-slate-light)" }}>{s.label}</p>
-            </div>
-          ))}
-        </div>
-
         {/* Filters */}
         <div className="rounded-2xl p-5 border" style={{ background: "white", borderColor: "var(--border)" }}>
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
