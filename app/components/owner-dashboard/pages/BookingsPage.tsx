@@ -179,31 +179,30 @@ const BookingsPage: React.FC = () => {
   };
 
   // ── Down payment ───────────────────────────────────────────────────────────
-  // FIX: status moves to "payment_submitted" (not "confirmed") so the provider
-  // must still verify they received the cash before the booking is confirmed.
 
   const handlePayDownPayment = (bookingId: string) => {
     setConfirmDialog({
       isOpen: true,
       title: "Confirm Down Payment",
       message:
-        "By clicking confirm, you're telling the provider you've already paid the down payment in cash. They will verify and confirm your booking shortly.",
+        "By clicking confirm, you're confirming that you have already paid the down payment in cash to the provider.",
       confirmColor: "green",
       onConfirm: async () => {
         closeConfirm();
         try {
-          await payDownPayment(bookingId);
+          await payDownPayment(bookingId); // sets payment_submitted in Supabase
           updateBooking(bookingId, {
             downPaymentPaid: true,
             downPaymentPaidAt: new Date().toISOString(),
-            status: "payment_submitted", // ← provider must still confirm
+            status: "payment_submitted", // ← wait for provider to confirm
           });
           showSuccess(
-            "Payment Notification Sent",
-            "The provider has been notified. Your booking will be confirmed once they verify the payment."
+            "Payment Submitted",
+            "The provider will verify your payment and confirm your booking shortly."
           );
-        } catch {
-          showSuccess("Error", "Unable to confirm payment. Please try again.");
+        } catch (err) {
+          console.error("payDownPayment error:", err);
+          showSuccess("Error", "Unable to submit payment. Please try again.");
         }
       },
     });
@@ -335,6 +334,7 @@ const BookingsPage: React.FC = () => {
     const pet = pets.find((p) => p.id === petId);
     if (!service || !pet) return;
 
+    // Fetch latest provider contact info for the new booking
     let contactInfo = {
       providerPhone: undefined as string | undefined,
       providerEmail: undefined as string | undefined,
@@ -344,7 +344,7 @@ const BookingsPage: React.FC = () => {
       try {
         contactInfo = await fetchProviderContactInfo(service.providerUserId);
       } catch {
-        // non-fatal
+        // non-fatal — booking still works without contact info
       }
     }
 
@@ -353,6 +353,7 @@ const BookingsPage: React.FC = () => {
         serviceId: service.id,
         serviceName: service.name,
         providerName: service.provider,
+        // ↓ Critical: links the booking row to the provider so they can see it
         providerUserId: service.providerUserId,
         date,
         time,

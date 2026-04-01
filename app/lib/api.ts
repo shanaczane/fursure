@@ -373,10 +373,13 @@ export const payDownPayment = async (bookingId: string): Promise<void> => {
     .update({
       down_payment_paid: true,
       down_payment_paid_at: new Date().toISOString(),
-      status: "payment_submitted",
+      status: "payment_submitted", // ← provider still needs to confirm
     })
     .eq("id", bookingId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("payDownPayment error:", error);
+    throw new Error(error.message);
+  }
 };
 
 /**

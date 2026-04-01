@@ -31,7 +31,7 @@ export const getProviderDashboardStats = (
       (b) => b.status === "awaiting_downpayment"
     ).length,
     paymentSubmittedBookings: bookings.filter(
-    (b) => b.status === "payment_submitted"
+      (b) => b.status === "payment_submitted"
     ).length,
     confirmedBookings: bookings.filter((b) => b.status === "confirmed").length,
     completedBookings: completed.length,
@@ -53,14 +53,17 @@ export const getUpcomingBookings = (
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const UPCOMING_STATUSES = new Set([
+    "pending",
+    "awaiting_downpayment",
+    "payment_submitted",
+    "confirmed",
+    "rescheduled",
+  ]);
+
   return bookings
     .filter((b) => {
-      if (
-        b.status !== "pending" &&
-        b.status !== "confirmed" &&
-        b.status !== "rescheduled"
-      )
-        return false;
+      if (!UPCOMING_STATUSES.has(b.status)) return false;
 
       const bookingDate = new Date(
         (b.rescheduleDate || b.date) + "T00:00:00"
@@ -70,17 +73,11 @@ export const getUpcomingBookings = (
     })
     .sort((a, b) => {
       const dateA = new Date(
-        (a.rescheduleDate || a.date) +
-          "T" +
-          (a.rescheduleTime || a.time)
+        (a.rescheduleDate || a.date) + "T" + (a.rescheduleTime || a.time)
       );
-
       const dateB = new Date(
-        (b.rescheduleDate || b.date) +
-          "T" +
-          (b.rescheduleTime || b.time)
+        (b.rescheduleDate || b.date) + "T" + (b.rescheduleTime || b.time)
       );
-
       return dateA.getTime() - dateB.getTime();
     });
 };
@@ -94,17 +91,13 @@ export const getPastBookings = (
     .filter((b) => b.status === "completed" || b.status === "cancelled")
     .sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() -
-        new Date(a.createdAt).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 };
 
 // ───────────────── Date Formatting ─────────────────
 
-export const formatBookingDateTime = (
-  date: string,
-  time: string
-): string => {
+export const formatBookingDateTime = (date: string, time: string): string => {
   const d = new Date(date + "T00:00:00");
 
   const options: Intl.DateTimeFormatOptions = {
@@ -114,21 +107,14 @@ export const formatBookingDateTime = (
   };
 
   const timeFormatted = formatTime(time);
-
   return `${d.toLocaleDateString("en-US", options)} at ${timeFormatted}`;
 };
 
-// ✅ Added (fix for your SchedulePage error)
-
 export const formatTime = (time: string): string => {
   const [hourStr, min] = time.split(":");
-
   const hour = parseInt(hourStr, 10);
-
   const ampm = hour >= 12 ? "PM" : "AM";
-
   const hour12 = hour % 12 || 12;
-
   return `${hour12}:${min} ${ampm}`;
 };
 
@@ -136,7 +122,6 @@ export const formatTime = (time: string): string => {
 
 export const formatRelativeDate = (date: string): string => {
   const d = new Date(date + "T00:00:00");
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -146,21 +131,15 @@ export const formatRelativeDate = (date: string): string => {
   d.setHours(0, 0, 0, 0);
 
   if (d.getTime() === today.getTime()) return "Today";
-
   if (d.getTime() === tomorrow.getTime()) return "Tomorrow";
 
   const diff = Math.ceil(
-    (d.getTime() - today.getTime()) /
-      (1000 * 60 * 60 * 24)
+    (d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  if (diff > 0 && diff <= 7)
-    return `In ${diff} day${diff === 1 ? "" : "s"}`;
+  if (diff > 0 && diff <= 7) return `In ${diff} day${diff === 1 ? "" : "s"}`;
 
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
 // ───────────────── Currency ─────────────────
@@ -179,7 +158,6 @@ export const getBookingsForDate = (
 ): ProviderBooking[] =>
   bookings.filter((b) => {
     const effectiveDate = b.rescheduleDate || b.date;
-
     return effectiveDate === date && b.status !== "cancelled";
   });
 
@@ -188,15 +166,11 @@ export const generateCalendarDays = (
   month: number
 ): (Date | null)[] => {
   const firstDay = new Date(year, month, 1).getDay();
-
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-
   const days: (Date | null)[] = [];
 
   for (let i = 0; i < firstDay; i++) days.push(null);
-
-  for (let d = 1; d <= daysInMonth; d++)
-    days.push(new Date(year, month, d));
+  for (let d = 1; d <= daysInMonth; d++) days.push(new Date(year, month, d));
 
   return days;
 };
@@ -217,8 +191,19 @@ export const filterAndSortBookings = (
 
   return bookings
     .filter((b) => {
-      if (filters.status !== "all" && b.status !== filters.status)
-        return false;
+      // Group awaiting_downpayment and payment_submitted under "pending" tab
+      if (filters.status !== "all") {
+        if (filters.status === "pending") {
+          if (
+            b.status !== "pending" &&
+            b.status !== "awaiting_downpayment" &&
+            b.status !== "payment_submitted"
+          )
+            return false;
+        } else {
+          if (b.status !== filters.status) return false;
+        }
+      }
 
       if (filters.serviceId !== "all" && b.serviceId !== filters.serviceId)
         return false;
@@ -235,21 +220,18 @@ export const filterAndSortBookings = (
         if (filters.dateRange === "week") {
           const weekEnd = new Date(today);
           weekEnd.setDate(weekEnd.getDate() + 7);
-
           if (d < today || d > weekEnd) return false;
         }
 
         if (filters.dateRange === "month") {
           const monthEnd = new Date(today);
           monthEnd.setMonth(monthEnd.getMonth() + 1);
-
           if (d < today || d > monthEnd) return false;
         }
       }
 
       if (filters.searchQuery) {
         const q = filters.searchQuery.toLowerCase();
-
         if (
           !b.ownerName.toLowerCase().includes(q) &&
           !b.petName.toLowerCase().includes(q) &&
@@ -262,7 +244,6 @@ export const filterAndSortBookings = (
     })
     .sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() -
-        new Date(a.createdAt).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 };

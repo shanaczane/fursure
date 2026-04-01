@@ -58,7 +58,7 @@ interface ProviderContextType {
   updateBooking: (id: string, updates: Partial<ProviderBooking>) => void;
 
   // Confirm cash payment received → moves booking to confirmed
-  confirmPaymentReceived: (id: string) => void;
+  confirmPaymentReceived: (id: string) => Promise<void>;
 }
 
 const EMPTY_USER: ProviderUser = {
@@ -230,7 +230,7 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     );
 
   const updateBooking = (id: string, updates: Partial<ProviderBooking>) => {
-    // Update local state immediately with all fields including payment fields
+    // Update local state immediately
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, ...updates } : b))
     );
@@ -238,8 +238,7 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     const current = bookings.find((b) => b.id === id);
     const status = updates.status ?? current?.status ?? "pending";
 
-    // Only pass fields that updateProviderBookingStatus accepts
-    // Payment confirmation fields are handled via direct Supabase update below
+    // Persist status + standard fields
     updateProviderBookingStatus(id, status, {
       providerNotes: updates.providerNotes,
       rescheduleDate: updates.rescheduleDate,
@@ -248,7 +247,7 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
       cancelRequestStatus: updates.cancelRequestStatus,
     }).catch(console.error);
 
-    // If payment fields are being updated, write them directly to Supabase
+    // Persist payment fields directly if present
     const paymentUpdates: Record<string, unknown> = {};
     if (updates.downPaymentPaid !== undefined)
       paymentUpdates.down_payment_paid = updates.downPaymentPaid;
@@ -312,15 +311,65 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     }).catch(console.error);
   };
 
-  // Provider confirms cash payment received → moves to confirmed
-  const confirmPaymentReceived = (id: string) => {
+  // FIX: confirmPaymentReceived — bypass updateBooking entirely to avoid
+  // double Supabase calls and silent failures. Optimistically update local
+  // state first, then write both status + payment fields in a single query.
+  // If Supabase fails, roll back local state so the UI stays consistent.
+  const confirmPaymentReceived = async (id: string): Promise<void> => {
     const now = new Date().toISOString();
-    updateBooking(id, {
-      status: "confirmed",
-      downPaymentPaid: true,
-      downPaymentConfirmed: true,
-      downPaymentConfirmedAt: now,
-    });
+
+    setBookings((prev) =>
+      prev.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              status: "confirmed" as BookingStatus,
+              downPaymentPaid: true,
+              downPaymentConfirmed: true,
+              downPaymentConfirmedAt: now,
+            }
+          : b
+      )
+    );
+
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          status: "confirmed",
+          down_payment_paid: true,
+          down_payment_confirmed: true,
+          down_payment_confirmed_at: now,
+        })
+        .eq("id", id);
+
+      if (error) {
+        // Log full error details
+        console.error("Supabase error code:", error.code);
+        console.error("Supabase error message:", error.message);
+        console.error("Supabase error details:", error.details);
+        console.error("Supabase error hint:", error.hint);
+        throw error;
+      }
+    } catch (err) {
+      console.error("confirmPaymentReceived failed:", JSON.stringify(err, null, 2));
+
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === id
+            ? {
+                ...b,
+                status: "payment_submitted" as BookingStatus,
+                downPaymentPaid: false,
+                downPaymentConfirmed: false,
+                downPaymentConfirmedAt: undefined,
+              }
+            : b
+        )
+      );
+
+      throw err;
+    }
   };
 
   return (
