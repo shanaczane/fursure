@@ -12,6 +12,7 @@ interface BookingHistoryProps {
   onCancel?: (bookingId: string) => void;
   onBookAgain?: (booking: Booking) => void;
   onLeaveReview?: (booking: Booking) => void;
+  reviewedBookingIds?: Set<string>;
 }
 
 const BookingHistory: React.FC<BookingHistoryProps> = ({
@@ -21,9 +22,13 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
   onCancel,
   onBookAgain,
   onLeaveReview,
+  reviewedBookingIds,
 }) => {
   const [showAll, setShowAll] = useState(false);
   const displayBookings = showAll ? bookings : bookings.slice(0, 5);
+
+  const hasReviewed = (booking: Booking) =>
+    reviewedBookingIds?.has(booking.id) ?? false;
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
@@ -123,6 +128,7 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
                         )}
                       </>
                     )}
+
                     {booking.status === "confirmed" && (
                       <>
                         {onCancel && (
@@ -135,6 +141,7 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
                         )}
                       </>
                     )}
+
                     {booking.status === "completed" && (
                       <>
                         {onBookAgain && (
@@ -145,7 +152,9 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
                             Book Again
                           </button>
                         )}
-                        {onLeaveReview && (
+
+                        {/* Leave Review — hidden once reviewed */}
+                        {onLeaveReview && !hasReviewed(booking) && (
                           <button
                             onClick={() => onLeaveReview(booking)}
                             className="px-4 py-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg text-sm font-medium transition-colors"
@@ -153,6 +162,19 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
                             Leave Review
                           </button>
                         )}
+
+                        {/* Reviewed badge — shown after review submitted */}
+                        {hasReviewed(booking) && (
+                          <span className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5"
+                            style={{ background: "#D1FAE5", color: "#065F46" }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                              stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            Reviewed
+                          </span>
+                        )}
+
                         {onDelete && (
                           <button
                             onClick={() => onDelete(booking.id)}
@@ -163,6 +185,7 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
                         )}
                       </>
                     )}
+
                     {booking.status === "cancelled" && (
                       <>
                         {onBookAgain && (
@@ -188,6 +211,7 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
               </div>
             ))}
           </div>
+
           {bookings.length > 5 && (
             <div className="mt-6 text-center">
               <button

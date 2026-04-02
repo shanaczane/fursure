@@ -31,6 +31,7 @@ const BookingsPage: React.FC = () => {
   const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
   const [bookAgainBooking, setBookAgainBooking] = useState<Booking | null>(null);
   const [isBookAgainFormOpen, setIsBookAgainFormOpen] = useState(false);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: "",
@@ -56,7 +57,6 @@ const BookingsPage: React.FC = () => {
   } = useAppContext();
   const { upcomingBookings, pastBookings } = useDashboard({ services, bookings, pets, user });
 
-  // Ensure rescheduled bookings always appear in upcoming so owner can respond
   const rescheduledPending = bookings.filter(
     (b) =>
       b.status === "rescheduled" &&
@@ -190,11 +190,11 @@ const BookingsPage: React.FC = () => {
       onConfirm: async () => {
         closeConfirm();
         try {
-          await payDownPayment(bookingId); // sets payment_submitted in Supabase
+          await payDownPayment(bookingId);
           updateBooking(bookingId, {
             downPaymentPaid: true,
             downPaymentPaidAt: new Date().toISOString(),
-            status: "payment_submitted", // ← wait for provider to confirm
+            status: "payment_submitted",
           });
           showSuccess(
             "Payment Submitted",
@@ -334,7 +334,6 @@ const BookingsPage: React.FC = () => {
     const pet = pets.find((p) => p.id === petId);
     if (!service || !pet) return;
 
-    // Fetch latest provider contact info for the new booking
     let contactInfo = {
       providerPhone: undefined as string | undefined,
       providerEmail: undefined as string | undefined,
@@ -344,7 +343,7 @@ const BookingsPage: React.FC = () => {
       try {
         contactInfo = await fetchProviderContactInfo(service.providerUserId);
       } catch {
-        // non-fatal — booking still works without contact info
+        // non-fatal
       }
     }
 
@@ -353,7 +352,6 @@ const BookingsPage: React.FC = () => {
         serviceId: service.id,
         serviceName: service.name,
         providerName: service.provider,
-        // ↓ Critical: links the booking row to the provider so they can see it
         providerUserId: service.providerUserId,
         date,
         time,
@@ -395,6 +393,8 @@ const BookingsPage: React.FC = () => {
     if (booking?.serviceId) {
       submitServiceReview(booking.serviceId, rating).catch(console.error);
     }
+    // Mark this booking as reviewed so the button disappears
+    setReviewedBookingIds((prev) => new Set(prev).add(bookingId));
     setIsReviewFormOpen(false);
     setReviewingBooking(null);
     showSuccess(
@@ -466,6 +466,7 @@ const BookingsPage: React.FC = () => {
               onCancel={handleCancelBookingById}
               onBookAgain={handleBookAgain}
               onLeaveReview={handleLeaveReview}
+              reviewedBookingIds={reviewedBookingIds}
             />
           </div>
         </main>
