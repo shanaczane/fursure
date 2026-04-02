@@ -71,6 +71,7 @@ const ManageBookingsPage: React.FC = () => {
     rescheduleBooking,
     completeBooking,
     updateBooking,
+    confirmPaymentReceived,
   } = useProviderContext();
 
   const [filters, setFilters] = useState({
@@ -82,6 +83,8 @@ const ManageBookingsPage: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<ProviderBooking | null>(null);
   const [action, setAction] = useState<ActionType | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirmingPaymentId, setConfirmingPaymentId] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const filtered = useMemo(() => filterAndSortBookings(bookings, filters), [bookings, filters]);
 
@@ -107,10 +110,26 @@ const ManageBookingsPage: React.FC = () => {
     updateBooking(bookingId, { cancelRequestStatus: "rejected" });
   };
 
+  const handleConfirmPayment = async (bookingId: string) => {
+    setConfirmingPaymentId(bookingId);
+    setPaymentError(null);
+    try {
+      await confirmPaymentReceived(bookingId);
+    } catch {
+      setPaymentError(bookingId);
+    } finally {
+      setConfirmingPaymentId(null);
+    }
+  };
+
   const statusCounts = useMemo(() => ({
     all: bookings.length,
-    pending: bookings.filter((b) => b.status === "pending").length,
-    awaiting_downpayment: bookings.filter((b) => b.status === "awaiting_downpayment").length,
+    // Include awaiting_downpayment and payment_submitted in the pending count
+    pending: bookings.filter((b) =>
+      b.status === "pending" ||
+      b.status === "awaiting_downpayment" ||
+      b.status === "payment_submitted"
+    ).length,
     confirmed: bookings.filter((b) => b.status === "confirmed").length,
     completed: bookings.filter((b) => b.status === "completed").length,
     cancelled: bookings.filter((b) => b.status === "cancelled").length,
@@ -125,15 +144,28 @@ const ManageBookingsPage: React.FC = () => {
     [bookings]
   );
 
+  const pendingReschedules = useMemo(() =>
+    bookings.filter(
+      (b) => b.status === "rescheduled" && b.rescheduleStatus === "pending"
+    ).length,
+    [bookings]
+  );
+
+  const awaitingPaymentCount = useMemo(() =>
+    bookings.filter((b) =>
+      b.status === "awaiting_downpayment" || b.status === "payment_submitted"
+    ).length,
+    [bookings]
+  );
+
   const STATUS_TABS = [
-    { value: "all", label: "All", count: statusCounts.all },
-    { value: "pending", label: "Pending", count: statusCounts.pending },
-    { value: "awaiting_downpayment", label: "Awaiting Payment", count: statusCounts.awaiting_downpayment },
-    { value: "confirmed", label: "Confirmed", count: statusCounts.confirmed },
-    { value: "rescheduled", label: "Rescheduled", count: statusCounts.rescheduled },
-    { value: "completed", label: "Completed", count: statusCounts.completed },
-    { value: "cancelled", label: "Cancelled", count: statusCounts.cancelled },
-    { value: "declined", label: "Declined", count: statusCounts.declined },
+    { value: "all",         label: "All",         count: statusCounts.all },
+    { value: "pending",     label: "Pending",      count: statusCounts.pending },
+    { value: "confirmed",   label: "Confirmed",    count: statusCounts.confirmed },
+    { value: "rescheduled", label: "Rescheduled",  count: statusCounts.rescheduled },
+    { value: "completed",   label: "Completed",    count: statusCounts.completed },
+    { value: "cancelled",   label: "Cancelled",    count: statusCounts.cancelled },
+    { value: "declined",    label: "Declined",     count: statusCounts.declined },
   ];
 
   return (
@@ -141,17 +173,48 @@ const ManageBookingsPage: React.FC = () => {
       <div className="space-y-5" style={{ fontFamily: "'Nunito', sans-serif" }}>
         {/* Header */}
         <div>
-          <h1 className="text-2xl md:text-3xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>Manage Bookings</h1>
-          <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>Accept, reject, or reschedule appointment requests</p>
+          <h1
+            className="text-2xl md:text-3xl font-900 mb-1"
+            style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}
+          >
+            Manage Bookings
+          </h1>
+          <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
+            Accept, reject, or reschedule appointment requests
+          </p>
         </div>
 
-        {/* Pending requests banner */}
+        {/* Awaiting payment notice banner */}
+        {awaitingPaymentCount > 0 && (
+          <div className="flex items-center gap-3 rounded-xl px-4 py-3 border"
+            style={{ background: "#FFEDD5", borderColor: "#FDBA74" }}>
+            <span style={{ color: "#D97706", fontSize: "1.1rem" }}>💵</span>
+            <p className="text-sm font-700" style={{ color: "#9A3412" }}>
+              {awaitingPaymentCount} booking{awaitingPaymentCount > 1 ? "s are" : " is"} awaiting or
+              processing a down payment. View them in <strong>Pending</strong> or <strong>All</strong>.
+            </p>
+          </div>
+        )}
+
+        {/* Pending edit/cancel requests banner */}
         {pendingRequests > 0 && (
           <div className="flex items-center gap-3 rounded-xl px-4 py-3 border"
             style={{ background: "#FFFBEB", borderColor: "#FCD34D" }}>
             <span style={{ color: "#D97706" }}><BellIcon /></span>
             <p className="text-sm font-700" style={{ color: "#92400E" }}>
-              {pendingRequests} booking{pendingRequests > 1 ? "s have" : " has"} a pending edit or cancellation request from the owner.
+              {pendingRequests} booking{pendingRequests > 1 ? "s have" : " has"} a pending edit or
+              cancellation request from the owner.
+            </p>
+          </div>
+        )}
+
+        {/* Pending reschedule proposals banner */}
+        {pendingReschedules > 0 && (
+          <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-xl px-4 py-3">
+            <span className="text-purple-600 text-lg">📅</span>
+            <p className="text-sm font-medium text-purple-800">
+              {pendingReschedules} reschedule proposal{pendingReschedules > 1 ? "s are" : " is"} awaiting
+              the owner&apos;s response.
             </p>
           </div>
         )}
@@ -170,14 +233,17 @@ const ManageBookingsPage: React.FC = () => {
               >
                 <span>{tab.label}</span>
                 {tab.count > 0 && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full font-700"
-                    style={tab.value === "pending"
-                      ? { background: "#FEF3C7", color: "#92400E" }
-                      : tab.value === "awaiting_downpayment"
-                      ? { background: "#FFEDD5", color: "#9A3412" }
-                      : filters.status === tab.value
-                      ? { background: "rgba(0,0,0,0.08)", color: "var(--fur-teal-dark)" }
-                      : { background: "var(--fur-mist)", color: "var(--fur-slate-mid)" }}
+                  <span
+                    className="text-xs px-1.5 py-0.5 rounded-full font-700"
+                    style={
+                      tab.value === "pending"
+                        ? { background: "#FEF3C7", color: "#92400E" }
+                        : tab.value === "rescheduled"
+                        ? { background: "#EDE9FE", color: "#5B21B6" }
+                        : filters.status === tab.value
+                        ? { background: "rgba(0,0,0,0.08)", color: "var(--fur-teal-dark)" }
+                        : { background: "var(--fur-mist)", color: "var(--fur-slate-mid)" }
+                    }
                   >
                     {tab.count}
                   </span>
@@ -199,7 +265,13 @@ const ManageBookingsPage: React.FC = () => {
                 className="fur-input"
                 style={{ paddingLeft: "2.5rem" }}
               />
-              <svg className="w-4 h-4 absolute left-3 top-3.5" style={{ color: "var(--fur-slate-light)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-4 h-4 absolute left-3 top-3.5"
+                style={{ color: "var(--fur-slate-light)" }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
@@ -245,19 +317,40 @@ const ManageBookingsPage: React.FC = () => {
               const effectiveTime = booking.rescheduleTime || booking.time;
 
               const dpExpired = isDownPaymentExpired(booking);
-              const dpHoursLeft = booking.status === "awaiting_downpayment"
-                ? downPaymentHoursRemaining(booking)
-                : null;
+              const dpHoursLeft =
+                booking.status === "awaiting_downpayment"
+                  ? downPaymentHoursRemaining(booking)
+                  : null;
 
               const hasPendingEdit = booking.editRequestStatus === "pending";
               const hasPendingCancel = booking.cancelRequestStatus === "pending";
+
+              const hasRescheduleProposal =
+                booking.status === "rescheduled" &&
+                !!booking.rescheduleDate &&
+                !!booking.rescheduleTime;
+              const ownerRespondedToReschedule =
+                booking.rescheduleStatus === "confirmed" ||
+                booking.rescheduleStatus === "declined";
+
+              const isAwaitingPayment = booking.status === "awaiting_downpayment";
+              const isPaymentSubmitted = booking.status === "payment_submitted";
+
+              const showPaymentSummary =
+                (booking.status === "confirmed" ||
+                  booking.status === "awaiting_downpayment" ||
+                  booking.status === "payment_submitted") &&
+                booking.requiresDownPayment &&
+                booking.price > 0;
+
+              const isConfirmingThisPayment = confirmingPaymentId === booking.id;
+              const hasPaymentError = paymentError === booking.id;
 
               return (
                 <div key={booking.id} className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
                   {/* Main Row */}
                   <div
                     className="flex items-center p-4 cursor-pointer transition-colors"
-                    style={{ ["--hover-bg" as string]: "var(--fur-cream)" }}
                     onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "white")}
                     onClick={() => setExpandedId(isExpanded ? null : booking.id)}
@@ -284,6 +377,17 @@ const ManageBookingsPage: React.FC = () => {
                             <CancelIcon /> Cancel Request
                           </span>
                         )}
+                        {hasRescheduleProposal && !ownerRespondedToReschedule && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200 font-medium">
+                            ⏳ Awaiting Owner
+                          </span>
+                        )}
+                        {isPaymentSubmitted && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-700"
+                            style={{ background: "#DBEAFE", color: "#1E40AF", border: "1px solid #BFDBFE" }}>
+                            🕐 Payment Submitted
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
                         {booking.petName} ({booking.petBreed}) · {booking.ownerName}
@@ -291,11 +395,13 @@ const ManageBookingsPage: React.FC = () => {
                       <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--fur-slate-light)" }}>
                         <CalendarIcon /> {formatBookingDateTime(effectiveDate, effectiveTime)}
                         {booking.rescheduleDate && (
-                          <span className="ml-1" style={{ color: "#7C3AED" }}>(rescheduled)</span>
+                          <span className="ml-1" style={{ color: "#7C3AED" }}>
+                            {ownerRespondedToReschedule ? "(rescheduled)" : "(proposal pending)"}
+                          </span>
                         )}
                       </p>
-                      {booking.status === "awaiting_downpayment" && (
-                        <p className={`text-xs mt-1 font-700 flex items-center gap-1`}
+                      {isAwaitingPayment && (
+                        <p className="text-xs mt-1 font-700 flex items-center gap-1"
                           style={{ color: dpExpired ? "var(--fur-rose)" : "#D97706" }}>
                           <ClockIcon />
                           {dpExpired
@@ -350,6 +456,12 @@ const ManageBookingsPage: React.FC = () => {
                                   </span>
                                 )}
                               </div>
+                            ) : isPaymentSubmitted ? (
+                              <div className="rounded-xl px-3 py-2 border" style={{ background: "#DBEAFE", borderColor: "#BFDBFE" }}>
+                                <p className="text-sm font-700" style={{ color: "#1E40AF" }}>
+                                  🕐 Owner marked as paid — please verify and confirm
+                                </p>
+                              </div>
                             ) : dpExpired ? (
                               <div className="rounded-xl px-3 py-2 border" style={{ background: "var(--fur-rose-light)", borderColor: "#FCA5A5" }}>
                                 <p className="text-sm font-700" style={{ color: "var(--fur-rose)" }}>
@@ -363,6 +475,40 @@ const ManageBookingsPage: React.FC = () => {
                                 </p>
                               </div>
                             )}
+                          </div>
+                        )}
+
+                        {showPaymentSummary && (
+                          <div className="sm:col-span-2">
+                            <p className="text-xs font-700 uppercase tracking-wide mb-2" style={{ color: "var(--fur-slate-mid)" }}>Payment Summary</p>
+                            <div className="rounded-xl px-4 py-3 border space-y-2"
+                              style={{ background: "var(--fur-teal-light)", borderColor: "var(--fur-teal)" }}>
+                              <div className="flex justify-between text-sm">
+                                <span style={{ color: "var(--fur-slate)" }}>Total Price</span>
+                                <span className="font-700" style={{ color: "var(--fur-slate)" }}>
+                                  {formatCurrency(booking.price)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span style={{ color: "var(--fur-slate)" }}>Down Payment (30%)</span>
+                                <span className="font-700" style={{ color: booking.downPaymentPaid ? "#059669" : "#9A3412" }}>
+                                  {booking.downPaymentPaid
+                                    ? `✓ Paid — ${formatCurrency(booking.price * 0.3)}`
+                                    : `Pending — ${formatCurrency(booking.price * 0.3)}`}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm pt-2 border-t"
+                                style={{ borderColor: "var(--fur-teal)" }}>
+                                <span className="font-700" style={{ color: "var(--fur-slate)" }}>
+                                  Remaining Balance
+                                </span>
+                                <span className="font-800" style={{ color: "var(--fur-teal-dark)" }}>
+                                  {booking.downPaymentPaid
+                                    ? formatCurrency(booking.price * 0.7)
+                                    : formatCurrency(booking.price)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         )}
 
@@ -383,6 +529,22 @@ const ManageBookingsPage: React.FC = () => {
                           </div>
                         )}
                       </div>
+
+                      {/* Reschedule proposal status banner */}
+                      {hasRescheduleProposal && !ownerRespondedToReschedule && (
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                          <p className="text-sm font-semibold text-purple-800 mb-1">
+                            📅 Reschedule proposal sent — awaiting owner response
+                          </p>
+                          <p className="text-sm text-purple-700">
+                            <span className="font-medium">Proposed time: </span>
+                            {formatBookingDateTime(booking.rescheduleDate!, booking.rescheduleTime!)}
+                          </p>
+                          <p className="text-xs text-purple-500 mt-1">
+                            The owner will confirm or decline this proposal from their dashboard.
+                          </p>
+                        </div>
+                      )}
 
                       {/* Pending edit request */}
                       {hasPendingEdit && (
@@ -476,7 +638,7 @@ const ManageBookingsPage: React.FC = () => {
                           </>
                         )}
 
-                        {booking.status === "awaiting_downpayment" && (
+                        {isAwaitingPayment && (
                           <button
                             onClick={() => openModal(booking, "reject")}
                             className="px-4 py-2 text-sm font-700 rounded-xl border transition-colors"
@@ -487,7 +649,38 @@ const ManageBookingsPage: React.FC = () => {
                           </button>
                         )}
 
-                        {(booking.status === "confirmed" || booking.status === "rescheduled") && (
+                        {isPaymentSubmitted && (
+                          <div className="flex flex-col gap-2 w-full">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleConfirmPayment(booking.id)}
+                                disabled={isConfirmingThisPayment}
+                                className="px-4 py-2 text-white text-sm font-700 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                style={{ background: "#059669" }}
+                                onMouseEnter={e => { if (!isConfirmingThisPayment) e.currentTarget.style.background = "#047857"; }}
+                                onMouseLeave={e => { if (!isConfirmingThisPayment) e.currentTarget.style.background = "#059669"; }}
+                              >
+                                {isConfirmingThisPayment ? "Confirming…" : "✓ Confirm Payment Received"}
+                              </button>
+                              <button
+                                onClick={() => openModal(booking, "reject")}
+                                disabled={isConfirmingThisPayment}
+                                className="px-4 py-2 text-sm font-700 rounded-xl border transition-colors disabled:opacity-60"
+                                style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}
+                              >
+                                ✗ Payment Not Received
+                              </button>
+                            </div>
+                            {hasPaymentError && (
+                              <p className="text-xs font-700 rounded-xl px-3 py-2 border"
+                                style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
+                                ⚠️ Failed to confirm payment. Check your connection and try again.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {booking.status === "confirmed" && (
                           <>
                             <button
                               onClick={() => openModal(booking, "complete")}
@@ -511,6 +704,24 @@ const ManageBookingsPage: React.FC = () => {
                               style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}
                             >
                               Cancel
+                            </button>
+                          </>
+                        )}
+
+                        {booking.status === "rescheduled" && (
+                          <>
+                            <button
+                              onClick={() => openModal(booking, "reschedule")}
+                              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-700 rounded-xl transition-colors"
+                            >
+                              📅 Change Proposal
+                            </button>
+                            <button
+                              onClick={() => openModal(booking, "reject")}
+                              className="px-4 py-2 text-sm font-700 rounded-xl border transition-colors"
+                              style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}
+                            >
+                              ✗ Cancel Booking
                             </button>
                           </>
                         )}

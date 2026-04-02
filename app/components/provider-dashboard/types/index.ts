@@ -6,7 +6,7 @@ export interface ProviderPolicy {
   depositPercentage: number;
   depositRefundable: boolean;
   cancellationHoursNotice: number;
-  downPaymentDeadlineHours: number; // hours owner has to pay deposit (default 24)
+  downPaymentDeadlineHours: number;
   paymentMethodsAccepted: string[];
   fullPaymentRequiredUpfront: boolean;
   additionalNotes?: string;
@@ -31,9 +31,11 @@ export type ProviderServiceCategory =
   | "walking"
   | "daycare";
 
+// ✅ Added "payment_submitted" to fix the ts(2367) error
 export type BookingStatus =
   | "pending"
   | "awaiting_downpayment"
+  | "payment_submitted"
   | "confirmed"
   | "completed"
   | "cancelled"
@@ -57,14 +59,17 @@ export interface ProviderBooking {
   providerNotes?: string;
   rescheduleDate?: string;
   rescheduleTime?: string;
+  rescheduleStatus?: "none" | "pending" | "confirmed" | "declined";
   price: number;
   createdAt: string;
 
-  // Down payment fields (mirrors owner Booking type)
+  // Down payment fields
   requiresDownPayment?: boolean;
   downPaymentDeadlineHours?: number;
   downPaymentPaid?: boolean;
   downPaymentPaidAt?: string;
+  downPaymentConfirmed?: boolean;
+  downPaymentConfirmedAt?: string;
   editCancelGracePeriodHours?: number;
 
   // Edit / cancel request tracking
@@ -102,6 +107,7 @@ export interface DashboardStats {
   totalBookings: number;
   pendingBookings: number;
   awaitingDownPaymentBookings: number;
+  paymentSubmittedBookings: number;
   confirmedBookings: number;
   completedBookings: number;
   cancelledBookings: number;
@@ -120,7 +126,7 @@ export interface ProviderService {
   description: string;
   price: number;
   priceUnit: string;
-  duration: number; // minutes
+  duration: number;
   image: string;
   location: string;
   features: string[];
@@ -159,6 +165,7 @@ export const PROVIDER_SERVICE_CATEGORIES: {
   { value: "daycare", label: "Daycare", emoji: "🎾" },
 ];
 
+// ✅ Added payment_submitted entry
 export const BOOKING_STATUS_CONFIG: Record<
   BookingStatus,
   { label: string; color: string; bg: string }
@@ -173,15 +180,20 @@ export const BOOKING_STATUS_CONFIG: Record<
     color: "text-orange-700",
     bg: "bg-orange-50 border-orange-200",
   },
-  confirmed: {
-    label: "Confirmed",
+  payment_submitted: {
+    label: "Payment Submitted",
     color: "text-blue-700",
     bg: "bg-blue-50 border-blue-200",
   },
-  completed: {
-    label: "Completed",
+  confirmed: {
+    label: "Confirmed",
     color: "text-green-700",
     bg: "bg-green-50 border-green-200",
+  },
+  completed: {
+    label: "Completed",
+    color: "text-teal-700",
+    bg: "bg-teal-50 border-teal-200",
   },
   cancelled: {
     label: "Cancelled",
@@ -200,7 +212,7 @@ export const BOOKING_STATUS_CONFIG: Record<
   },
 };
 
-// ─── Down-payment helpers (mirrors owner-side logic) ─────────────────────────
+// ─── Down-payment helpers ─────────────────────────────────────────────────────
 
 export function hoursElapsedSince(isoString?: string): number {
   if (!isoString) return Infinity;
@@ -215,5 +227,5 @@ export function isDownPaymentExpired(booking: ProviderBooking): boolean {
 
 export function downPaymentHoursRemaining(booking: ProviderBooking): number {
   const deadline = booking.downPaymentDeadlineHours ?? 24;
-  return deadline - hoursElapsedSince(booking.createdAt);
+  return Math.max(0, deadline - hoursElapsedSince(booking.createdAt));
 }

@@ -1,3 +1,7 @@
+// ─────────────────────────────────────────────────────────────
+// PET
+// ─────────────────────────────────────────────────────────────
+
 export interface Pet {
   id: string;
   name: string;
@@ -11,6 +15,10 @@ export interface Pet {
   imageUrl?: string;
 }
 
+// ─────────────────────────────────────────────────────────────
+// VACCINATION
+// ─────────────────────────────────────────────────────────────
+
 export interface Vaccination {
   id: string;
   petId: string;
@@ -20,6 +28,32 @@ export interface Vaccination {
   vetName?: string;
   notes?: string;
 }
+
+// ─────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  avatar?: string;
+  role: "owner" | "provider";
+}
+
+// ─────────────────────────────────────────────────────────────
+// SERVICE
+// ─────────────────────────────────────────────────────────────
+
+export type ServiceCategory =
+  | "grooming"
+  | "veterinary"
+  | "training"
+  | "boarding"
+  | "walking"
+  | "daycare"
+  | "all";
 
 export interface Service {
   id: string;
@@ -32,14 +66,46 @@ export interface Service {
   price: number;
   priceUnit: string;
   location: string;
-  distance: string;
+  distance?: string;
   duration: number;
   image: string;
   description: string;
   features: string[];
   availability: string[];
-  responseTime: string;
+  responseTime?: string;
 }
+
+// ─────────────────────────────────────────────────────────────
+// SERVICE CATEGORIES  (was missing — fixes ServiceSearch.tsx)
+// ─────────────────────────────────────────────────────────────
+
+export const SERVICE_CATEGORIES: { value: ServiceCategory; label: string; emoji: string }[] = [
+  { value: "all",        label: "All",        emoji: "🐾" },
+  { value: "grooming",   label: "Grooming",   emoji: "✂️" },
+  { value: "veterinary", label: "Veterinary", emoji: "🏥" },
+  { value: "training",   label: "Training",   emoji: "🎓" },
+  { value: "boarding",   label: "Boarding",   emoji: "🏠" },
+  { value: "walking",    label: "Walking",    emoji: "🚶" },
+  { value: "daycare",    label: "Daycare",    emoji: "🎾" },
+];
+
+// ─────────────────────────────────────────────────────────────
+// BOOKING STATUS
+// ─────────────────────────────────────────────────────────────
+
+export type BookingStatus =
+  | "pending"
+  | "awaiting_downpayment"
+  | "payment_submitted"
+  | "confirmed"
+  | "rescheduled"
+  | "completed"
+  | "cancelled"
+  | "declined";
+
+// ─────────────────────────────────────────────────────────────
+// BOOKING
+// ─────────────────────────────────────────────────────────────
 
 export interface Booking {
   id: string;
@@ -47,58 +113,59 @@ export interface Booking {
   serviceName: string;
   providerName: string;
   providerUserId?: string;
+
   price?: number;
+
   date: string;
   time: string;
+
   status: BookingStatus;
+
   petName: string;
   notes?: string;
+
   providerPhone?: string;
   providerEmail?: string;
   providerContactLink?: string;
 
-  // Policy fields (set by provider, stored on booking at creation)
-  requiresDownPayment?: boolean;
-  downPaymentDeadlineHours?: number; // default 24
-  editCancelGracePeriodHours?: number; // default 24
-  createdAt?: string; // ISO string, needed for grace period calculations
+  // ─── Down Payment Policy ─────────────────────────────────
 
-  // Down payment tracking
-  downPaymentPaid?: boolean;
+  requiresDownPayment: boolean;
+  downPaymentDeadlineHours: number;
+
+  downPaymentPaid: boolean;
   downPaymentPaidAt?: string;
 
-  // Provider approval for edit/cancel after confirmation
-  editRequestStatus?: "none" | "pending" | "approved" | "rejected";
-  cancelRequestStatus?: "none" | "pending" | "approved" | "rejected";
+  downPaymentConfirmed?: boolean;
+  downPaymentConfirmedAt?: string;
+
+  // ─── Grace Period / Edit Cancel ─────────────────────────
+
+  editCancelGracePeriodHours: number;
+
+  editRequestStatus: "none" | "pending" | "approved" | "rejected";
+  cancelRequestStatus: "none" | "pending" | "approved" | "rejected";
+
+  // ─── Reschedule Proposal ────────────────────────────────
+
+  rescheduleDate?: string;
+  rescheduleTime?: string;
+  rescheduleStatus?: "pending" | "confirmed" | "declined";
+
+  // ─── Metadata ───────────────────────────────────────────
+
+  createdAt?: string;
 }
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  avatar?: string;
-  role: "owner" | "provider";
-}
+// ─────────────────────────────────────────────────────────────
+// FILTERS
+// ─────────────────────────────────────────────────────────────
 
-export type ServiceCategory =
-  | "grooming"
-  | "veterinary"
-  | "training"
-  | "boarding"
-  | "walking"
-  | "daycare"
-  | "all";
-
-export type BookingStatus =
-  | "pending"
-  | "awaiting_downpayment"
-  | "confirmed"
-  | "completed"
-  | "cancelled"
-  | "declined";
-
-export type SortOption = "rating" | "price" | "distance";
+export type SortOption =
+  | "rating"
+  | "price_asc"
+  | "price_desc"
+  | "distance";
 
 export interface ServiceFilters {
   category: ServiceCategory;
@@ -110,210 +177,157 @@ export interface ServiceFilters {
   sortBy: SortOption;
 }
 
-export interface FilterOptions {
-  categories: ServiceCategory[];
-  priceRanges: { label: string; min: number; max: number }[];
-  ratings: number[];
-  distances: { label: string; value: number }[];
-}
+// ─────────────────────────────────────────────────────────────
+// DASHBOARD STATS
+// ─────────────────────────────────────────────────────────────
 
 export interface DashboardStats {
-  upcomingBookings: number;
+  totalBookings: number;
+  pendingBookings: number;
+  awaitingDownPaymentBookings: number;
+  paymentSubmittedBookings: number;
+  confirmedBookings: number;
   completedBookings: number;
+  cancelledBookings: number;
+  declinedBookings: number;
+
   totalPets: number;
   favoriteServices: number;
 }
 
-export interface UpcomingBooking extends Booking {
-  daysUntil: number;
-  serviceImage?: string;
-}
-
-export type NavItem = {
-  id: string;
-  label: string;
-  icon: string;
-  path: string;
-  badge?: number;
-};
-
-export interface ServiceCardProps {
-  service: Service;
-  onClick: (service: Service) => void;
-}
-
-export interface BookingCardProps {
-  booking: Booking;
-  showActions?: boolean;
-  onCancel?: (bookingId: string) => void;
-  onReschedule?: (bookingId: string) => void;
-}
-
-export interface PetCardProps {
-  pet: Pet;
-  onEdit?: (petId: string) => void;
-  onDelete?: (petId: string) => void;
-}
-
-export interface ServiceModalProps {
-  service: Service | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onBook?: (serviceId: string) => void;
-}
-
-export interface SearchBarProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}
-
-export interface FilterPanelProps {
-  filters: ServiceFilters;
-  onChange: (filters: ServiceFilters) => void;
-  onReset: () => void;
-}
-
-export interface ApiResponse<T> {
-  data: T;
-  error?: string;
-  loading: boolean;
-}
-
-export type DateRange = {
-  startDate: string;
-  endDate: string;
-};
-
-export interface BookingFormData {
-  serviceId: string;
-  petId: string;
-  date: string;
-  time: string;
-  notes?: string;
-}
-
-export interface PetFormData {
-  name: string;
-  type: Pet["type"];
-  breed: string;
-  age: number;
-  imageUrl?: string;
-}
-
-export const SERVICE_CATEGORIES: { value: ServiceCategory; label: string }[] = [
-  { value: "all", label: "All Services" },
-  { value: "grooming", label: "Grooming" },
-  { value: "veterinary", label: "Veterinary" },
-  { value: "training", label: "Training" },
-  { value: "boarding", label: "Boarding" },
-  { value: "walking", label: "Walking" },
-  { value: "daycare", label: "Daycare" },
-];
+// ─────────────────────────────────────────────────────────────
+// STATUS COLORS
+// ─────────────────────────────────────────────────────────────
 
 export const BOOKING_STATUS_COLORS: Record<BookingStatus, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   awaiting_downpayment: "bg-orange-100 text-orange-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  completed: "bg-green-100 text-green-800",
+  payment_submitted: "bg-blue-100 text-blue-800",
+  confirmed: "bg-green-100 text-green-800",
+  rescheduled: "bg-purple-100 text-purple-800",
+  completed: "bg-teal-100 text-teal-800",
   cancelled: "bg-red-100 text-red-800",
   declined: "bg-gray-100 text-gray-700",
 };
 
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   pending: "Pending",
-  awaiting_downpayment: "Awaiting Down Payment",
+  awaiting_downpayment: "Awaiting Payment",
+  payment_submitted: "Payment Submitted",
   confirmed: "Confirmed",
+  rescheduled: "Rescheduled",
   completed: "Completed",
   cancelled: "Cancelled",
   declined: "Declined",
 };
 
-// ─── Booking policy helpers ───────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// DOWN PAYMENT HELPERS
+// ─────────────────────────────────────────────────────────────
 
-/**
- * Returns hours elapsed since the booking was created.
- */
-export function hoursElapsedSince(isoString?: string): number {
-  if (!isoString) return Infinity;
-  return (Date.now() - new Date(isoString).getTime()) / (1000 * 60 * 60);
-}
-
-/**
- * Returns hours remaining in the grace period (negative = expired).
- */
-export function gracePeriodHoursRemaining(booking: Booking): number {
-  const gracePeriod = booking.editCancelGracePeriodHours ?? 24;
-  return gracePeriod - hoursElapsedSince(booking.createdAt);
-}
-
-/**
- * Whether the down-payment window has expired.
- */
 export function isDownPaymentExpired(booking: Booking): boolean {
-  if (!booking.requiresDownPayment) return false;
-  const deadline = booking.downPaymentDeadlineHours ?? 24;
-  return hoursElapsedSince(booking.createdAt) > deadline && !booking.downPaymentPaid;
+  if (booking.status !== "awaiting_downpayment") return false;
+  if (!booking.createdAt) return false;
+
+  const deadline =
+    new Date(booking.createdAt).getTime() +
+    booking.downPaymentDeadlineHours * 60 * 60 * 1000;
+
+  return Date.now() > deadline;
 }
 
-/**
- * Derives all action permissions for a booking from the owner's perspective.
- */
-export function getBookingPermissions(booking: Booking) {
-  const { status, requiresDownPayment, downPaymentPaid } = booking;
+export function downPaymentHoursRemaining(booking: Booking): number {
+  if (!booking.createdAt) return 0;
+
+  const deadline =
+    new Date(booking.createdAt).getTime() +
+    booking.downPaymentDeadlineHours * 60 * 60 * 1000;
+
+  return Math.max(0, (deadline - Date.now()) / (60 * 60 * 1000));
+}
+
+// ─────────────────────────────────────────────────────────────
+// GRACE PERIOD HELPERS
+// ─────────────────────────────────────────────────────────────
+
+export function gracePeriodHoursRemaining(booking: Booking): number {
+  if (!booking.createdAt) return 0;
+
+  const graceMs =
+    booking.editCancelGracePeriodHours * 60 * 60 * 1000;
+
+  const elapsed =
+    Date.now() - new Date(booking.createdAt).getTime();
+
+  return Math.max(0, (graceMs - elapsed) / (60 * 60 * 1000));
+}
+
+// ─────────────────────────────────────────────────────────────
+// BOOKING PERMISSIONS
+// ─────────────────────────────────────────────────────────────
+
+export interface BookingPermissions {
+  canEdit: boolean;
+  canCancel: boolean;
+  canDelete: boolean;
+  withinGracePeriod: boolean;
+  editNeedsProviderApproval: boolean;
+  cancelNeedsProviderApproval: boolean;
+}
+
+export function getBookingPermissions(
+  booking: Booking
+): BookingPermissions {
+
   const withinGracePeriod = gracePeriodHoursRemaining(booking) > 0;
 
-  // Provider explicitly approved an edit request — owner can edit freely,
-  // bypassing grace-period and approval-dialog checks entirely.
-  const editApproved = booking.editRequestStatus === "approved";
+  const isActive =
+    booking.status === "pending" ||
+    booking.status === "confirmed" ||
+    booking.status === "awaiting_downpayment" ||
+    booking.status === "payment_submitted" ||
+    booking.status === "rescheduled";
 
-  // Can only delete cancelled, completed, or declined bookings
-  const canDelete = status === "cancelled" || status === "completed" || status === "declined";
+  const isTerminal =
+    booking.status === "completed" ||
+    booking.status === "cancelled" ||
+    booking.status === "declined";
 
-  let canEdit = false;
-  let canCancel = false;
-  let editNeedsProviderApproval = false;
-  let cancelNeedsProviderApproval = false;
+  const paymentInFlight =
+    booking.status === "awaiting_downpayment" ||
+    booking.status === "payment_submitted";
 
-  if (requiresDownPayment) {
-    // ── Down payment required flow ──────────────────────────────────────────
-    if (status === "awaiting_downpayment") {
-      // Free to cancel/edit within grace period (payment not yet made)
-      canEdit = editApproved || withinGracePeriod;
-      canCancel = withinGracePeriod;
-    } else if (status === "pending" && downPaymentPaid) {
-      // Down payment paid, waiting for provider — free to edit/cancel within grace
-      canEdit = editApproved || withinGracePeriod;
-      canCancel = withinGracePeriod;
-    } else if (status === "confirmed") {
-      // Provider confirmed — needs approval to edit/cancel (unless edit already approved)
-      canEdit = true;
-      canCancel = true;
-      editNeedsProviderApproval = !editApproved;
-      cancelNeedsProviderApproval = true;
-    }
-  } else {
-    // ── No down payment flow ────────────────────────────────────────────────
-    if (status === "pending") {
-      // Free to edit/cancel within grace period
-      canEdit = editApproved || withinGracePeriod;
-      canCancel = withinGracePeriod;
-    } else if (status === "confirmed") {
-      // Needs provider approval (unless edit already approved)
-      canEdit = true;
-      canCancel = true;
-      editNeedsProviderApproval = !editApproved;
-      cancelNeedsProviderApproval = true;
-    }
-  }
+  const editNeedsProviderApproval =
+    booking.status === "confirmed" ||
+    booking.status === "rescheduled";
+
+  const cancelNeedsProviderApproval =
+    booking.status === "confirmed" ||
+    booking.status === "rescheduled";
+
+  const hasPendingRequest =
+    booking.editRequestStatus === "pending" ||
+    booking.cancelRequestStatus === "pending";
 
   return {
-    canEdit,
-    canCancel,
-    canDelete,
+    withinGracePeriod,
+
+    canEdit:
+      isActive &&
+      !isTerminal &&
+      !paymentInFlight &&
+      !hasPendingRequest &&
+      (withinGracePeriod || editNeedsProviderApproval),
+
+    canCancel:
+      isActive &&
+      !isTerminal &&
+      !hasPendingRequest &&
+      (withinGracePeriod || cancelNeedsProviderApproval),
+
+    canDelete: isTerminal,
+
     editNeedsProviderApproval,
     cancelNeedsProviderApproval,
-    withinGracePeriod,
-    editApproved, // expose so components can render the "Edit Now" state
   };
 }

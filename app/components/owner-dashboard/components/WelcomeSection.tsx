@@ -10,6 +10,7 @@ interface WelcomeSectionProps {
     completedBookings: number;
     totalPets: number;
     totalServices: number;
+    pendingBookings?: number;
   };
 }
 
@@ -26,9 +27,9 @@ const statIcons = {
       <path d="M8 14v.5C8 18 10 22 12 22s4-4 4-7.5V14"/><path d="M8.5 14c1 1 5 1 7 0"/>
     </svg>
   ),
-  services: (
+  pending: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
     </svg>
   ),
   completed: (
@@ -47,10 +48,10 @@ const WelcomeSection: React.FC<WelcomeSectionProps> = ({ user, stats }) => {
   };
 
   const statCards = [
-    { label: "Upcoming", value: stats.upcomingBookings, icon: statIcons.upcoming, color: "var(--fur-teal)", bg: "rgba(45,140,114,0.15)" },
-    { label: "My Pets", value: stats.totalPets, icon: statIcons.pets, color: "#A78BFA", bg: "rgba(167,139,250,0.15)" },
-    { label: "Services", value: stats.totalServices, icon: statIcons.services, color: "var(--fur-amber)", bg: "rgba(232,169,77,0.15)" },
-    { label: "Completed", value: stats.completedBookings, icon: statIcons.completed, color: "#34D399", bg: "rgba(52,211,153,0.15)" },
+    { label: "Upcoming",  value: stats.upcomingBookings,     icon: statIcons.upcoming,  color: "var(--fur-teal)", bg: "rgba(45,140,114,0.15)" },
+    { label: "My Pets",   value: stats.totalPets,            icon: statIcons.pets,      color: "#A78BFA",         bg: "rgba(167,139,250,0.15)" },
+    { label: "Pending",   value: stats.pendingBookings ?? 0, icon: statIcons.pending,   color: "#D97706",         bg: "rgba(217,119,6,0.15)" },
+    { label: "Completed", value: stats.completedBookings,    icon: statIcons.completed, color: "#34D399",         bg: "rgba(52,211,153,0.15)" },
   ];
 
   return (

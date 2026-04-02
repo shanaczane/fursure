@@ -187,7 +187,7 @@ const ServiceSearch: React.FC<ServiceSearchProps> = ({
               value={filters.sortBy}
               onChange={(e) =>
                 onFilterChange({
-                  sortBy: e.target.value as "rating" | "price" | "distance",
+                  sortBy: e.target.value as "rating" | "price_asc" | "price_desc" | "distance",
                 })
               }
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
