@@ -83,9 +83,6 @@ const UserAccountsPage: React.FC = () => {
     provider: { bg: "#EDE9FE", color: "#5B21B6" },
   };
 
-  const ownerCount = users.filter((u) => u.role === "owner").length;
-  const providerCount = users.filter((u) => u.role === "provider").length;
-
   const roleFilterOptions: { value: "all" | "owner" | "provider"; label: string; icon: React.ReactNode }[] = [
     { value: "all", label: "All", icon: <UsersIcon size={13} /> },
     { value: "owner", label: "Pet Owners", icon: <PersonIcon size={13} /> },
