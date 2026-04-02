@@ -31,7 +31,15 @@ const BookingsPage: React.FC = () => {
   const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
   const [bookAgainBooking, setBookAgainBooking] = useState<Booking | null>(null);
   const [isBookAgainFormOpen, setIsBookAgainFormOpen] = useState(false);
-  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set<string>();
+    try {
+      const stored = localStorage.getItem("fur_reviewed_bookings");
+      return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: "",
@@ -393,8 +401,12 @@ const BookingsPage: React.FC = () => {
     if (booking?.serviceId) {
       submitServiceReview(booking.serviceId, rating).catch(console.error);
     }
-    // Mark this booking as reviewed so the button disappears
-    setReviewedBookingIds((prev) => new Set(prev).add(bookingId));
+    // Mark this booking as reviewed — persisted to localStorage
+    setReviewedBookingIds((prev) => {
+      const next = new Set(prev).add(bookingId);
+      try { localStorage.setItem("fur_reviewed_bookings", JSON.stringify([...next])); } catch {}
+      return next;
+    });
     setIsReviewFormOpen(false);
     setReviewingBooking(null);
     showSuccess(
