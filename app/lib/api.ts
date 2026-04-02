@@ -501,6 +501,104 @@ export const insertVaccination = async (
   };
 };
 
+// ─── Provider Public Profile ─────────────────────────────────────────────────────────────────
+
+export interface PublicProviderProfile {
+  userId: string;
+  name: string;
+  businessName: string;
+  bio: string;
+  email: string;
+  phone?: string;
+  contactLink?: string;
+  rating: number;
+  totalReviews: number;
+  isVerified: boolean;
+  avatar?: string;
+  services: {
+    id: string;
+    name: string;
+    category: string;
+    description: string;
+    price: number;
+    priceUnit: string;
+    duration: number;
+    image: string;
+    location: string;
+    features: string[];
+    availability: string[];
+    rating: number;
+    reviews: number;
+  }[];
+}
+ 
+export const fetchPublicProviderProfile = async (
+  providerUserId: string,
+): Promise<PublicProviderProfile | null> => {
+  const { supabase } = await import("./supabase");
+ 
+  // Fetch provider row + user row in parallel
+  const [{ data: provRow }, { data: userRow }] = await Promise.all([
+    supabase
+      .from("providers")
+      .select("id, name, rating, reviews, response_time, is_verified, contact_link")
+      .eq("user_id", providerUserId)
+      .maybeSingle(),
+    supabase
+      .from("users")
+      .select("name, email, phone, avatar")
+      .eq("id", providerUserId)
+      .maybeSingle(),
+  ]);
+ 
+  if (!provRow) return null;
+ 
+  // Fetch active services for this provider
+  const { data: serviceRows } = await supabase
+    .from("services")
+    .select("*")
+    .eq("provider_id", provRow.id)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+ 
+  // Fetch bio from provider_policies or a separate bio field
+  // (bio lives in providers table if you added it, otherwise empty string)
+  const { data: bioRow } = await supabase
+    .from("providers")
+    .select("bio, business_name, business_address")
+    .eq("id", provRow.id)
+    .maybeSingle();
+ 
+  return {
+    userId: providerUserId,
+    name: provRow.name ?? userRow?.name ?? "Unknown Provider",
+    businessName: bioRow?.business_name ?? provRow.name ?? "",
+    bio: bioRow?.bio ?? "",
+    email: userRow?.email ?? "",
+    phone: userRow?.phone ?? undefined,
+    contactLink: provRow.contact_link ?? undefined,
+    rating: provRow.rating ?? 0,
+    totalReviews: provRow.reviews ?? 0,
+    isVerified: provRow.is_verified ?? false,
+    avatar: userRow?.avatar ?? undefined,
+    services: (serviceRows ?? []).map((row) => ({
+      id: String(row.id),
+      name: row.name,
+      category: row.category,
+      description: row.description ?? "",
+      price: row.price,
+      priceUnit: row.price_unit ?? "per session",
+      duration: row.duration ?? 60,
+      image: row.image ?? "🐾",
+      location: row.location ?? "",
+      features: row.features ?? [],
+      availability: row.availability ?? [],
+      rating: row.rating ?? 0,
+      reviews: row.reviews ?? 0,
+    })),
+  };
+};
+
 // ─── Provider Policy ──────────────────────────────────────────────────────────
 
 export const fetchProviderPolicy = async (userId: string) => {

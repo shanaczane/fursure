@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { type Service } from "@/app/types";
 
 interface ServiceModalProps {
@@ -16,6 +17,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   onClose,
   onBook,
 }) => {
+  const router = useRouter();
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -31,6 +34,13 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen || !service) return null;
+
+  // ── Navigate to provider profile ───────────────────────────────────────────
+  const handleProviderClick = () => {
+    if (!service.providerUserId) return;
+    onClose(); // close modal first so the back button returns to the services list
+    router.push(`/owner/providers/${service.providerUserId}`);
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -58,19 +68,62 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               />
             </svg>
           </button>
+
           <div className="h-64 bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 flex items-center justify-center">
             <span className="text-9xl">{service.image}</span>
           </div>
+
           <div className="p-8">
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
                 {service.name}
               </h2>
-              <p className="text-lg text-gray-600 flex items-center space-x-2">
+
+              {/* ── Provider name — clickable if providerUserId exists ─────── */}
+              <div className="flex items-center space-x-2">
                 <span>🏢</span>
-                <span>{service.provider}</span>
-              </p>
+                {service.providerUserId ? (
+                  <button
+                    onClick={handleProviderClick}
+                    className="text-lg font-semibold hover:underline transition-colors flex items-center gap-1.5 group"
+                    style={{
+                      color: "var(--fur-teal)",
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {service.provider}
+                    {/* external-link icon hint */}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ color: "var(--fur-teal)" }}
+                    >
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </button>
+                ) : (
+                  <span className="text-lg text-gray-600">{service.provider}</span>
+                )}
+              </div>
+              {service.providerUserId && (
+                <p className="text-xs mt-1 ml-6" style={{ color: "var(--fur-slate-light)" }}>
+                  Click provider name to view profile &amp; all services
+                </p>
+              )}
             </div>
+
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="bg-yellow-50 rounded-lg p-4 text-center">
                 <div className="flex items-center justify-center space-x-1 mb-1">
@@ -99,6 +152,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 <p className="text-sm text-gray-600">{service.location}</p>
               </div>
             </div>
+
             <div className="mb-6">
               <h3 className="text-xl font-bold text-gray-900 mb-3">
                 About This Service
@@ -107,6 +161,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 {service.description}
               </p>
             </div>
+
             <div className="mb-6">
               <h3 className="text-xl font-bold text-gray-900 mb-3">
                 What&apos;s Included
@@ -135,6 +190,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 ))}
               </div>
             </div>
+
             <div className="mb-6">
               <h3 className="text-xl font-bold text-gray-900 mb-3">
                 Availability
@@ -151,6 +207,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 ))}
               </div>
             </div>
+
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <p className="text-sm text-gray-700 flex items-center space-x-2">
                 <span>⏱️</span>
@@ -159,6 +216,34 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 </span>
               </p>
             </div>
+
+            {/* ── View provider profile CTA ─────────────────────────────────── */}
+            {service.providerUserId && (
+              <div
+                className="flex items-center justify-between p-4 rounded-xl border mb-6"
+                style={{
+                  background: "var(--fur-teal-light)",
+                  borderColor: "var(--fur-teal)",
+                }}
+              >
+                <div>
+                  <p className="text-sm font-700" style={{ color: "var(--fur-teal-dark)" }}>
+                    Want to learn more about {service.provider}?
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--fur-teal-dark)", opacity: 0.75 }}>
+                    View their full profile, contact info, and all services
+                  </p>
+                </div>
+                <button
+                  onClick={handleProviderClick}
+                  className="shrink-0 px-4 py-2 rounded-xl text-sm font-700 text-white transition-opacity hover:opacity-90"
+                  style={{ background: "var(--fur-teal)" }}
+                >
+                  View Profile →
+                </button>
+              </div>
+            )}
+
             <div className="flex space-x-4">
               <button
                 onClick={() => onBook && onBook(service.id)}

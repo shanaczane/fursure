@@ -93,6 +93,12 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
         status: "pending",
         petName: pet.name,
         notes: notes || "Booked via service details",
+        requiresDownPayment: false,
+        downPaymentDeadlineHours: 0,
+        downPaymentPaid: false,
+        editCancelGracePeriodHours: 0,
+        editRequestStatus: "none",
+        cancelRequestStatus: "none",
         ...providerContact,
       });
       setIsBookingOpen(false);
@@ -141,7 +147,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                   <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                 </svg>
               </div>
-              <p className="font-700 text-lg mb-4" style={{ color: "var(--fur-slate)" }}>Service not found</p>
+              <p className="font-bold text-lg mb-4" style={{ color: "var(--fur-slate)" }}>Service not found</p>
               <button onClick={() => router.back()} className="btn-secondary">Go back</button>
             </div>
           </main>
@@ -151,6 +157,12 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
   }
 
   const colors = categoryColors[service.category] || { bg: "var(--fur-sand)", accent: "var(--fur-brown)" };
+
+  const handleProviderClick = () => {
+    if (service.providerUserId) {
+      router.push(`/owner/providers/${service.providerUserId}`);
+    }
+  };
 
   return (
     <div className="min-h-screen" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
@@ -171,19 +183,35 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                     {service.image}
                   </div>
                   <div>
-                    <span className="text-xs font-700 uppercase tracking-widest px-3 py-1 rounded-full bg-white inline-block mb-2"
+                    <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-white inline-block mb-2"
                       style={{ color: colors.accent }}>
                       {service.category}
                     </span>
-                    <h1 className="text-2xl md:text-3xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+                    <h1 className="text-2xl md:text-3xl font-black mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
                       {service.name}
                     </h1>
-                    <div className="flex items-center gap-1.5">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--fur-slate-mid)" }}>
+
+                    {/* Clickable provider name */}
+                    <button
+                      onClick={handleProviderClick}
+                      className="flex items-center gap-1.5 group"
+                      style={{ color: "var(--fur-slate-mid)" }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
                       </svg>
-                      <p className="font-600 text-sm" style={{ color: "var(--fur-slate-mid)" }}>{service.provider}</p>
-                    </div>
+                      <span
+                        className="text-sm font-bold transition-all group-hover:underline"
+                        style={{ color: "var(--fur-teal)" }}
+                      >
+                        {service.provider}
+                      </span>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ color: "var(--fur-teal)" }}>
+                        <path d="M7 17L17 7M7 7h10v10"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
                 <button
@@ -226,7 +254,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                     <div key={stat.label} className="rounded-xl p-4 text-center border"
                       style={{ background: "white", borderColor: "var(--border)" }}>
                       <div className="flex justify-center mb-2" style={{ color: "var(--fur-teal)" }}>{stat.icon}</div>
-                      <p className="font-900 text-base mb-0.5" style={{ color: "var(--fur-slate)" }}>{stat.value}</p>
+                      <p className="font-black text-base mb-0.5" style={{ color: "var(--fur-slate)" }}>{stat.value}</p>
                       <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{stat.sub}</p>
                     </div>
                   ))}
@@ -237,7 +265,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                   <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
                     {(["about", "features", "availability"] as const).map((tab) => (
                       <button key={tab} onClick={() => setActiveTab(tab)}
-                        className="flex-1 py-3.5 text-sm font-700 capitalize border-b-2 transition-colors"
+                        className="flex-1 py-3.5 text-sm font-bold capitalize border-b-2 transition-colors"
                         style={activeTab === tab
                           ? { borderColor: "var(--fur-teal)", color: "var(--fur-teal)", background: "var(--fur-teal-light)" }
                           : { borderColor: "transparent", color: "var(--fur-slate-light)" }}>
@@ -248,7 +276,36 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
 
                   <div className="p-6">
                     {activeTab === "about" && (
-                      <p className="text-sm leading-relaxed" style={{ color: "var(--fur-slate-mid)" }}>{service.description}</p>
+                      <div className="space-y-4">
+                        <p className="text-sm leading-relaxed" style={{ color: "var(--fur-slate-mid)" }}>{service.description}</p>
+
+                        {/* Provider card inside About tab */}
+                        <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
+                          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--fur-slate-mid)" }}>
+                            About the Provider
+                          </p>
+                          <button
+                            onClick={handleProviderClick}
+                            className="w-full flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all hover:shadow-sm group"
+                            style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}
+                          >
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0"
+                              style={{ background: "linear-gradient(135deg, #3B4F6B, #1A2332)", fontFamily: "'Fraunces', serif" }}>
+                              {service.provider.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold truncate group-hover:underline" style={{ color: "var(--fur-teal)" }}>
+                                {service.provider}
+                              </p>
+                              <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>View full profile →</p>
+                            </div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                              strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--fur-slate-light)" }}>
+                              <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
                     )}
 
                     {activeTab === "features" && (
@@ -261,7 +318,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                               </svg>
                             </div>
-                            <span className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{feature}</span>
+                            <span className="text-sm font-semibold" style={{ color: "var(--fur-slate)" }}>{feature}</span>
                           </div>
                         ))}
                       </div>
@@ -276,7 +333,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                               style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal)" }}>
                               <ClockIcon />
                             </div>
-                            <span className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{slot}</span>
+                            <span className="text-sm font-semibold" style={{ color: "var(--fur-slate)" }}>{slot}</span>
                           </div>
                         ))}
                       </div>
@@ -289,7 +346,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
               <div className="space-y-4">
                 <div className="rounded-2xl p-6 border sticky top-24" style={{ background: "white", borderColor: "var(--border)" }}>
                   <div className="text-center mb-6 pb-6 border-b" style={{ borderColor: "var(--border)" }}>
-                    <p className="text-4xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+                    <p className="text-4xl font-black mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
                       ₱{service.price}
                     </p>
                     <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>{service.priceUnit}</p>
@@ -307,7 +364,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                   <div className="mt-4 p-4 rounded-xl" style={{ background: "var(--fur-teal-light)" }}>
                     <div className="flex items-center gap-2 mb-1">
                       <ClockIcon />
-                      <p className="text-xs font-700" style={{ color: "var(--fur-teal-dark)" }}>{service.responseTime}</p>
+                      <p className="text-xs font-bold" style={{ color: "var(--fur-teal-dark)" }}>{service.responseTime}</p>
                     </div>
                     <p className="text-xs" style={{ color: "var(--fur-teal)" }}>Instant confirmation once accepted</p>
                   </div>
