@@ -47,6 +47,7 @@ const ProviderVerificationPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "verified" | "rejected">("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   const filtered = useMemo(() => {
     return providers.filter((p) => {
@@ -66,8 +67,15 @@ const ProviderVerificationPage: React.FC = () => {
   }, [providers, filterStatus, searchQuery]);
 
   const showSuccess = (msg: string) => {
+    setErrorMsg("");
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(""), 3000);
+  };
+
+  const showError = (msg: string) => {
+    setSuccessMsg("");
+    setErrorMsg(msg);
+    setTimeout(() => setErrorMsg(""), 4000);
   };
 
   const handleVerify = async (provider: ProviderRecord) => {
@@ -75,8 +83,8 @@ const ProviderVerificationPage: React.FC = () => {
     try {
       await verifyProvider(provider.id);
       showSuccess(`${provider.businessName} has been verified.`);
-    } catch {
-      showSuccess("Failed to verify provider.");
+    } catch (err) {
+      showError((err as Error).message || "Failed to verify provider.");
     } finally {
       setActionLoading(null);
     }
@@ -87,8 +95,8 @@ const ProviderVerificationPage: React.FC = () => {
     try {
       await unverifyProvider(provider.id);
       showSuccess(`${provider.businessName} verification removed.`);
-    } catch {
-      showSuccess("Failed to update provider.");
+    } catch (err) {
+      showError((err as Error).message || "Failed to update provider.");
     } finally {
       setActionLoading(null);
     }
@@ -99,8 +107,8 @@ const ProviderVerificationPage: React.FC = () => {
     try {
       await rejectProvider(provider.id);
       showSuccess(`${provider.businessName} has been rejected.`);
-    } catch {
-      showSuccess("Failed to reject provider.");
+    } catch (err) {
+      showError((err as Error).message || "Failed to reject provider.");
     } finally {
       setActionLoading(null);
     }
@@ -122,7 +130,6 @@ const ProviderVerificationPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Success Toast */}
         {successMsg && (
           <div className="flex items-center gap-3 p-4 rounded-xl border"
             style={{ background: "#D1FAE5", borderColor: "#6EE7B7", color: "#065F46" }}>
@@ -130,6 +137,15 @@ const ProviderVerificationPage: React.FC = () => {
               <polyline points="20 6 9 17 4 12" />
             </svg>
             <span className="font-700 text-sm">{successMsg}</span>
+          </div>
+        )}
+        {errorMsg && (
+          <div className="flex items-center gap-3 p-4 rounded-xl border"
+            style={{ background: "#FEE2E2", borderColor: "#FCA5A5", color: "#991B1B" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span className="font-700 text-sm">{errorMsg}</span>
           </div>
         )}
 
