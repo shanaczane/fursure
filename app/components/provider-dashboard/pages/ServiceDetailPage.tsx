@@ -128,7 +128,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
             {[
               { icon: "⭐", label: "Rating", value: `${service.rating}/5`, sub: `${service.reviews} reviews` },
               { icon: "📍", label: "Distance", value: service.distance, sub: service.location },
-              { icon: "⏱️", label: "Response", value: "~2 hrs", sub: service.responseTime.replace("Usually responds within ", "") },
+              { icon: "⏱️", label: "Response", value: "~2 hrs", sub: (service.responseTime ?? "").replace("Usually responds within ", "") },
             ].map((stat) => (
               <div key={stat.label} className="rounded-xl p-4 text-center border" style={{ background: "white", borderColor: "var(--border)" }}>
                 <span className="text-2xl block mb-2">{stat.icon}</span>
