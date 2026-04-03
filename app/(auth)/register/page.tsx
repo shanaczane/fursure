@@ -187,20 +187,29 @@ export default function Register() {
           </div>
 
           <form onSubmit={handleRegister} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            {formData.role === "SERVICE_PROVIDER" ? (
               <div>
-                <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>First Name</label>
+                <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Place Name</label>
                 <input type="text" value={formData.firstName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                  required disabled={loading} placeholder="John" className="fur-input" />
+                  onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value, lastName: "" }))}
+                  required disabled={loading} placeholder="e.g. Happy Paws Pet Care" className="fur-input" />
               </div>
-              <div>
-                <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Last Name</label>
-                <input type="text" value={formData.lastName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                  required disabled={loading} placeholder="Doe" className="fur-input" />
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>First Name</label>
+                  <input type="text" value={formData.firstName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                    required disabled={loading} placeholder="John" className="fur-input" />
+                </div>
+                <div>
+                  <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Last Name</label>
+                  <input type="text" value={formData.lastName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    required disabled={loading} placeholder="Doe" className="fur-input" />
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Email Address</label>
