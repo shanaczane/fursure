@@ -164,10 +164,10 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
           rating: p.rating ?? 0,
           totalReviews: p.reviews ?? 0,
           serviceCount: (servicesData ?? []).filter(
-            (s) => String(s.provider_id) === String(p.id),
+            (s: any) => String(s.provider_id) === String(p.id),
           ).length,
           bookingCount: (bookingsData ?? []).filter(
-            (b) => b.provider_id === p.id,
+            (b: any) => b.provider_id === p.id,
           ).length,
           createdAt: p.created_at ?? new Date().toISOString(),
           contactLink: p.contact_link ?? undefined,
