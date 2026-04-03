@@ -9,11 +9,6 @@ const BuildingIcon = ({ size = 24 }: { size?: number }) => (
     <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
   </svg>
 );
-const StarIcon = ({ size = 11 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-  </svg>
-);
 const CalendarIcon = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
@@ -47,16 +42,17 @@ const EmptyIcon = () => (
 );
 
 const ProviderVerificationPage: React.FC = () => {
-  const { providers, verifyProvider, unverifyProvider, isLoading } = useAdminContext();
+  const { providers, verifyProvider, unverifyProvider, rejectProvider, isLoading } = useAdminContext();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "verified">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "verified" | "rejected">("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
 
   const filtered = useMemo(() => {
     return providers.filter((p) => {
-      if (filterStatus === "pending" && p.isVerified) return false;
+      if (filterStatus === "pending" && (p.isVerified || p.isRejected)) return false;
       if (filterStatus === "verified" && !p.isVerified) return false;
+      if (filterStatus === "rejected" && !p.isRejected) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         if (
@@ -98,6 +94,18 @@ const ProviderVerificationPage: React.FC = () => {
     }
   };
 
+  const handleReject = async (provider: ProviderRecord) => {
+    setActionLoading(provider.id);
+    try {
+      await rejectProvider(provider.id);
+      showSuccess(`${provider.businessName} has been rejected.`);
+    } catch {
+      showSuccess("Failed to reject provider.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const pendingCount = providers.filter((p) => !p.isVerified).length;
   const verifiedCount = providers.filter((p) => p.isVerified).length;
 
@@ -126,11 +134,12 @@ const ProviderVerificationPage: React.FC = () => {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: "Total Providers", value: providers.length, bg: "#EDE9FE", color: "#5B21B6" },
-            { label: "Pending Review", value: pendingCount, bg: "#FEF3C7", color: "#92400E" },
+            { label: "Pending Review", value: providers.filter(p => !p.isVerified && !p.isRejected).length, bg: "#FEF3C7", color: "#92400E" },
             { label: "Verified", value: verifiedCount, bg: "#D1FAE5", color: "#065F46" },
+            { label: "Rejected", value: providers.filter(p => p.isRejected).length, bg: "#FEE2E2", color: "#991B1B" },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl p-5 border" style={{ background: "white", borderColor: "var(--border)" }}>
               <p className="text-2xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: s.color }}>{s.value}</p>
@@ -154,7 +163,7 @@ const ProviderVerificationPage: React.FC = () => {
               <span className="absolute left-3 top-3.5" style={{ color: "var(--fur-slate-light)" }}><SearchIcon /></span>
             </div>
             <div className="flex gap-2">
-              {(["all", "pending", "verified"] as const).map((status) => (
+              {(["all", "pending", "verified", "rejected"] as const).map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
@@ -192,12 +201,18 @@ const ProviderVerificationPage: React.FC = () => {
           <div className="space-y-3">
             {filtered.map((provider) => (
               <div key={provider.id} className="rounded-2xl border overflow-hidden"
-                style={{ background: "white", borderColor: provider.isVerified ? "var(--border)" : "#FCD34D" }}>
+                style={{
+                  background: "white",
+                  borderColor: provider.isVerified ? "var(--border)" : provider.isRejected ? "#FCA5A5" : "#FCD34D"
+                }}>
                 <div className="p-5 flex flex-col md:flex-row md:items-center gap-4">
                   {/* Provider Info */}
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                      style={{ background: provider.isVerified ? "#D1FAE5" : "#FEF3C7", color: provider.isVerified ? "#059669" : "#92400E" }}>
+                      style={{
+                        background: provider.isVerified ? "#D1FAE5" : provider.isRejected ? "#FEE2E2" : "#FEF3C7",
+                        color: provider.isVerified ? "#059669" : provider.isRejected ? "#991B1B" : "#92400E"
+                      }}>
                       <BuildingIcon size={22} />
                     </div>
                     <div className="min-w-0">
@@ -208,32 +223,16 @@ const ProviderVerificationPage: React.FC = () => {
                         <span className="text-xs font-700 px-2 py-0.5 rounded-full flex items-center gap-1"
                           style={provider.isVerified
                             ? { background: "#D1FAE5", color: "#065F46" }
-                            : { background: "#FEF3C7", color: "#92400E" }}>
-                          {provider.isVerified ? <><CheckIcon /> Verified</> : <>Pending</>}
+                            : provider.isRejected
+                              ? { background: "#FEE2E2", color: "#991B1B" }
+                              : { background: "#FEF3C7", color: "#92400E" }}>
+                          {provider.isVerified ? <><CheckIcon /> Verified</> : provider.isRejected ? <>Rejected</> : <>Pending</>}
                         </span>
                       </div>
                       <p className="text-xs truncate" style={{ color: "var(--fur-slate-light)" }}>
                         {provider.email}
                       </p>
                     </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-3 gap-3 md:w-64">
-                    {[
-                      { label: "Services", value: provider.serviceCount },
-                      { label: "Bookings", value: provider.bookingCount },
-                      {
-                        label: "Rating", value: provider.rating > 0
-                          ? <span className="flex items-center justify-center gap-0.5"><StarIcon />{provider.rating}</span>
-                          : "—"
-                      },
-                    ].map((s) => (
-                      <div key={s.label} className="text-center p-2 rounded-xl" style={{ background: "var(--fur-cream)" }}>
-                        <p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{s.value}</p>
-                        <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{s.label}</p>
-                      </div>
-                    ))}
                   </div>
 
                   {/* Actions */}
@@ -254,16 +253,76 @@ const ProviderVerificationPage: React.FC = () => {
                         {actionLoading === provider.id ? "..." : "Revoke"}
                       </button>
                     ) : (
-                      <button
-                        onClick={() => handleVerify(provider)}
-                        disabled={actionLoading === provider.id}
-                        className="px-4 py-2 rounded-xl text-sm font-700 text-white transition-all disabled:opacity-60 flex items-center gap-1.5"
-                        style={{ background: "linear-gradient(135deg, #059669, #065F46)", boxShadow: "0 2px 8px rgba(5,150,105,0.3)" }}>
-                        {actionLoading === provider.id ? "..." : <><CheckIcon /> Verify Now</>}
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleVerify(provider)}
+                          disabled={actionLoading === provider.id}
+                          className="px-4 py-2 rounded-xl text-sm font-700 text-white transition-all disabled:opacity-60 flex items-center gap-1.5"
+                          style={{ background: "linear-gradient(135deg, #059669, #065F46)", boxShadow: "0 2px 8px rgba(5,150,105,0.3)" }}>
+                          {actionLoading === provider.id ? "..." : <><CheckIcon /> Verify</>}
+                        </button>
+                        {!provider.isRejected && (
+                          <button
+                            onClick={() => handleReject(provider)}
+                            disabled={actionLoading === provider.id}
+                            className="px-4 py-2 rounded-xl text-sm font-700 border transition-all disabled:opacity-60"
+                            style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEE2E2" }}>
+                            {actionLoading === provider.id ? "..." : "Reject"}
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
+
+                {/* Documents for review */}
+                {(provider.validIdUrl || provider.credentialsUrl) && (
+                  <div className="px-5 pb-4 pt-1 border-t" style={{ borderColor: "var(--border)" }}>
+                    <p className="text-xs font-700 uppercase tracking-widest mb-2" style={{ color: "var(--fur-slate-mid)" }}>
+                      Submitted Documents
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {provider.validIdUrl && (
+                        <a
+                          href={provider.validIdUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-700 border transition-all"
+                          style={{ borderColor: "#BFDBFE", background: "#EFF6FF", color: "#1E40AF" }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+                          </svg>
+                          View Valid ID
+                        </a>
+                      )}
+                      {provider.credentialsUrl && (
+                        <a
+                          href={provider.credentialsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-700 border transition-all"
+                          style={{ borderColor: "#A7F3D0", background: "#ECFDF5", color: "#065F46" }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                          </svg>
+                          View Credentials
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {!provider.validIdUrl && !provider.credentialsUrl && !provider.isVerified && (
+                  <div className="px-5 pb-3 pt-1 border-t" style={{ borderColor: "var(--border)" }}>
+                    <p className="text-xs flex items-center gap-1.5" style={{ color: "#92400E" }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      No documents submitted yet
+                    </p>
+                  </div>
+                )}
 
                 {/* Metadata bar */}
                 <div className="px-5 pb-4 flex items-center gap-4 text-xs" style={{ color: "var(--fur-slate-light)" }}>
