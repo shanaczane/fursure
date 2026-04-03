@@ -32,6 +32,7 @@ interface ProviderContextType {
   services: ProviderService[];
   bookings: ProviderBooking[];
   policy: ProviderPolicy;
+  isLoading: boolean;
   updateUser: (updates: Partial<ProviderUser>) => void;
   savePolicy: (policy: ProviderPolicy) => Promise<void>;
 
@@ -87,43 +88,43 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
   const [services, setServices] = useState<ProviderService[]>([]);
   const [bookings, setBookings] = useState<ProviderBooking[]>([]);
   const [policy, setPolicy] = useState<ProviderPolicy>(DEFAULT_POLICY);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: authUser } }) => {
-      if (!authUser) return;
+    supabase.auth.getUser().then(async ({ data: { user: authUser } }) => {
+      if (!authUser) { setIsLoading(false); return; }
 
-      supabase
-        .from("users")
-        .select("name, email, phone")
-        .eq("id", authUser.id)
-        .maybeSingle()
-        .then(
-          ({ data: profile }) => {
-            setUser({
-              ...EMPTY_USER,
-              id: authUser.id,
-              name: profile?.name ?? authUser.email ?? "",
-              email: profile?.email ?? authUser.email ?? "",
-              phone: profile?.phone ?? undefined,
-              joinedAt: authUser.created_at ?? new Date().toISOString(),
-            });
-          },
-          () => {
-            setUser({ ...EMPTY_USER, id: authUser.id, email: authUser.email ?? "" });
-          }
-        );
+      try {
+        // Fetch profile from users table + provider row in parallel
+        const [{ data: profile }, { data: provRow }] = await Promise.all([
+          supabase.from("users").select("name, email, phone").eq("id", authUser.id).maybeSingle(),
+          supabase.from("providers").select("is_verified, rating, reviews").eq("user_id", authUser.id).maybeSingle(),
+        ]);
 
-      fetchProviderPolicy(authUser.id)
-        .then((p) => { if (p) setPolicy(p as ProviderPolicy); })
-        .catch(() => {});
+        setUser({
+          ...EMPTY_USER,
+          id: authUser.id,
+          name: profile?.name ?? authUser.user_metadata?.firstName
+            ? `${authUser.user_metadata.firstName} ${authUser.user_metadata.lastName ?? ""}`.trim()
+            : authUser.email ?? "",
+          email: profile?.email ?? authUser.email ?? "",
+          phone: profile?.phone ?? undefined,
+          joinedAt: authUser.created_at ?? new Date().toISOString(),
+          isVerified: provRow?.is_verified ?? false,
+          rating: provRow?.rating ?? 0,
+          totalReviews: provRow?.reviews ?? 0,
+        });
 
-      fetchProviderOwnServices(authUser.id)
-        .then((svcs) => setServices(svcs as ProviderService[]))
-        .catch(() => {});
-
-      fetchProviderOwnBookings(authUser.id)
-        .then((bkgs) => setBookings(bkgs as ProviderBooking[]))
-        .catch(() => {});
+        await Promise.all([
+          fetchProviderPolicy(authUser.id).then((p) => { if (p) setPolicy(p as ProviderPolicy); }).catch(() => {}),
+          fetchProviderOwnServices(authUser.id).then((svcs) => setServices(svcs as ProviderService[])).catch(() => {}),
+          fetchProviderOwnBookings(authUser.id).then((bkgs) => setBookings(bkgs as ProviderBooking[])).catch(() => {}),
+        ]);
+      } catch {
+        setUser({ ...EMPTY_USER, id: authUser.id, email: authUser.email ?? "" });
+      } finally {
+        setIsLoading(false);
+      }
     });
   }, []);
 
@@ -379,6 +380,7 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
         services,
         bookings,
         policy,
+        isLoading,
         updateUser,
         savePolicy,
         addService,
