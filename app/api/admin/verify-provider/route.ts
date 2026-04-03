@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Uses service role key to bypass RLS — admin-only actions
 const adminSupabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -19,17 +18,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Invalid action" }, { status: 400 });
     }
 
-    const update =
-      action === "verify"
-        ? { is_verified: true }
-        : { is_verified: false };
+    const update = action === "verify" ? { is_verified: true } : { is_verified: false };
 
-    const { error } = await adminSupabase
+    const { error, count } = await adminSupabase
       .from("providers")
-      .update(update)
+      .update(update, { count: "exact" })
       .eq("id", providerId);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error("verify-provider DB error:", error.message);
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+
+    if (count === 0) {
+      console.error("verify-provider: no rows updated for id:", providerId);
+      return NextResponse.json({ success: false, message: `No provider found with id ${providerId}` }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {
