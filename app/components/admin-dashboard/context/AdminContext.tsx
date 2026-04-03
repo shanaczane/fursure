@@ -147,7 +147,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         phone: u.phone ?? undefined,
         role: u.role ?? "owner",
         createdAt: u.created_at ?? new Date().toISOString(),
-        bookingCount: (bookingsData ?? []).filter((b) => b.owner_id === u.id)
+        bookingCount: (bookingsData ?? []).filter((b: any) => b.owner_id === u.id)
           .length,
       }));
 
