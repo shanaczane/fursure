@@ -209,7 +209,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
 
       // Compute stats
       const completedBookings = (bookingsData ?? []).filter(
-        (b) => b.status === "completed",
+        (b: any) => b.status === "completed",
       );
       setStats({
         totalUsers: mappedUsers.length,
@@ -217,13 +217,13 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         totalBookings: (bookingsData ?? []).length,
         pendingVerifications: mappedProviders.filter((p) => !p.isVerified)
           .length,
-        activeServices: (servicesData ?? []).filter((s) => s.is_active).length,
+        activeServices: (servicesData ?? []).filter((s: any) => s.is_active).length,
         completedBookings: completedBookings.length,
         cancelledBookings: (bookingsData ?? []).filter(
-          (b) => b.status === "cancelled",
+          (b: any) => b.status === "cancelled",
         ).length,
         totalRevenue: completedBookings.reduce(
-          (sum, b) => sum + (b.price ?? 0),
+          (sum: number, b: any) => sum + (b.price ?? 0),
           0,
         ),
       });
