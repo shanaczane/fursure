@@ -33,12 +33,15 @@ export interface ProviderRecord {
   email: string;
   businessName: string;
   isVerified: boolean;
+  isRejected: boolean;
   rating: number;
   totalReviews: number;
   serviceCount: number;
   bookingCount: number;
   createdAt: string;
   contactLink?: string;
+  validIdUrl?: string;
+  credentialsUrl?: string;
 }
 
 export interface ActivityLog {
@@ -70,6 +73,7 @@ interface AdminContextType {
   isLoading: boolean;
   verifyProvider: (providerId: string) => Promise<void>;
   unverifyProvider: (providerId: string) => Promise<void>;
+  rejectProvider: (providerId: string) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
@@ -115,28 +119,13 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         });
       }
 
-      // Fetch users
-      const { data: usersData } = await supabase
-        .from("users")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      // Fetch providers
-      const { data: providersData } = await supabase
-        .from("providers")
-        .select("*, users(email)")
-        .order("created_at", { ascending: false });
-
-      // Fetch services count
-      const { data: servicesData } = await supabase
-        .from("services")
-        .select("id, provider_id, is_active");
-
-      // Fetch bookings
-      const { data: bookingsData } = await supabase
-        .from("bookings")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Fetch all data via server route (bypasses RLS using service role key)
+      const res = await fetch("/api/admin/data");
+      const adminData = await res.json();
+      const usersData = adminData.users ?? [];
+      const providersData = adminData.providers ?? [];
+      const servicesData = adminData.services ?? [];
+      const bookingsData = adminData.bookings ?? [];
 
       // Map users
       const mappedUsers: UserRecord[] = (usersData ?? []).map((u) => ({
@@ -146,7 +135,6 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         phone: u.phone ?? undefined,
         role: u.role ?? "owner",
         createdAt: u.created_at ?? new Date().toISOString(),
-        isVerified: true,
         bookingCount: (bookingsData ?? []).filter((b) => b.owner_id === u.id).length,
       }));
 
@@ -158,12 +146,15 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         email: (p.users as any)?.email ?? "",
         businessName: p.name ?? "Unknown Business",
         isVerified: p.is_verified ?? false,
+        isRejected: false, // tracked client-side in rejectedProviderIds
         rating: p.rating ?? 0,
         totalReviews: p.reviews ?? 0,
         serviceCount: (servicesData ?? []).filter((s) => String(s.provider_id) === String(p.id)).length,
         bookingCount: (bookingsData ?? []).filter((b) => b.provider_id === p.id).length,
         createdAt: p.created_at ?? new Date().toISOString(),
         contactLink: p.contact_link ?? undefined,
+        validIdUrl: p.valid_id_url ?? undefined,
+        credentialsUrl: p.credentials_url ?? undefined,
       }));
 
       // Build activity logs from bookings
@@ -211,28 +202,37 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => { loadData(); }, []);
 
+  const callVerifyApi = async (providerId: string, action: "verify" | "unverify" | "reject") => {
+    const res = await fetch("/api/admin/verify-provider", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ providerId, action }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || "Action failed");
+  };
+
   const verifyProvider = async (providerId: string) => {
-    const { error } = await supabase
-      .from("providers")
-      .update({ is_verified: true })
-      .eq("id", providerId);
-    if (error) throw new Error(error.message);
+    await callVerifyApi(providerId, "verify");
     setProviders((prev) =>
-      prev.map((p) => p.id === providerId ? { ...p, isVerified: true } : p)
+      prev.map((p) => p.id === providerId ? { ...p, isVerified: true, isRejected: false } : p)
     );
     setStats((prev) => ({ ...prev, pendingVerifications: Math.max(0, prev.pendingVerifications - 1) }));
   };
 
   const unverifyProvider = async (providerId: string) => {
-    const { error } = await supabase
-      .from("providers")
-      .update({ is_verified: false })
-      .eq("id", providerId);
-    if (error) throw new Error(error.message);
+    await callVerifyApi(providerId, "unverify");
     setProviders((prev) =>
-      prev.map((p) => p.id === providerId ? { ...p, isVerified: false } : p)
+      prev.map((p) => p.id === providerId ? { ...p, isVerified: false, isRejected: false } : p)
     );
     setStats((prev) => ({ ...prev, pendingVerifications: prev.pendingVerifications + 1 }));
+  };
+
+  const rejectProvider = async (providerId: string) => {
+    await callVerifyApi(providerId, "reject");
+    setProviders((prev) =>
+      prev.map((p) => p.id === providerId ? { ...p, isVerified: false, isRejected: true } : p)
+    );
   };
 
   const deleteUser = async (userId: string) => {
@@ -244,7 +244,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AdminContext.Provider value={{
       admin, users, providers, activityLogs, stats, isLoading,
-      verifyProvider, unverifyProvider, deleteUser, refreshData: loadData,
+      verifyProvider, unverifyProvider, rejectProvider, deleteUser, refreshData: loadData,
     }}>
       {children}
     </AdminContext.Provider>
