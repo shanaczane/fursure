@@ -41,12 +41,21 @@ const PendingApprovalScreen = () => (
         style={{ background: "white", borderColor: "var(--border)" }}
       >
         {[
-          { icon: "⏳", text: "Account submitted for review" },
-          { icon: "🔍", text: "Admin is reviewing your credentials" },
-          { icon: "✅", text: "You'll be notified once approved" },
+          {
+            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            text: "Account submitted for review",
+          },
+          {
+            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+            text: "Admin is reviewing your credentials",
+          },
+          {
+            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+            text: "You'll be notified once approved",
+          },
         ].map((step) => (
           <div key={step.text} className="flex items-center gap-3">
-            <span className="text-lg">{step.icon}</span>
+            <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--fur-mist)", color: "var(--fur-slate-mid)" }}>{step.icon}</span>
             <p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{step.text}</p>
           </div>
         ))}
