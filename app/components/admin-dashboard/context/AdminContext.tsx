@@ -46,7 +46,12 @@ export interface ProviderRecord {
 
 export interface ActivityLog {
   id: string;
-  type: "booking" | "registration" | "verification" | "cancellation" | "service";
+  type:
+    | "booking"
+    | "registration"
+    | "verification"
+    | "cancellation"
+    | "service";
   description: string;
   userId?: string;
   userName?: string;
@@ -82,7 +87,8 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
 export const useAdminContext = () => {
   const ctx = useContext(AdminContext);
-  if (!ctx) throw new Error("useAdminContext must be used within AdminProvider");
+  if (!ctx)
+    throw new Error("useAdminContext must be used within AdminProvider");
   return ctx;
 };
 
@@ -98,7 +104,11 @@ const EMPTY_STATS: SystemStats = {
 };
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
-  const [admin, setAdmin] = useState<AdminUser>({ id: "", name: "Admin", email: "" });
+  const [admin, setAdmin] = useState<AdminUser>({
+    id: "",
+    name: "Admin",
+    email: "",
+  });
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [providers, setProviders] = useState<ProviderRecord[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -108,13 +118,15 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
       if (authUser) {
         setAdmin({
           id: authUser.id,
           name: authUser.user_metadata?.firstName
             ? `${authUser.user_metadata.firstName} ${authUser.user_metadata.lastName ?? ""}`.trim()
-            : authUser.email ?? "Admin",
+            : (authUser.email ?? "Admin"),
           email: authUser.email ?? "",
         });
       }
@@ -128,46 +140,55 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       const bookingsData = adminData.bookings ?? [];
 
       // Map users
-      const mappedUsers: UserRecord[] = (usersData ?? []).map((u) => ({
+      const mappedUsers: UserRecord[] = (usersData ?? []).map((u: any) => ({
         id: u.id,
         name: u.name ?? "Unknown",
         email: u.email ?? "",
         phone: u.phone ?? undefined,
         role: u.role ?? "owner",
         createdAt: u.created_at ?? new Date().toISOString(),
-        bookingCount: (bookingsData ?? []).filter((b) => b.owner_id === u.id).length,
+        bookingCount: (bookingsData ?? []).filter((b) => b.owner_id === u.id)
+          .length,
       }));
 
       // Map providers
-      const mappedProviders: ProviderRecord[] = (providersData ?? []).map((p) => ({
-        id: String(p.id),
-        userId: p.user_id,
-        name: p.name ?? "Unknown",
-        email: (p.users as any)?.email ?? "",
-        businessName: p.name ?? "Unknown Business",
-        isVerified: p.is_verified ?? false,
-        isRejected: false, // tracked client-side in rejectedProviderIds
-        rating: p.rating ?? 0,
-        totalReviews: p.reviews ?? 0,
-        serviceCount: (servicesData ?? []).filter((s) => String(s.provider_id) === String(p.id)).length,
-        bookingCount: (bookingsData ?? []).filter((b) => b.provider_id === p.id).length,
-        createdAt: p.created_at ?? new Date().toISOString(),
-        contactLink: p.contact_link ?? undefined,
-        validIdUrl: p.valid_id_url ?? undefined,
-        credentialsUrl: p.credentials_url ?? undefined,
-      }));
+      const mappedProviders: ProviderRecord[] = (providersData ?? []).map(
+        (p: any) => ({
+          id: String(p.id),
+          userId: p.user_id,
+          name: p.name ?? "Unknown",
+          email: (p.users as any)?.email ?? "",
+          businessName: p.name ?? "Unknown Business",
+          isVerified: p.is_verified ?? false,
+          isRejected: false, // tracked client-side in rejectedProviderIds
+          rating: p.rating ?? 0,
+          totalReviews: p.reviews ?? 0,
+          serviceCount: (servicesData ?? []).filter(
+            (s) => String(s.provider_id) === String(p.id),
+          ).length,
+          bookingCount: (bookingsData ?? []).filter(
+            (b) => b.provider_id === p.id,
+          ).length,
+          createdAt: p.created_at ?? new Date().toISOString(),
+          contactLink: p.contact_link ?? undefined,
+          validIdUrl: p.valid_id_url ?? undefined,
+          credentialsUrl: p.credentials_url ?? undefined,
+        }),
+      );
 
       // Build activity logs from bookings
       const logs: ActivityLog[] = [
-        ...(bookingsData ?? []).slice(0, 30).map((b) => ({
+        ...(bookingsData ?? []).slice(0, 30).map((b: any) => ({
           id: b.id,
-          type: (b.status === "cancelled" ? "cancellation" : "booking") as ActivityLog["type"],
+          type: (b.status === "cancelled"
+            ? "cancellation"
+            : "booking") as ActivityLog["type"],
           description: `Booking for "${b.service_name}" — ${b.status}`,
           userId: b.owner_id,
           userName: b.owner_name ?? "Pet Owner",
           createdAt: b.created_at,
         })),
-        ...(usersData ?? []).slice(0, 10).map((u) => ({
+        ...(usersData ?? []).slice(0, 10).map((u: any) => ({
           id: `reg-${u.id}`,
           type: "registration" as ActivityLog["type"],
           description: `New user registered: ${u.name ?? u.email}`,
@@ -175,23 +196,36 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
           userName: u.name ?? u.email,
           createdAt: u.created_at,
         })),
-      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 30);
+      ]
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+        .slice(0, 30);
 
       setUsers(mappedUsers);
       setProviders(mappedProviders);
       setActivityLogs(logs);
 
       // Compute stats
-      const completedBookings = (bookingsData ?? []).filter((b) => b.status === "completed");
+      const completedBookings = (bookingsData ?? []).filter(
+        (b) => b.status === "completed",
+      );
       setStats({
         totalUsers: mappedUsers.length,
         totalProviders: mappedProviders.length,
         totalBookings: (bookingsData ?? []).length,
-        pendingVerifications: mappedProviders.filter((p) => !p.isVerified).length,
+        pendingVerifications: mappedProviders.filter((p) => !p.isVerified)
+          .length,
         activeServices: (servicesData ?? []).filter((s) => s.is_active).length,
         completedBookings: completedBookings.length,
-        cancelledBookings: (bookingsData ?? []).filter((b) => b.status === "cancelled").length,
-        totalRevenue: completedBookings.reduce((sum, b) => sum + (b.price ?? 0), 0),
+        cancelledBookings: (bookingsData ?? []).filter(
+          (b) => b.status === "cancelled",
+        ).length,
+        totalRevenue: completedBookings.reduce(
+          (sum, b) => sum + (b.price ?? 0),
+          0,
+        ),
       });
     } catch (err) {
       console.error("Admin data load error:", err);
@@ -200,9 +234,14 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const callVerifyApi = async (providerId: string, action: "verify" | "unverify" | "reject") => {
+  const callVerifyApi = async (
+    providerId: string,
+    action: "verify" | "unverify" | "reject",
+  ) => {
     const res = await fetch("/api/admin/verify-provider", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -215,23 +254,37 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const verifyProvider = async (providerId: string) => {
     await callVerifyApi(providerId, "verify");
     setProviders((prev) =>
-      prev.map((p) => p.id === providerId ? { ...p, isVerified: true, isRejected: false } : p)
+      prev.map((p) =>
+        p.id === providerId ? { ...p, isVerified: true, isRejected: false } : p,
+      ),
     );
-    setStats((prev) => ({ ...prev, pendingVerifications: Math.max(0, prev.pendingVerifications - 1) }));
+    setStats((prev) => ({
+      ...prev,
+      pendingVerifications: Math.max(0, prev.pendingVerifications - 1),
+    }));
   };
 
   const unverifyProvider = async (providerId: string) => {
     await callVerifyApi(providerId, "unverify");
     setProviders((prev) =>
-      prev.map((p) => p.id === providerId ? { ...p, isVerified: false, isRejected: false } : p)
+      prev.map((p) =>
+        p.id === providerId
+          ? { ...p, isVerified: false, isRejected: false }
+          : p,
+      ),
     );
-    setStats((prev) => ({ ...prev, pendingVerifications: prev.pendingVerifications + 1 }));
+    setStats((prev) => ({
+      ...prev,
+      pendingVerifications: prev.pendingVerifications + 1,
+    }));
   };
 
   const rejectProvider = async (providerId: string) => {
     await callVerifyApi(providerId, "reject");
     setProviders((prev) =>
-      prev.map((p) => p.id === providerId ? { ...p, isVerified: false, isRejected: true } : p)
+      prev.map((p) =>
+        p.id === providerId ? { ...p, isVerified: false, isRejected: true } : p,
+      ),
     );
   };
 
@@ -242,10 +295,21 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AdminContext.Provider value={{
-      admin, users, providers, activityLogs, stats, isLoading,
-      verifyProvider, unverifyProvider, rejectProvider, deleteUser, refreshData: loadData,
-    }}>
+    <AdminContext.Provider
+      value={{
+        admin,
+        users,
+        providers,
+        activityLogs,
+        stats,
+        isLoading,
+        verifyProvider,
+        unverifyProvider,
+        rejectProvider,
+        deleteUser,
+        refreshData: loadData,
+      }}
+    >
       {children}
     </AdminContext.Provider>
   );
