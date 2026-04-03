@@ -62,7 +62,7 @@ const ProfilePage: React.FC = () => {
   const inputStyle = { borderColor: "var(--border)", color: "var(--fur-slate)" };
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
+    <div className="min-h-screen overflow-x-hidden" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}

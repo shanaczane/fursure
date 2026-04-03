@@ -89,7 +89,7 @@ const ProviderLayout: React.FC<ProviderLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50">
       <ProviderSidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -105,7 +105,7 @@ const ProviderLayout: React.FC<ProviderLayoutProps> = ({ children }) => {
           isSidebarOpen={isSidebarOpen}
         />
         <main className="p-4 md:p-6 mt-16">
-          <div className="max-w-7xl mx-auto">{children}</div>
+          <div className="max-w-5xl mx-auto">{children}</div>
         </main>
       </div>
     </div>

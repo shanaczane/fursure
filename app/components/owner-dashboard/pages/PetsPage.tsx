@@ -188,7 +188,7 @@ const PetsPage: React.FC = () => {
   const inputStyle = { borderColor: "var(--border)", color: "var(--fur-slate)" }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
+    <div className="min-h-screen overflow-x-hidden" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -201,7 +201,7 @@ const PetsPage: React.FC = () => {
           isSidebarOpen={isSidebarOpen}
         />
         <main className="p-4 md:p-6 mt-16">
-          <div className="max-w-7xl mx-auto space-y-5">
+          <div className="max-w-5xl mx-auto space-y-5">
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

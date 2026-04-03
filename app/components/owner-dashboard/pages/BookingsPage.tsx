@@ -436,7 +436,7 @@ const BookingsPage: React.FC = () => {
           isSidebarOpen={isSidebarOpen}
         />
         <main className="p-4 md:p-6 mt-16">
-          <div className="max-w-7xl mx-auto space-y-5">
+          <div className="max-w-5xl mx-auto space-y-5">
             <div>
               <h1 className="text-2xl md:text-3xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>My Bookings</h1>
               <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>

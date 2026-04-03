@@ -61,7 +61,7 @@ export default function ProviderPublicProfilePage({ providerUserId }: { provider
   const handleBack = () => router.back();
 
   const Layout = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
+    <div className="min-h-screen overflow-x-hidden" style={{ background: "var(--fur-cream)", fontFamily: "'Nunito', sans-serif" }}>
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
