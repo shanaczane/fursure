@@ -45,6 +45,12 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
       status: "pending",
       petName: pet.name,
       notes: notes || "Booked via service details",
+      requiresDownPayment: false,
+      downPaymentDeadlineHours: 24,
+      downPaymentPaid: false,
+      editCancelGracePeriodHours: 24,
+      editRequestStatus: "none",
+      cancelRequestStatus: "none",
     });
     setIsBookingOpen(false);
     setSuccessModal({
