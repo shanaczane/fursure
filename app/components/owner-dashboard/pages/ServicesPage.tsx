@@ -179,7 +179,7 @@ const ServicesPage: React.FC = () => {
                           {service.name}
                         </h3>
 
-                        {/* ── Provider name — clickable ── */}
+                        {/* Provider */}
                         <div className="flex items-center gap-1.5 mb-3">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -202,6 +202,7 @@ const ServicesPage: React.FC = () => {
                           )}
                         </div>
 
+                        {/* Rating + Address — same row */}
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-1">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B"
@@ -211,13 +212,18 @@ const ServicesPage: React.FC = () => {
                             <span className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{service.rating}</span>
                             <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>({service.reviews})</span>
                           </div>
-                          <div className="flex items-center gap-1" style={{ color: "var(--fur-teal)" }}>
+
+                          {/* ← address replaces the empty pin */}
+                          <div className="flex items-center gap-1 min-w-0 max-w-[55%]">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                              style={{ color: "var(--fur-teal)", flexShrink: 0 }}>
                               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                               <circle cx="12" cy="10" r="3" />
                             </svg>
-                            <span className="text-xs font-600">{service.distance}</span>
+                            <span className="text-xs font-600 truncate" style={{ color: "var(--fur-teal)" }}>
+                              {service.location || "—"}
+                            </span>
                           </div>
                         </div>
 

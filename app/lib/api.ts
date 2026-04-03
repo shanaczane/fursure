@@ -179,15 +179,12 @@ export const fetchUserBookings = async (userId: string): Promise<Booking[]> => {
     downPaymentDeadlineHours: row.down_payment_deadline_hours ?? 24,
     editCancelGracePeriodHours: row.edit_cancel_grace_period_hours ?? 24,
     createdAt: row.created_at ?? undefined,
-    // ── Down payment fields ──────────────────────────────────────────────────
     downPaymentPaid: row.down_payment_paid ?? false,
     downPaymentPaidAt: row.down_payment_paid_at ?? undefined,
     downPaymentConfirmed: row.down_payment_confirmed ?? false,
     downPaymentConfirmedAt: row.down_payment_confirmed_at ?? undefined,
-    // ── Request fields ───────────────────────────────────────────────────────
     editRequestStatus: row.edit_request_status ?? "none",
     cancelRequestStatus: row.cancel_request_status ?? "none",
-    // ── Reschedule proposal fields ──────────────────────────────────────────
     rescheduleDate: row.reschedule_date ?? undefined,
     rescheduleTime: row.reschedule_time ?? undefined,
     rescheduleStatus: row.reschedule_status ?? undefined,
@@ -198,14 +195,12 @@ export const insertBooking = async (
   userId: string,
   booking: Omit<Booking, "id">,
 ): Promise<Booking> => {
-  // Get owner profile for name/email/phone
   const { data: ownerProfile } = await supabase
     .from("users")
     .select("name, email, phone")
     .eq("id", userId)
     .maybeSingle();
 
-  // Get pet details for type/breed
   const { data: petRow } = await supabase
     .from("pets")
     .select("type, breed")
@@ -213,7 +208,6 @@ export const insertBooking = async (
     .eq("name", booking.petName)
     .maybeSingle();
 
-  // Get provider policy to set down payment fields
   let requiresDownPayment = false;
   let downPaymentDeadlineHours = 24;
   let editCancelGracePeriodHours = 24;
@@ -249,8 +243,6 @@ export const insertBooking = async (
     if (provRow) providerId = provRow.id;
   }
 
-  // If provider requires down payment → awaiting_downpayment
-  // Otherwise → pending (provider must accept/reject)
   const initialStatus: BookingStatus = requiresDownPayment
     ? "awaiting_downpayment"
     : "pending";
@@ -363,17 +355,13 @@ export const requestBookingCancel = async (bookingId: string): Promise<void> => 
   if (error) throw new Error(error.message);
 };
 
-/**
- * Owner marks down payment as paid (cash handed to provider).
- * Status moves to "payment_submitted" — provider must still confirm.
- */
 export const payDownPayment = async (bookingId: string): Promise<void> => {
   const { error } = await supabase
     .from("bookings")
     .update({
       down_payment_paid: true,
       down_payment_paid_at: new Date().toISOString(),
-      status: "payment_submitted", // ← provider still needs to confirm
+      status: "payment_submitted",
     })
     .eq("id", bookingId);
   if (error) {
@@ -382,9 +370,6 @@ export const payDownPayment = async (bookingId: string): Promise<void> => {
   }
 };
 
-/**
- * Provider confirms they received the down payment → booking becomes confirmed.
- */
 export const confirmDownPayment = async (bookingId: string): Promise<void> => {
   const { error } = await supabase
     .from("bookings")
@@ -397,10 +382,6 @@ export const confirmDownPayment = async (bookingId: string): Promise<void> => {
   if (error) throw new Error(error.message);
 };
 
-/**
- * Provider rejects the down payment claim (e.g. payment not actually received).
- * Booking reverts to awaiting_downpayment.
- */
 export const rejectDownPayment = async (bookingId: string): Promise<void> => {
   const { error } = await supabase
     .from("bookings")
@@ -450,13 +431,16 @@ export const declineReschedule = async (bookingId: string): Promise<void> => {
 // ─── Vaccinations ─────────────────────────────────────────────────────────────
 
 export const deleteVaccinationRecord = async (vaccinationId: string): Promise<void> => {
-  const { error } = await supabase.from("vaccinations").delete().eq("id", vaccinationId);
+  const { error } = await supabase
+    .from("pet_vaccinations")
+    .delete()
+    .eq("id", vaccinationId);
   if (error) throw new Error(error.message);
 };
 
 export const fetchPetVaccinations = async (petId: string): Promise<Vaccination[]> => {
   const { data, error } = await supabase
-    .from("vaccinations")
+    .from("pet_vaccinations")
     .select("*")
     .eq("pet_id", petId)
     .order("date_given", { ascending: false });
@@ -473,13 +457,14 @@ export const fetchPetVaccinations = async (petId: string): Promise<Vaccination[]
 };
 
 export const insertVaccination = async (
-  _userId: string,
+  userId: string,
   petId: string,
-  record: Omit<Vaccination, "id" | "petId">
+  record: Omit<Vaccination, "id" | "petId">,
 ): Promise<Vaccination> => {
   const { data, error } = await supabase
-    .from("vaccinations")
+    .from("pet_vaccinations")
     .insert({
+      owner_id: userId,
       pet_id: petId,
       name: record.name,
       date_given: record.dateGiven,
@@ -501,7 +486,7 @@ export const insertVaccination = async (
   };
 };
 
-// ─── Provider Public Profile ─────────────────────────────────────────────────────────────────
+// ─── Provider Public Profile ──────────────────────────────────────────────────
 
 export interface PublicProviderProfile {
   userId: string;
@@ -531,13 +516,12 @@ export interface PublicProviderProfile {
     reviews: number;
   }[];
 }
- 
+
 export const fetchPublicProviderProfile = async (
   providerUserId: string,
 ): Promise<PublicProviderProfile | null> => {
   const { supabase } = await import("./supabase");
- 
-  // Fetch provider row + user row in parallel
+
   const [{ data: provRow }, { data: userRow }] = await Promise.all([
     supabase
       .from("providers")
@@ -550,25 +534,22 @@ export const fetchPublicProviderProfile = async (
       .eq("id", providerUserId)
       .maybeSingle(),
   ]);
- 
+
   if (!provRow) return null;
- 
-  // Fetch active services for this provider
+
   const { data: serviceRows } = await supabase
     .from("services")
     .select("*")
     .eq("provider_id", provRow.id)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
- 
-  // Fetch bio from provider_policies or a separate bio field
-  // (bio lives in providers table if you added it, otherwise empty string)
+
   const { data: bioRow } = await supabase
     .from("providers")
     .select("bio, business_name, business_address")
     .eq("id", provRow.id)
     .maybeSingle();
- 
+
   return {
     userId: providerUserId,
     name: provRow.name ?? userRow?.name ?? "Unknown Provider",
@@ -833,11 +814,9 @@ export const fetchProviderOwnBookings = async (userId: string) => {
     status: row.status,
     notes: row.notes ?? undefined,
     providerNotes: row.provider_notes ?? undefined,
-    // ── Reschedule proposal fields ──────────────────────────────────────────
     rescheduleDate: row.reschedule_date ?? undefined,
     rescheduleTime: row.reschedule_time ?? undefined,
     rescheduleStatus: row.reschedule_status ?? undefined,
-    // ── Down payment + request fields ───────────────────────────────────────
     price: row.price ?? 0,
     createdAt: row.created_at,
     requiresDownPayment: row.requires_down_payment ?? false,

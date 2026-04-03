@@ -10,13 +10,26 @@ import ProviderLayout from "../components/ProviderLayout";
 
 const MyServicesPage: React.FC = () => {
   const router = useRouter();
-  const { services, deleteService, toggleServiceActive } = useProviderContext();
+  // ✅ FIX: Added `bookings` from context to compute live booking counts
+  const { services, bookings, deleteService, toggleServiceActive } = useProviderContext();
 
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(true);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
+
+  // ✅ FIX: Compute live booking count per service from actual bookings data
+  // instead of relying on the static `service.totalBookings` field
+  const bookingCountByService = useMemo(() => {
+    const counts: Record<string, number> = {};
+    bookings.forEach((b) => {
+      if (b.serviceId && b.status === "completed") {
+        counts[b.serviceId] = (counts[b.serviceId] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [bookings]);
 
   const filtered = useMemo(() => {
     return services.filter((s) => {
@@ -156,6 +169,8 @@ const MyServicesPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {filtered.map((service) => {
               const colors = categoryColors[service.category] || { bg: "var(--fur-sand)", color: "var(--fur-brown)" };
+              // ✅ FIX: Use live count from bookings; fall back to static field if no bookings exist yet
+              const liveBookingCount = bookingCountByService[service.id] ?? service.totalBookings;
               return (
                 <div
                   key={service.id}
@@ -208,7 +223,8 @@ const MyServicesPage: React.FC = () => {
                         <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{service.priceUnit}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{service.totalBookings}</p>
+                        {/* ✅ FIX: Show live booking count derived from actual bookings array */}
+                        <p className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{liveBookingCount}</p>
                         <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>bookings</p>
                       </div>
                     </div>

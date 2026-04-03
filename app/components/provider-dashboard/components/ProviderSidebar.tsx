@@ -54,7 +54,13 @@ const Icons = {
 const ProviderSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const pathname = usePathname();
   const { bookings } = useProviderContext();
-  const pendingCount = bookings.filter(b => b.status === "pending").length;
+
+  // ✅ FIX: Count both "pending" and "payment_submitted" bookings for the badge.
+  // "payment_submitted" means the owner has submitted payment proof and is
+  // waiting for the provider to confirm — this also requires provider action.
+  const pendingCount = bookings.filter(
+    (b) => b.status === "pending" || b.status === "payment_submitted"
+  ).length;
 
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: Icons.dashboard, path: "/provider" },
