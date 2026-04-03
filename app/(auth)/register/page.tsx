@@ -14,6 +14,8 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [validIdFile, setValidIdFile] = useState<File | null>(null);
+  const [credentialsFile, setCredentialsFile] = useState<File | null>(null);
   const router = useRouter();
 
   const passwordRules = [
@@ -26,6 +28,11 @@ export default function Register() {
 
   const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!isPasswordValid) return;
+    if (formData.role === "SERVICE_PROVIDER" && !validIdFile) {
+      setError("Please upload a valid government ID before submitting.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -34,16 +41,53 @@ export default function Register() {
         password: formData.password,
         options: { data: { firstName: formData.firstName, lastName: formData.lastName, role: formData.role } },
       });
-      if (!isPasswordValid) { setLoading(false); return; }
       if (signupError) throw signupError;
       if (!authData.user) throw new Error("No user data returned");
 
-      const response = await fetch("/api/auth/sync", {
+      const userId = authData.user.id;
+
+      // Convert files to base64 to send to server route (which uses service role key)
+      const toBase64 = (file: File): Promise<string> =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+      let validIdBase64: string | undefined;
+      let validIdExt: string | undefined;
+      let credentialsBase64: string | undefined;
+      let credentialsExt: string | undefined;
+
+      if (formData.role === "SERVICE_PROVIDER") {
+        if (validIdFile) {
+          validIdBase64 = await toBase64(validIdFile);
+          validIdExt = validIdFile.name.split(".").pop();
+        }
+        if (credentialsFile) {
+          credentialsBase64 = await toBase64(credentialsFile);
+          credentialsExt = credentialsFile.name.split(".").pop();
+        }
+      }
+
+      // Sync user + provider records + file uploads via server route (service role key, bypasses RLS)
+      const syncRes = await fetch("/api/auth/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: authData.user.id, email: formData.email, firstName: formData.firstName, lastName: formData.lastName, role: formData.role }),
+        body: JSON.stringify({
+          userId,
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          role: formData.role,
+          validIdBase64,
+          validIdExt,
+          credentialsBase64,
+          credentialsExt,
+        }),
       });
-      const syncData = await response.json();
+      const syncData = await syncRes.json();
       if (!syncData.success) throw new Error(syncData.message || "Failed to sync user");
 
       if (authData.session) {
@@ -200,13 +244,100 @@ export default function Register() {
               )}
             </div>
 
+            {/* Document uploads — only for providers */}
+            {formData.role === "SERVICE_PROVIDER" && (
+              <div className="space-y-3 p-4 rounded-2xl border" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
+                <p className="text-xs font-800 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>
+                  Verification Documents
+                </p>
+                <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                  Upload your valid government ID and any supporting credentials (certificates, licenses). These will be reviewed by an admin before your account is activated.
+                </p>
+
+                {/* Valid ID */}
+                <div>
+                  <label className="block text-xs font-700 mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>
+                    Valid Government ID <span style={{ color: "var(--fur-rose)" }}>*</span>
+                  </label>
+                  <label
+                    className="flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all"
+                    style={{
+                      borderColor: validIdFile ? "var(--fur-teal)" : "var(--border)",
+                      background: validIdFile ? "var(--fur-teal-light)" : "white",
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ color: validIdFile ? "var(--fur-teal)" : "var(--fur-slate-light)", flexShrink: 0 }}>
+                      <rect x="2" y="3" width="20" height="14" rx="2" />
+                      <path d="M8 21h8M12 17v4" />
+                    </svg>
+                    <div className="min-w-0 flex-1">
+                      {validIdFile ? (
+                        <p className="text-sm font-700 truncate" style={{ color: "var(--fur-teal-dark)" }}>{validIdFile.name}</p>
+                      ) : (
+                        <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>Click to upload (JPG, PNG, PDF)</p>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      className="hidden"
+                      onChange={(e) => setValidIdFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+
+                {!validIdFile && (
+                  <p className="text-xs font-600" style={{ color: "var(--fur-rose)" }}>
+                    A valid government ID is required to register as a provider.
+                  </p>
+                )}
+
+                {/* Supporting credentials */}
+                <div>
+                  <label className="block text-xs font-700 mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>
+                    Supporting Credentials <span className="font-400" style={{ color: "var(--fur-slate-light)" }}>(optional)</span>
+                  </label>
+                  <label
+                    className="flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all"
+                    style={{
+                      borderColor: credentialsFile ? "var(--fur-teal)" : "var(--border)",
+                      background: credentialsFile ? "var(--fur-teal-light)" : "white",
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ color: credentialsFile ? "var(--fur-teal)" : "var(--fur-slate-light)", flexShrink: 0 }}>
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="13" y2="17" />
+                    </svg>
+                    <div className="min-w-0 flex-1">
+                      {credentialsFile ? (
+                        <p className="text-sm font-700 truncate" style={{ color: "var(--fur-teal-dark)" }}>{credentialsFile.name}</p>
+                      ) : (
+                        <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>Certificates, licenses, etc.</p>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      className="hidden"
+                      onChange={(e) => setCredentialsFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="p-3 rounded-xl text-sm font-600 border" style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
                 {error}
               </div>
             )}
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-sm disabled:opacity-60">
+            <button type="submit" disabled={loading || (formData.role === "SERVICE_PROVIDER" && !validIdFile)} className="btn-primary w-full py-3 text-sm disabled:opacity-60">
               {loading ? "Creating account..." : `Create Account as ${formData.role === "SERVICE_PROVIDER" ? "Provider" : "Pet Owner"}`}
             </button>
           </form>
