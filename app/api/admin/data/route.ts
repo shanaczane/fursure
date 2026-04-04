@@ -13,10 +13,22 @@ export async function GET() {
       { data: servicesData },
       { data: bookingsData },
     ] = await Promise.all([
-      adminSupabase.from("users").select("*").order("created_at", { ascending: false }),
-      adminSupabase.from("providers").select("*, users(email), valid_id_url, credentials_url").order("created_at", { ascending: false }),
-      adminSupabase.from("services").select("id, provider_id, is_active"),
-      adminSupabase.from("bookings").select("*").order("created_at", { ascending: false }),
+      adminSupabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      adminSupabase
+        .from("providers")
+        .select("*, users(email), valid_id_url, credentials_url")
+        .order("created_at", { ascending: false }),
+      // Fetch full service fields so serviceCount and drawer both work correctly
+      adminSupabase
+        .from("services")
+        .select("id, provider_id, name, category, price, is_active, description"),
+      adminSupabase
+        .from("bookings")
+        .select("*")
+        .order("created_at", { ascending: false }),
     ]);
 
     return NextResponse.json({
@@ -28,6 +40,9 @@ export async function GET() {
     });
   } catch (err) {
     console.error("Admin data fetch error:", err);
-    return NextResponse.json({ success: false, message: (err as Error).message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: (err as Error).message },
+      { status: 500 }
+    );
   }
 }
