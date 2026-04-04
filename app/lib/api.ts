@@ -72,6 +72,29 @@ export const upsertUserProfile = async (
   if (error) throw new Error(error.message);
 };
 
+export const updateAuthCredentials = async (
+  userId: string,
+  updates: { email?: string; password?: string },
+): Promise<void> => {
+  const res = await fetch("/api/auth/update-profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, ...updates }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error ?? "Failed to update credentials.");
+  }
+};
+
+export const verifyCurrentPassword = async (
+  email: string,
+  password: string,
+): Promise<void> => {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error("Current password is incorrect.");
+};
+
 // ─── Pets ─────────────────────────────────────────────────────────────────────
 
 export const fetchUserPets = async (userId: string): Promise<Pet[]> => {
@@ -900,8 +923,10 @@ export const fetchServices = async (): Promise<Service[]> => {
       provider: prov.name ?? "",
       providerUserId: prov.user_id ?? undefined,
       category: row.category,
-      rating: prov.rating ?? 0,
-      reviews: prov.reviews ?? 0,
+      // ─── Per-service rating — reads from services table, not providers ───
+      rating: row.rating ?? 0,
+      reviews: row.reviews ?? 0,
+      // ─────────────────────────────────────────────────────────────────────
       price: row.price,
       priceUnit: row.price_unit,
       location: row.location ?? "",

@@ -210,9 +210,9 @@ const OwnerDashboard: React.FC = () => {
                       {pets.slice(0, 3).map((pet) => (
                         <div key={pet.id} className="rounded-xl p-4 border flex items-center gap-3"
                           style={{ background: "white", borderColor: "var(--border)" }}>
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ background: "var(--fur-amber-light)", color: "var(--fur-amber-dark)" }}>
-                            <PawIcon />
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-900"
+                            style={{ background: "var(--fur-teal)", color: "white", fontFamily: "'Fraunces', serif", fontSize: "1rem" }}>
+                            {pet.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
                             <p className="font-700 text-sm truncate" style={{ color: "var(--fur-slate)" }}>{pet.name}</p>

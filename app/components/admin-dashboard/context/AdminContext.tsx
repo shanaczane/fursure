@@ -38,7 +38,6 @@ export interface ProviderRecord {
   totalReviews: number;
   serviceCount: number;
   bookingCount: number;
-  totalRevenue: number;
   createdAt: string;
   contactLink?: string;
   validIdUrl?: string;
@@ -61,16 +60,16 @@ export interface ActivityLog {
 
 export interface SystemStats {
   totalUsers: number;
-  totalOwners: number;
   totalProviders: number;
+  verifiedProviders: number;
+  rejectedProviders: number;
   totalBookings: number;
   pendingVerifications: number;
   activeServices: number;
   completedBookings: number;
   cancelledBookings: number;
-  totalRevenue: number;
-  monthlyRevenue: number;
-  pendingBookings: number;
+  ownerBookings: number;
+  providerBookings: number;
 }
 
 interface AdminContextType {
@@ -98,16 +97,16 @@ export const useAdminContext = () => {
 
 const EMPTY_STATS: SystemStats = {
   totalUsers: 0,
-  totalOwners: 0,
   totalProviders: 0,
+  verifiedProviders: 0,
+  rejectedProviders: 0,
   totalBookings: 0,
   pendingVerifications: 0,
   activeServices: 0,
   completedBookings: 0,
   cancelledBookings: 0,
-  totalRevenue: 0,
-  monthlyRevenue: 0,
-  pendingBookings: 0,
+  ownerBookings: 0,
+  providerBookings: 0,
 };
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
@@ -145,59 +144,13 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       const servicesData = adminData.services ?? [];
       const bookingsData = adminData.bookings ?? [];
 
-<<<<<<< HEAD
-      // Map users - separate owners from providers
-      const mappedUsers: UserRecord[] = (usersData ?? []).map((u: any) => ({
-=======
       const mappedUsers: UserRecord[] = usersData.map((u: any) => ({
->>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
         id: u.id,
         name: u.name ?? "Unknown",
         email: u.email ?? "",
         phone: u.phone ?? undefined,
         role: u.role ?? "owner",
         createdAt: u.created_at ?? new Date().toISOString(),
-<<<<<<< HEAD
-        bookingCount: (bookingsData ?? []).filter((b: any) => b.owner_id === u.id).length,
-      }));
-
-      // Map providers with revenue data
-      const mappedProviders: ProviderRecord[] = (providersData ?? []).map(
-        (p: any) => {
-          const providerBookings = (bookingsData ?? []).filter(
-            (b: any) => String(b.provider_id) === String(p.id)
-          );
-          const completedBookings = providerBookings.filter(
-            (b: any) => b.status === "completed"
-          );
-          const providerRevenue = completedBookings.reduce(
-            (sum: number, b: any) => sum + (b.price ?? 0),
-            0
-          );
-
-          return {
-            id: String(p.id),
-            userId: p.user_id,
-            name: p.name ?? "Unknown",
-            email: (p.users as any)?.email ?? "",
-            businessName: p.name ?? "Unknown Business",
-            isVerified: p.is_verified ?? false,
-            isRejected: false,
-            rating: p.rating ?? 0,
-            totalReviews: p.reviews ?? 0,
-            serviceCount: (servicesData ?? []).filter(
-              (s: any) => String(s.provider_id) === String(p.id)
-            ).length,
-            bookingCount: providerBookings.length,
-            totalRevenue: providerRevenue,
-            createdAt: p.created_at ?? new Date().toISOString(),
-            contactLink: p.contact_link ?? undefined,
-            validIdUrl: p.valid_id_url ?? undefined,
-            credentialsUrl: p.credentials_url ?? undefined,
-          };
-        }
-      );
-=======
         bookingCount: bookingsData.filter((b: any) => b.owner_id === u.id).length,
       }));
 
@@ -208,7 +161,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         email: (p.users as any)?.email ?? "",
         businessName: p.name ?? "Unknown Business",
         isVerified: p.is_verified ?? false,
-        isRejected: p.is_rejected ?? false, // ← read from DB, not hardcoded
+        isRejected: p.is_rejected ?? false,
         rating: p.rating ?? 0,
         totalReviews: p.reviews ?? 0,
         serviceCount: servicesData.filter(
@@ -222,7 +175,19 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         validIdUrl: p.valid_id_url ?? undefined,
         credentialsUrl: p.credentials_url ?? undefined,
       }));
->>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
+
+      // Build provider user ID set for quick lookup
+      const providerUserIds = new Set(providersData.map((p: any) => p.user_id));
+
+      // Bookings by owner (non-provider users)
+      const ownerBookings = bookingsData.filter(
+        (b: any) => b.owner_id && !providerUserIds.has(b.owner_id)
+      ).length;
+
+      // Bookings attributed to providers (as the service provider side)
+      const providerBookings = bookingsData.filter(
+        (b: any) => b.provider_id != null
+      ).length;
 
       const logs: ActivityLog[] = [
         ...bookingsData.slice(0, 30).map((b: any) => ({
@@ -246,7 +211,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       ]
         .sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         )
         .slice(0, 30);
 
@@ -254,59 +219,29 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       setProviders(mappedProviders);
       setActivityLogs(logs);
 
-<<<<<<< HEAD
-      // Compute stats with proper revenue tracking
-      const completedBookings = (bookingsData ?? []).filter(
-        (b: any) => b.status === "completed"
-=======
       const completedBookings = bookingsData.filter(
         (b: any) => b.status === "completed",
->>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
-      );
-      const totalRevenue = completedBookings.reduce(
-        (sum: number, b: any) => sum + (b.price ?? 0),
-        0
       );
 
-      // Monthly revenue (current month)
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthlyRevenue = completedBookings
-        .filter((b: any) => new Date(b.created_at) >= startOfMonth)
-        .reduce((sum: number, b: any) => sum + (b.price ?? 0), 0);
-
-      const totalOwners = mappedUsers.filter((u) => u.role === "owner").length;
-      const totalProviders = mappedProviders.length;
+      // Only count providers with no verification decision yet (not verified AND not rejected)
+      const pendingVerifications = mappedProviders.filter(
+        (p) => !p.isVerified && !p.isRejected,
+      ).length;
 
       setStats({
-        totalUsers: mappedUsers.length,
-<<<<<<< HEAD
-        totalOwners,
-        totalProviders,
-        totalBookings: (bookingsData ?? []).length,
-        pendingVerifications: mappedProviders.filter((p) => !p.isVerified).length,
-        activeServices: (servicesData ?? []).filter((s: any) => s.is_active).length,
-        completedBookings: completedBookings.length,
-        cancelledBookings: (bookingsData ?? []).filter(
-          (b: any) => b.status === "cancelled"
-=======
+        totalUsers: mappedUsers.filter(u => u.role !== "admin").length,
         totalProviders: mappedProviders.length,
+        verifiedProviders: mappedProviders.filter(p => p.isVerified).length,
+        rejectedProviders: mappedProviders.filter(p => p.isRejected).length,
         totalBookings: bookingsData.length,
-        // pending = not verified AND not rejected
-        pendingVerifications: mappedProviders.filter(
-          (p) => !p.isVerified && !p.isRejected,
-        ).length,
+        pendingVerifications,
         activeServices: servicesData.filter((s: any) => s.is_active).length,
         completedBookings: completedBookings.length,
         cancelledBookings: bookingsData.filter(
           (b: any) => b.status === "cancelled",
->>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
         ).length,
-        pendingBookings: (bookingsData ?? []).filter(
-          (b: any) => b.status === "pending" || b.status === "awaiting_downpayment"
-        ).length,
-        totalRevenue,
-        monthlyRevenue,
+        ownerBookings,
+        providerBookings,
       });
     } catch (err) {
       console.error("Admin data load error:", err);
@@ -321,7 +256,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
 
   const callVerifyApi = async (
     providerId: string,
-    action: "verify" | "unverify" | "reject"
+    action: "verify" | "unverify" | "reject",
   ) => {
     const res = await fetch("/api/admin/verify-provider", {
       method: "POST",
@@ -336,12 +271,13 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     await callVerifyApi(providerId, "verify");
     setProviders((prev) =>
       prev.map((p) =>
-        p.id === providerId ? { ...p, isVerified: true, isRejected: false } : p
-      )
+        p.id === providerId ? { ...p, isVerified: true, isRejected: false } : p,
+      ),
     );
     setStats((prev) => ({
       ...prev,
       pendingVerifications: Math.max(0, prev.pendingVerifications - 1),
+      verifiedProviders: prev.verifiedProviders + 1,
     }));
   };
 
@@ -351,33 +287,37 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       prev.map((p) =>
         p.id === providerId
           ? { ...p, isVerified: false, isRejected: false }
-          : p
-      )
+          : p,
+      ),
     );
     setStats((prev) => ({
       ...prev,
       pendingVerifications: prev.pendingVerifications + 1,
+      verifiedProviders: Math.max(0, prev.verifiedProviders - 1),
     }));
   };
 
   const rejectProvider = async (providerId: string) => {
     await callVerifyApi(providerId, "reject");
+    const wasVerified = providers.find(p => p.id === providerId)?.isVerified ?? false;
     setProviders((prev) =>
       prev.map((p) =>
-        p.id === providerId ? { ...p, isVerified: false, isRejected: true } : p
-      )
+        p.id === providerId ? { ...p, isVerified: false, isRejected: true } : p,
+      ),
     );
-    // pending count stays the same (was pending, now rejected — still not verified)
+    setStats((prev) => ({
+      ...prev,
+      rejectedProviders: prev.rejectedProviders + 1,
+      verifiedProviders: wasVerified ? Math.max(0, prev.verifiedProviders - 1) : prev.verifiedProviders,
+      // If it was pending (not verified, not rejected), pending count decreases
+      pendingVerifications: !wasVerified ? Math.max(0, prev.pendingVerifications - 1) : prev.pendingVerifications,
+    }));
   };
 
   const deleteUser = async (userId: string) => {
     const { error } = await supabase.from("users").delete().eq("id", userId);
     if (error) throw new Error(error.message);
     setUsers((prev) => prev.filter((u) => u.id !== userId));
-    setStats((prev) => ({
-      ...prev,
-      totalUsers: Math.max(0, prev.totalUsers - 1),
-    }));
   };
 
   return (

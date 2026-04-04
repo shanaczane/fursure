@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { type User } from "@/app/types";
 
 interface TopNavbarProps {
@@ -41,7 +42,10 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarO
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: "var(--fur-rose)" }} />
           </button>
 
-          <div className="flex items-center gap-3">
+          <Link href="/owner/profile" className="flex items-center gap-3 rounded-xl px-2 py-1 transition-colors"
+            style={{ textDecoration: "none" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-mist)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
             <div className="hidden sm:block text-right">
               <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>{user.name}</p>
               <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>Pet Owner</p>
@@ -52,7 +56,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarO
             >
               {user.name.charAt(0).toUpperCase()}
             </div>
-          </div>
+          </Link>
         </div>
       </div>
     </header>
