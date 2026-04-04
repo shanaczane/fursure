@@ -158,6 +158,8 @@ const ServicesPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {filteredServices.map((service) => {
                   const colors = categoryColors[service.category] || { bg: "var(--fur-sand)", accent: "var(--fur-brown)" };
+                  const hasRating = service.reviews > 0;
+
                   return (
                     <div
                       key={service.id}
@@ -202,18 +204,24 @@ const ServicesPage: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Rating + Address — same row */}
+                        {/* Rating + Address */}
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-1">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B"
-                              strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="13" height="13" viewBox="0 0 24 24"
+                              fill={hasRating ? "#F59E0B" : "none"}
+                              stroke={hasRating ? "#F59E0B" : "var(--fur-slate-light)"}
+                              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                             </svg>
-                            <span className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{service.rating}</span>
-                            <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>({service.reviews})</span>
+                            <span className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>
+                              {hasRating ? service.rating : "—"}
+                            </span>
+                            <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                              ({service.reviews})
+                            </span>
                           </div>
 
-                          {/* ← address replaces the empty pin */}
+                          {/* Address */}
                           <div className="flex items-center gap-1 min-w-0 max-w-[55%]">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                               strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"

@@ -872,8 +872,8 @@ export const fetchServices = async (): Promise<Service[]> => {
   // Step 1: fetch all verified providers
   const { data: providerRows, error: providerError } = await supabase
     .from("providers")
-    .select("id, name, rating, reviews, response_time, user_id")
-    .eq("is_verified", true);  // ← removed is_rejected filter entirely
+    .select("id, name, response_time, user_id")
+    .eq("is_verified", true);
 
   if (providerError) throw new Error(providerError.message);
   if (!providerRows || providerRows.length === 0) return [];
@@ -900,8 +900,10 @@ export const fetchServices = async (): Promise<Service[]> => {
       provider: prov.name ?? "",
       providerUserId: prov.user_id ?? undefined,
       category: row.category,
-      rating: prov.rating ?? 0,
-      reviews: prov.reviews ?? 0,
+      // ─── Per-service rating — reads from services table, not providers ───
+      rating: row.rating ?? 0,
+      reviews: row.reviews ?? 0,
+      // ─────────────────────────────────────────────────────────────────────
       price: row.price,
       priceUnit: row.price_unit,
       location: row.location ?? "",

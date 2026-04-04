@@ -128,6 +128,11 @@ export interface Booking {
   providerEmail?: string;
   providerContactLink?: string;
 
+  // ─── Rating & Review ────────────────────────────────────
+
+  rating?: number;   // 1–5 star rating left by the owner after completion
+  review?: string;   // optional written review
+
   // ─── Down Payment Policy ─────────────────────────────────
 
   requiresDownPayment: boolean;
