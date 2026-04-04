@@ -869,29 +869,49 @@ export const submitServiceReview = async (
 // ─── Services ─────────────────────────────────────────────────────────────────
 
 export const fetchServices = async (): Promise<Service[]> => {
+  // Step 1: fetch all verified providers
+  const { data: providerRows, error: providerError } = await supabase
+    .from("providers")
+    .select("id, name, rating, reviews, response_time, user_id")
+    .eq("is_verified", true);  // ← removed is_rejected filter entirely
+
+  if (providerError) throw new Error(providerError.message);
+  if (!providerRows || providerRows.length === 0) return [];
+
+  const providerIds = providerRows.map((p) => p.id);
+
+  // Step 2: fetch active services for those providers
   const { data, error } = await supabase
     .from("services")
-    .select("*, providers(name, rating, reviews, response_time, user_id)")
+    .select("*")
     .eq("is_active", true)
+    .in("provider_id", providerIds)
     .order("created_at", { ascending: true });
+
   if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    name: row.name,
-    provider: row.providers?.name ?? "",
-    providerUserId: row.providers?.user_id ?? undefined,
-    category: row.category,
-    rating: row.providers?.rating ?? 0,
-    reviews: row.providers?.reviews ?? 0,
-    price: row.price,
-    priceUnit: row.price_unit,
-    location: row.location ?? "",
-    distance: row.distance ?? "",
-    duration: row.duration ?? 60,
-    image: row.image ?? "",
-    description: row.description ?? "",
-    features: row.features ?? [],
-    availability: row.availability ?? [],
-    responseTime: row.response_time ?? row.providers?.response_time ?? "",
-  }));
+
+  const providerMap = Object.fromEntries(providerRows.map((p) => [String(p.id), p]));
+
+  return (data ?? []).map((row) => {
+    const prov = providerMap[String(row.provider_id)] ?? {};
+    return {
+      id: row.id,
+      name: row.name,
+      provider: prov.name ?? "",
+      providerUserId: prov.user_id ?? undefined,
+      category: row.category,
+      rating: prov.rating ?? 0,
+      reviews: prov.reviews ?? 0,
+      price: row.price,
+      priceUnit: row.price_unit,
+      location: row.location ?? "",
+      distance: row.distance ?? "",
+      duration: row.duration ?? 60,
+      image: row.image ?? "",
+      description: row.description ?? "",
+      features: row.features ?? [],
+      availability: row.availability ?? [],
+      responseTime: row.response_time ?? prov.response_time ?? "",
+    };
+  });
 };

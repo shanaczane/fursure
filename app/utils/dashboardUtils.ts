@@ -19,7 +19,11 @@ export const filterServices = (
     )
       return false;
     if (service.rating < filters.minRating) return false;
-    if (parseFloat(service.distance ?? "0") > filters.maxDistance) return false;
+
+    // Only apply distance filter if the service actually has a numeric distance
+    const dist = parseFloat(service.distance ?? "");
+    if (!isNaN(dist) && dist > filters.maxDistance) return false;
+
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       const text =

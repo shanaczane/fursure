@@ -30,7 +30,7 @@ export const useDashboard = ({
 }: UseDashboardProps) => {
   const [filters, setFilters] = useState<ServiceFilters>({
     category: "all",
-    priceRange: { min: 0, max: 500 },
+    priceRange: { min: 0, max: 99999 },
     minRating: 0,
     maxDistance: 100,
     searchQuery: "",
@@ -54,8 +54,7 @@ export const useDashboard = ({
   const dashboardStats = useMemo(
     () => ({
       upcomingBookings: upcomingBookings.length,
-      completedBookings: bookings.filter((b) => b.status === "completed")
-        .length,
+      completedBookings: bookings.filter((b) => b.status === "completed").length,
       totalPets: pets.length,
       totalServices: services.length,
     }),
@@ -72,7 +71,7 @@ export const useDashboard = ({
   const handleResetFilters = useCallback(() => {
     setFilters({
       category: "all",
-      priceRange: { min: 0, max: 500 },
+      priceRange: { min: 0, max: 99999 },
       minRating: 0,
       maxDistance: 100,
       searchQuery: "",
