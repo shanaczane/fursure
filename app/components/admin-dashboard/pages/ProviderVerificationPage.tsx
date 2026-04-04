@@ -49,6 +49,7 @@ const TagIcon = () => (
     <line x1="7" y1="7" x2="7.01" y2="7" />
   </svg>
 );
+<<<<<<< HEAD
 const IdCardIcon = ({ size = 18 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
     <rect x="2" y="5" width="20" height="14" rx="2" />
@@ -78,6 +79,13 @@ const MoneyIcon = ({ size = 14 }: { size?: number }) => (
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(amount);
+=======
+const BanIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+  </svg>
+);
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ServiceRecord {
@@ -104,9 +112,37 @@ const ServicesPanelOverlay: React.FC<{
 
   return (
     <>
+<<<<<<< HEAD
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.35)", backdropFilter: "blur(2px)", zIndex: 40 }} />
       <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(520px, 100vw)", background: "white", zIndex: 50, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(15,23,42,0.12)", fontFamily: "'Nunito', sans-serif" }}>
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)" }}>
+=======
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed", inset: 0,
+          background: "rgba(15, 23, 42, 0.35)",
+          backdropFilter: "blur(2px)",
+          zIndex: 40,
+          animation: "fadeInBackdrop 0.2s ease",
+        }}
+      />
+      <div style={{
+        position: "fixed", top: 0, right: 0, bottom: 0,
+        width: "min(520px, 100vw)",
+        background: "white",
+        zIndex: 50,
+        display: "flex", flexDirection: "column",
+        boxShadow: "-8px 0 40px rgba(15,23,42,0.12)",
+        animation: "slideInDrawer 0.28s cubic-bezier(0.22,1,0.36,1)",
+        fontFamily: "'Nunito', sans-serif",
+      }}>
+        <div style={{
+          padding: "20px 24px",
+          borderBottom: "1px solid var(--border)",
+          background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)",
+        }}>
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 44, height: 44, borderRadius: 14, background: "#D1FAE5", color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -132,6 +168,10 @@ const ServicesPanelOverlay: React.FC<{
             </div>
           )}
         </div>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
         {!isLoadingServices && !fetchError && services.length > 0 && (
           <div style={{ padding: "12px 24px", borderBottom: "1px solid var(--border)", display: "flex", gap: 6 }}>
             {(["all", "active", "inactive"] as const).map((f) => (
@@ -141,9 +181,36 @@ const ServicesPanelOverlay: React.FC<{
             ))}
           </div>
         )}
+<<<<<<< HEAD
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
           {isLoadingServices && <div style={{ textAlign: "center", padding: "48px 0" }}><p style={{ fontSize: 14, fontWeight: 700, color: "var(--fur-slate)" }}>Loading services…</p></div>}
           {!isLoadingServices && fetchError && <div style={{ padding: "14px 16px", borderRadius: 12, background: "#FEE2E2", border: "1px solid #FCA5A5", color: "#991B1B", fontSize: 13, fontWeight: 600 }}>{fetchError}</div>}
+=======
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {isLoadingServices && (
+            <div style={{ textAlign: "center", padding: "48px 0" }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 14,
+                background: "#EDE9FE", color: "#5B21B6",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                margin: "0 auto 12px", animation: "pulse 1.5s infinite",
+              }}>
+                <LayersIcon size={22} />
+              </div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "var(--fur-slate)" }}>Loading services…</p>
+            </div>
+          )}
+          {!isLoadingServices && fetchError && (
+            <div style={{
+              padding: "14px 16px", borderRadius: 12,
+              background: "#FEE2E2", border: "1px solid #FCA5A5",
+              color: "#991B1B", fontSize: 13, fontWeight: 600,
+            }}>
+              {fetchError}
+            </div>
+          )}
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
           {!isLoadingServices && !fetchError && filtered.length === 0 && (
             <div style={{ textAlign: "center", padding: "48px 0" }}>
               <p style={{ fontSize: 14, fontWeight: 700, color: "var(--fur-slate)", margin: "0 0 4px" }}>No services found</p>
@@ -186,6 +253,10 @@ const ProviderVerificationPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
   const [selectedProvider, setSelectedProvider] = useState<ProviderRecord | null>(null);
   const [providerServices, setProviderServices] = useState<ServiceRecord[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
@@ -375,19 +446,50 @@ const ProviderVerificationPage: React.FC = () => {
           <div className="space-y-4">
             {filtered.map((provider) => (
               <div key={provider.id} className="rounded-2xl border overflow-hidden"
+<<<<<<< HEAD
                 style={{ background: "white", borderColor: provider.isVerified ? "var(--border)" : provider.isRejected ? "#FCA5A5" : isMissingRequiredDoc(provider) ? "#FCA5A5" : "#FCD34D" }}>
+=======
+                style={{
+                  background: "white",
+                  borderColor: provider.isVerified
+                    ? "var(--border)"
+                    : provider.isRejected
+                    ? "#FCA5A5"
+                    : "#FCD34D",
+                }}>
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
                 <div className="p-5 flex flex-col md:flex-row md:items-center gap-4">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+<<<<<<< HEAD
                       style={{ background: provider.isVerified ? "#D1FAE5" : provider.isRejected ? "#FEE2E2" : "#FEF3C7", color: provider.isVerified ? "#059669" : provider.isRejected ? "#991B1B" : "#92400E" }}>
+=======
+                      style={{
+                        background: provider.isVerified ? "#D1FAE5" : provider.isRejected ? "#FEE2E2" : "#FEF3C7",
+                        color: provider.isVerified ? "#059669" : provider.isRejected ? "#991B1B" : "#92400E",
+                      }}>
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
                       <BuildingIcon size={22} />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>{provider.businessName}</h3>
                         <span className="text-xs font-700 px-2 py-0.5 rounded-full flex items-center gap-1"
+<<<<<<< HEAD
                           style={provider.isVerified ? { background: "#D1FAE5", color: "#065F46" } : provider.isRejected ? { background: "#FEE2E2", color: "#991B1B" } : { background: "#FEF3C7", color: "#92400E" }}>
                           {provider.isVerified ? <><CheckIcon /> Verified</> : provider.isRejected ? <>Rejected</> : <>Pending</>}
+=======
+                          style={provider.isVerified
+                            ? { background: "#D1FAE5", color: "#065F46" }
+                            : provider.isRejected
+                              ? { background: "#FEE2E2", color: "#991B1B" }
+                              : { background: "#FEF3C7", color: "#92400E" }}>
+                          {provider.isVerified
+                            ? <><CheckIcon /> Verified</>
+                            : provider.isRejected
+                              ? <><BanIcon /> Rejected</>
+                              : <>Pending</>}
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
                         </span>
                       </div>
                       <p className="text-xs truncate mt-0.5" style={{ color: "var(--fur-slate-light)" }}>{provider.email}</p>
@@ -410,21 +512,51 @@ const ProviderVerificationPage: React.FC = () => {
                         {provider.serviceCount > 0 && <span style={{ fontSize: 10, fontWeight: 800, background: "#059669", color: "white", borderRadius: 99, padding: "1px 6px" }}>{provider.serviceCount}</span>}
                       </button>
                     )}
+<<<<<<< HEAD
+=======
+
+                    {provider.contactLink && (
+                      <a href={provider.contactLink} target="_blank" rel="noopener noreferrer"
+                        className="px-3 py-2 rounded-xl text-sm font-700 border transition-all flex items-center gap-1.5"
+                        style={{ borderColor: "var(--border)", color: "var(--fur-teal)", background: "var(--fur-teal-light)" }}>
+                        <LinkIcon /> Profile
+                      </a>
+                    )}
+
+                    {/* ── Action buttons: verified → Revoke | rejected → locked badge | pending → Verify + Reject ── */}
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
                     {provider.isVerified ? (
                       <button onClick={() => handleUnverify(provider)} disabled={actionLoading === provider.id} className="px-4 py-2 rounded-xl text-sm font-700 border transition-all disabled:opacity-60" style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEE2E2" }}>
                         {actionLoading === provider.id ? "..." : "Revoke"}
                       </button>
+                    ) : provider.isRejected ? (
+                      // Rejected providers are locked — no further actions available
+                      <span
+                        className="px-4 py-2 rounded-xl text-sm font-700 border flex items-center gap-1.5"
+                        style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEF2F2", opacity: 0.75 }}>
+                        <BanIcon /> Rejected
+                      </span>
                     ) : (
                       <>
                         <button onClick={() => handleVerify(provider)} disabled={actionLoading === provider.id || isMissingRequiredDoc(provider)} className="px-4 py-2 rounded-xl text-sm font-700 text-white transition-all disabled:opacity-60 flex items-center gap-1.5" style={{ background: isMissingRequiredDoc(provider) ? "#9CA3AF" : "linear-gradient(135deg, #059669, #065F46)", boxShadow: isMissingRequiredDoc(provider) ? "none" : "0 2px 8px rgba(5,150,105,0.3)" }}
                           title={isMissingRequiredDoc(provider) ? "Cannot verify: no government ID uploaded" : "Verify this provider"}>
                           {actionLoading === provider.id ? "..." : <><CheckIcon /> Verify</>}
                         </button>
+<<<<<<< HEAD
                         {!provider.isRejected && (
                           <button onClick={() => handleReject(provider)} disabled={actionLoading === provider.id} className="px-4 py-2 rounded-xl text-sm font-700 border transition-all disabled:opacity-60" style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEE2E2" }}>
                             {actionLoading === provider.id ? "..." : "Reject"}
                           </button>
                         )}
+=======
+                        <button
+                          onClick={() => handleReject(provider)}
+                          disabled={actionLoading === provider.id}
+                          className="px-4 py-2 rounded-xl text-sm font-700 border transition-all disabled:opacity-60"
+                          style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEE2E2" }}>
+                          {actionLoading === provider.id ? "..." : "Reject"}
+                        </button>
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
                       </>
                     )}
                   </div>
@@ -499,7 +631,21 @@ const ProviderVerificationPage: React.FC = () => {
                       )}
                     </div>
                   </div>
+<<<<<<< HEAD
                 </div>
+=======
+                )}
+                {!provider.validIdUrl && !provider.credentialsUrl && !provider.isVerified && !provider.isRejected && (
+                  <div className="px-5 pb-3 pt-1 border-t" style={{ borderColor: "var(--border)" }}>
+                    <p className="text-xs flex items-center gap-1.5" style={{ color: "#92400E" }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      No documents submitted yet
+                    </p>
+                  </div>
+                )}
+>>>>>>> 6f9b504c116f983a388d8a4379c62b144163378c
 
                 {/* Metadata */}
                 <div className="px-5 pb-4 flex items-center gap-4 text-xs" style={{ color: "var(--fur-slate-light)" }}>
