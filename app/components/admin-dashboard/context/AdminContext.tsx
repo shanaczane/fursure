@@ -131,7 +131,6 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         });
       }
 
-      // Fetch all data via server route (bypasses RLS using service role key)
       const res = await fetch("/api/admin/data");
       const adminData = await res.json();
       const usersData = adminData.users ?? [];
@@ -139,46 +138,40 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       const servicesData = adminData.services ?? [];
       const bookingsData = adminData.bookings ?? [];
 
-      // Map users
-      const mappedUsers: UserRecord[] = (usersData ?? []).map((u: any) => ({
+      const mappedUsers: UserRecord[] = usersData.map((u: any) => ({
         id: u.id,
         name: u.name ?? "Unknown",
         email: u.email ?? "",
         phone: u.phone ?? undefined,
         role: u.role ?? "owner",
         createdAt: u.created_at ?? new Date().toISOString(),
-        bookingCount: (bookingsData ?? []).filter((b: any) => b.owner_id === u.id)
-          .length,
+        bookingCount: bookingsData.filter((b: any) => b.owner_id === u.id).length,
       }));
 
-      // Map providers
-      const mappedProviders: ProviderRecord[] = (providersData ?? []).map(
-        (p: any) => ({
-          id: String(p.id),
-          userId: p.user_id,
-          name: p.name ?? "Unknown",
-          email: (p.users as any)?.email ?? "",
-          businessName: p.name ?? "Unknown Business",
-          isVerified: p.is_verified ?? false,
-          isRejected: false, // tracked client-side in rejectedProviderIds
-          rating: p.rating ?? 0,
-          totalReviews: p.reviews ?? 0,
-          serviceCount: (servicesData ?? []).filter(
-            (s: any) => String(s.provider_id) === String(p.id),
-          ).length,
-          bookingCount: (bookingsData ?? []).filter(
-            (b: any) => b.provider_id === p.id,
-          ).length,
-          createdAt: p.created_at ?? new Date().toISOString(),
-          contactLink: p.contact_link ?? undefined,
-          validIdUrl: p.valid_id_url ?? undefined,
-          credentialsUrl: p.credentials_url ?? undefined,
-        }),
-      );
+      const mappedProviders: ProviderRecord[] = providersData.map((p: any) => ({
+        id: String(p.id),
+        userId: p.user_id,
+        name: p.name ?? "Unknown",
+        email: (p.users as any)?.email ?? "",
+        businessName: p.name ?? "Unknown Business",
+        isVerified: p.is_verified ?? false,
+        isRejected: p.is_rejected ?? false, // ← read from DB, not hardcoded
+        rating: p.rating ?? 0,
+        totalReviews: p.reviews ?? 0,
+        serviceCount: servicesData.filter(
+          (s: any) => String(s.provider_id) === String(p.id),
+        ).length,
+        bookingCount: bookingsData.filter(
+          (b: any) => b.provider_id === p.id,
+        ).length,
+        createdAt: p.created_at ?? new Date().toISOString(),
+        contactLink: p.contact_link ?? undefined,
+        validIdUrl: p.valid_id_url ?? undefined,
+        credentialsUrl: p.credentials_url ?? undefined,
+      }));
 
-      // Build activity logs from bookings
       const logs: ActivityLog[] = [
-        ...(bookingsData ?? []).slice(0, 30).map((b: any) => ({
+        ...bookingsData.slice(0, 30).map((b: any) => ({
           id: b.id,
           type: (b.status === "cancelled"
             ? "cancellation"
@@ -188,7 +181,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
           userName: b.owner_name ?? "Pet Owner",
           createdAt: b.created_at,
         })),
-        ...(usersData ?? []).slice(0, 10).map((u: any) => ({
+        ...usersData.slice(0, 10).map((u: any) => ({
           id: `reg-${u.id}`,
           type: "registration" as ActivityLog["type"],
           description: `New user registered: ${u.name ?? u.email}`,
@@ -207,19 +200,20 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       setProviders(mappedProviders);
       setActivityLogs(logs);
 
-      // Compute stats
-      const completedBookings = (bookingsData ?? []).filter(
+      const completedBookings = bookingsData.filter(
         (b: any) => b.status === "completed",
       );
       setStats({
         totalUsers: mappedUsers.length,
         totalProviders: mappedProviders.length,
-        totalBookings: (bookingsData ?? []).length,
-        pendingVerifications: mappedProviders.filter((p) => !p.isVerified)
-          .length,
-        activeServices: (servicesData ?? []).filter((s: any) => s.is_active).length,
+        totalBookings: bookingsData.length,
+        // pending = not verified AND not rejected
+        pendingVerifications: mappedProviders.filter(
+          (p) => !p.isVerified && !p.isRejected,
+        ).length,
+        activeServices: servicesData.filter((s: any) => s.is_active).length,
         completedBookings: completedBookings.length,
-        cancelledBookings: (bookingsData ?? []).filter(
+        cancelledBookings: bookingsData.filter(
           (b: any) => b.status === "cancelled",
         ).length,
         totalRevenue: completedBookings.reduce(
@@ -286,6 +280,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         p.id === providerId ? { ...p, isVerified: false, isRejected: true } : p,
       ),
     );
+    // pending count stays the same (was pending, now rejected — still not verified)
   };
 
   const deleteUser = async (userId: string) => {

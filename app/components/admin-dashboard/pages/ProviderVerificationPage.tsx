@@ -60,6 +60,11 @@ const TagIcon = () => (
     <line x1="7" y1="7" x2="7.01" y2="7" />
   </svg>
 );
+const BanIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+  </svg>
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,7 +96,6 @@ const ServicesPanelOverlay: React.FC<{
 
   return (
     <>
-      {/* Backdrop */}
       <div
         onClick={onClose}
         style={{
@@ -102,8 +106,6 @@ const ServicesPanelOverlay: React.FC<{
           animation: "fadeInBackdrop 0.2s ease",
         }}
       />
-
-      {/* Drawer */}
       <div style={{
         position: "fixed", top: 0, right: 0, bottom: 0,
         width: "min(520px, 100vw)",
@@ -114,8 +116,6 @@ const ServicesPanelOverlay: React.FC<{
         animation: "slideInDrawer 0.28s cubic-bezier(0.22,1,0.36,1)",
         fontFamily: "'Nunito', sans-serif",
       }}>
-
-        {/* Header */}
         <div style={{
           padding: "20px 24px",
           borderBottom: "1px solid var(--border)",
@@ -165,8 +165,6 @@ const ServicesPanelOverlay: React.FC<{
               <CloseIcon />
             </button>
           </div>
-
-          {/* Summary chips — shown once data is loaded */}
           {!isLoadingServices && !fetchError && (
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
               {[
@@ -190,7 +188,6 @@ const ServicesPanelOverlay: React.FC<{
           )}
         </div>
 
-        {/* Filter tabs */}
         {!isLoadingServices && !fetchError && services.length > 0 && (
           <div style={{ padding: "12px 24px", borderBottom: "1px solid var(--border)", display: "flex", gap: 6 }}>
             {(["all", "active", "inactive"] as const).map((f) => (
@@ -214,10 +211,7 @@ const ServicesPanelOverlay: React.FC<{
           </div>
         )}
 
-        {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
-
-          {/* Loading */}
           {isLoadingServices && (
             <div style={{ textAlign: "center", padding: "48px 0" }}>
               <div style={{
@@ -231,8 +225,6 @@ const ServicesPanelOverlay: React.FC<{
               <p style={{ fontSize: 14, fontWeight: 700, color: "var(--fur-slate)" }}>Loading services…</p>
             </div>
           )}
-
-          {/* Fetch error */}
           {!isLoadingServices && fetchError && (
             <div style={{
               padding: "14px 16px", borderRadius: 12,
@@ -242,8 +234,6 @@ const ServicesPanelOverlay: React.FC<{
               {fetchError}
             </div>
           )}
-
-          {/* Empty */}
           {!isLoadingServices && !fetchError && filtered.length === 0 && (
             <div style={{ textAlign: "center", padding: "48px 0" }}>
               <div style={{
@@ -264,8 +254,6 @@ const ServicesPanelOverlay: React.FC<{
               </p>
             </div>
           )}
-
-          {/* Service cards */}
           {!isLoadingServices && !fetchError && filtered.map((service) => (
             <div
               key={service.id}
@@ -344,7 +332,6 @@ const ProviderVerificationPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Services drawer state
   const [selectedProvider, setSelectedProvider] = useState<ProviderRecord | null>(null);
   const [providerServices, setProviderServices] = useState<ServiceRecord[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
@@ -408,7 +395,6 @@ const ProviderVerificationPage: React.FC = () => {
     } finally { setActionLoading(null); }
   };
 
-  /** Open drawer and fetch real services from DB */
   const handleViewServices = async (provider: ProviderRecord) => {
     setSelectedProvider(provider);
     setProviderServices([]);
@@ -534,7 +520,11 @@ const ProviderVerificationPage: React.FC = () => {
               <div key={provider.id} className="rounded-2xl border overflow-hidden"
                 style={{
                   background: "white",
-                  borderColor: provider.isVerified ? "var(--border)" : provider.isRejected ? "#FCA5A5" : "#FCD34D"
+                  borderColor: provider.isVerified
+                    ? "var(--border)"
+                    : provider.isRejected
+                    ? "#FCA5A5"
+                    : "#FCD34D",
                 }}>
                 <div className="p-5 flex flex-col md:flex-row md:items-center gap-4">
                   {/* Provider Info */}
@@ -542,7 +532,7 @@ const ProviderVerificationPage: React.FC = () => {
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
                       style={{
                         background: provider.isVerified ? "#D1FAE5" : provider.isRejected ? "#FEE2E2" : "#FEF3C7",
-                        color: provider.isVerified ? "#059669" : provider.isRejected ? "#991B1B" : "#92400E"
+                        color: provider.isVerified ? "#059669" : provider.isRejected ? "#991B1B" : "#92400E",
                       }}>
                       <BuildingIcon size={22} />
                     </div>
@@ -557,7 +547,11 @@ const ProviderVerificationPage: React.FC = () => {
                             : provider.isRejected
                               ? { background: "#FEE2E2", color: "#991B1B" }
                               : { background: "#FEF3C7", color: "#92400E" }}>
-                          {provider.isVerified ? <><CheckIcon /> Verified</> : provider.isRejected ? <>Rejected</> : <>Pending</>}
+                          {provider.isVerified
+                            ? <><CheckIcon /> Verified</>
+                            : provider.isRejected
+                              ? <><BanIcon /> Rejected</>
+                              : <>Pending</>}
                         </span>
                       </div>
                       <p className="text-xs truncate" style={{ color: "var(--fur-slate-light)" }}>
@@ -596,6 +590,8 @@ const ProviderVerificationPage: React.FC = () => {
                         <LinkIcon /> Profile
                       </a>
                     )}
+
+                    {/* ── Action buttons: verified → Revoke | rejected → locked badge | pending → Verify + Reject ── */}
                     {provider.isVerified ? (
                       <button
                         onClick={() => handleUnverify(provider)}
@@ -604,6 +600,13 @@ const ProviderVerificationPage: React.FC = () => {
                         style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEE2E2" }}>
                         {actionLoading === provider.id ? "..." : "Revoke"}
                       </button>
+                    ) : provider.isRejected ? (
+                      // Rejected providers are locked — no further actions available
+                      <span
+                        className="px-4 py-2 rounded-xl text-sm font-700 border flex items-center gap-1.5"
+                        style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEF2F2", opacity: 0.75 }}>
+                        <BanIcon /> Rejected
+                      </span>
                     ) : (
                       <>
                         <button
@@ -613,15 +616,13 @@ const ProviderVerificationPage: React.FC = () => {
                           style={{ background: "linear-gradient(135deg, #059669, #065F46)", boxShadow: "0 2px 8px rgba(5,150,105,0.3)" }}>
                           {actionLoading === provider.id ? "..." : <><CheckIcon /> Verify</>}
                         </button>
-                        {!provider.isRejected && (
-                          <button
-                            onClick={() => handleReject(provider)}
-                            disabled={actionLoading === provider.id}
-                            className="px-4 py-2 rounded-xl text-sm font-700 border transition-all disabled:opacity-60"
-                            style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEE2E2" }}>
-                            {actionLoading === provider.id ? "..." : "Reject"}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleReject(provider)}
+                          disabled={actionLoading === provider.id}
+                          className="px-4 py-2 rounded-xl text-sm font-700 border transition-all disabled:opacity-60"
+                          style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEE2E2" }}>
+                          {actionLoading === provider.id ? "..." : "Reject"}
+                        </button>
                       </>
                     )}
                   </div>
@@ -657,7 +658,7 @@ const ProviderVerificationPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-                {!provider.validIdUrl && !provider.credentialsUrl && !provider.isVerified && (
+                {!provider.validIdUrl && !provider.credentialsUrl && !provider.isVerified && !provider.isRejected && (
                   <div className="px-5 pb-3 pt-1 border-t" style={{ borderColor: "var(--border)" }}>
                     <p className="text-xs flex items-center gap-1.5" style={{ color: "#92400E" }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -686,7 +687,6 @@ const ProviderVerificationPage: React.FC = () => {
         )}
       </div>
 
-      {/* Services Drawer */}
       {selectedProvider && (
         <ServicesPanelOverlay
           provider={selectedProvider}
