@@ -83,28 +83,74 @@ const ServicesPage: React.FC = () => {
             </div>
 
             {/* Search & Filter */}
-            <div className="rounded-2xl p-5 border" style={{ background: "white", borderColor: "var(--border)" }}>
-              <div className="flex flex-col md:flex-row gap-4 mb-5">
-                <div className="flex-1 relative">
+            <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
+
+              {/* Search bar */}
+              <div className="p-4 border-b" style={{ borderColor: "var(--border)" }}>
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all"
+                  style={{ borderColor: filters.searchQuery ? "var(--fur-teal)" : "var(--border)", background: "var(--fur-cream)" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ color: filters.searchQuery ? "var(--fur-teal)" : "var(--fur-slate-light)", flexShrink: 0 }}>
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                  </svg>
                   <input
                     type="text"
                     value={filters.searchQuery}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    placeholder="Search services, providers..."
-                    className="fur-input"
-                    style={{ paddingLeft: "2.5rem" }}
+                    placeholder="Search by service name or provider..."
+                    style={{
+                      flex: 1,
+                      border: "none",
+                      background: "transparent",
+                      outline: "none",
+                      fontSize: "0.9rem",
+                      fontFamily: "'Nunito', sans-serif",
+                      fontWeight: 600,
+                      color: "var(--fur-slate)",
+                    }}
                   />
-                  <svg className="w-4 h-4 absolute left-3 top-3.5"
-                    style={{ color: "var(--fur-slate-light)" }}
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  {filters.searchQuery && (
+                    <button onClick={() => handleSearchChange("")}
+                      style={{ color: "var(--fur-slate-light)", background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Categories + Sort */}
+              <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex flex-wrap gap-2 flex-1">
+                  {SERVICE_CATEGORIES.map((cat) => (
+                    <button key={cat.value} onClick={() => handleFilterChange({ category: cat.value })}
+                      className="px-3 py-1.5 rounded-full text-xs font-700 border transition-all"
+                      style={filters.category === cat.value
+                        ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
+                        : { background: "white", color: "var(--fur-slate-mid)", borderColor: "var(--border)" }}>
+                      {cat.label}
+                    </button>
+                  ))}
                 </div>
                 <select
                   value={filters.sortBy}
                   onChange={(e) => handleFilterChange({ sortBy: e.target.value as "rating" | "price_asc" | "price_desc" | "distance" })}
-                  className="fur-input md:w-48">
+                  style={{
+                    border: "1.5px solid var(--border)",
+                    borderRadius: "0.75rem",
+                    padding: "0.4rem 0.75rem",
+                    fontSize: "0.8rem",
+                    fontFamily: "'Nunito', sans-serif",
+                    fontWeight: 700,
+                    color: "var(--fur-slate)",
+                    background: "white",
+                    outline: "none",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}>
                   <option value="rating">Highest Rated</option>
                   <option value="price_asc">Lowest Price</option>
                   <option value="price_desc">Highest Price</option>
@@ -112,34 +158,33 @@ const ServicesPage: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {SERVICE_CATEGORIES.map((cat) => (
-                  <button key={cat.value} onClick={() => handleFilterChange({ category: cat.value })}
-                    className="px-4 py-1.5 rounded-full text-sm font-700 border-2 transition-all"
-                    style={filters.category === cat.value
-                      ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
-                      : { background: "white", color: "var(--fur-slate-mid)", borderColor: "var(--border)" }}>
-                    {cat.label}
-                  </button>
-                ))}
-                {(filters.category !== "all" || filters.searchQuery) && (
+              {/* Active filters bar */}
+              {(filters.category !== "all" || filters.searchQuery) && (
+                <div className="px-4 py-2.5 border-t flex items-center justify-between" style={{ borderColor: "var(--border)", background: "var(--fur-teal-light)" }}>
+                  <p className="text-xs font-700" style={{ color: "var(--fur-teal-dark)" }}>
+                    {filteredServices.length} result{filteredServices.length !== 1 ? "s" : ""}
+                    {filters.searchQuery && <span> for &ldquo;{filters.searchQuery}&rdquo;</span>}
+                    {filters.category !== "all" && <span> in {filters.category}</span>}
+                  </p>
                   <button onClick={handleResetFilters}
-                    className="px-4 py-1.5 rounded-full text-sm font-700 border-2 transition-all flex items-center gap-1"
-                    style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    className="text-xs font-700 flex items-center gap-1"
+                    style={{ color: "var(--fur-teal-dark)", background: "none", border: "none", cursor: "pointer" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                       strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
-                    Reset
+                    Clear all
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Results count */}
-            <p className="text-sm font-600" style={{ color: "var(--fur-slate-mid)" }}>
-              {filteredServices.length} service{filteredServices.length !== 1 ? "s" : ""} found
-            </p>
+            {!filters.searchQuery && filters.category === "all" && (
+              <p className="text-sm font-600" style={{ color: "var(--fur-slate-mid)" }}>
+                {filteredServices.length} service{filteredServices.length !== 1 ? "s" : ""} available
+              </p>
+            )}
 
             {/* Service grid */}
             {filteredServices.length === 0 ? (
