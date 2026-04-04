@@ -869,18 +869,18 @@ export const submitServiceReview = async (
 // ─── Services ─────────────────────────────────────────────────────────────────
 
 export const fetchServices = async (): Promise<Service[]> => {
-  // Step 1: fetch all verified providers
+  // Step 1: fetch ONLY verified providers — owners never see unverified provider services
   const { data: providerRows, error: providerError } = await supabase
     .from("providers")
     .select("id, name, rating, reviews, response_time, user_id")
-    .eq("is_verified", true);  // ← removed is_rejected filter entirely
+    .eq("is_verified", true);
 
   if (providerError) throw new Error(providerError.message);
   if (!providerRows || providerRows.length === 0) return [];
 
   const providerIds = providerRows.map((p) => p.id);
 
-  // Step 2: fetch active services for those providers
+  /// Step 2: fetch active services ONLY for verified providers
   const { data, error } = await supabase
     .from("services")
     .select("*")

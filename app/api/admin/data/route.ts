@@ -21,13 +21,14 @@ export async function GET() {
         .from("providers")
         .select("*, users(email), valid_id_url, credentials_url")
         .order("created_at", { ascending: false }),
-      // Fetch full service fields so serviceCount and drawer both work correctly
+      // Fetch full service fields
       adminSupabase
         .from("services")
         .select("id, provider_id, name, category, price, is_active, description"),
+      // Include price for revenue calculations
       adminSupabase
         .from("bookings")
-        .select("*")
+        .select("id, owner_id, provider_id, service_id, service_name, provider_name, owner_name, owner_email, status, price, created_at, date, time, pet_name")
         .order("created_at", { ascending: false }),
     ]);
 

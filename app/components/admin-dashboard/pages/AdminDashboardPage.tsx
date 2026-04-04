@@ -39,12 +39,25 @@ const KeyIcon = ({ size = 20 }: { size?: number }) => (
     <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
   </svg>
 );
+const MoneyIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+  </svg>
+);
+const CalendarIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+  </svg>
+);
 
 const AdminDashboardPage: React.FC = () => {
   const { admin, stats, providers, users, isLoading } = useAdminContext();
 
-  const pendingProviders = providers.filter((p) => !p.isVerified).slice(0, 4);
+  const pendingProviders = providers.filter((p) => !p.isVerified && !p.isRejected).slice(0, 4);
   const recentUsers = users.filter((u) => u.role !== "admin").slice(0, 5);
+  const ownerCount = users.filter((u) => u.role === "owner").length;
+  const providerCount = providers.length;
+  const verifiedProviderCount = providers.filter((p) => p.isVerified).length;
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -54,9 +67,17 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   const statCards = [
-    { label: "Total Users", value: stats.totalUsers, icon: <UsersIcon />, color: "#3B82F6", bg: "#DBEAFE" },
-    { label: "Providers", value: stats.totalProviders, icon: <BuildingIcon />, color: "#8B5CF6", bg: "#EDE9FE" },
+    { label: "Pet Owners", value: ownerCount, icon: <UsersIcon />, color: "#3B82F6", bg: "#DBEAFE" },
+    { label: "Providers", value: `${verifiedProviderCount}/${providerCount}`, icon: <BuildingIcon />, color: "#8B5CF6", bg: "#EDE9FE", sub: "verified/total" },
     { label: "Pending Verify", value: stats.pendingVerifications, icon: <ClockIcon />, color: "#F59E0B", bg: "#FEF3C7" },
+    { label: "Total Bookings", value: stats.totalBookings, icon: <CalendarIcon />, color: "#10B981", bg: "#D1FAE5" },
+  ];
+
+  const revenueCards = [
+    { label: "Total Revenue", value: formatCurrency(stats.totalRevenue), icon: <MoneyIcon />, color: "#065F46", bg: "#D1FAE5" },
+    { label: "This Month", value: formatCurrency(stats.monthlyRevenue), icon: <MoneyIcon />, color: "#1E40AF", bg: "#DBEAFE" },
+    { label: "Completed", value: stats.completedBookings, icon: <CheckCircleIcon />, color: "#065F46", bg: "#D1FAE5" },
+    { label: "Pending", value: stats.pendingBookings, icon: <ClockIcon />, color: "#92400E", bg: "#FEF3C7" },
   ];
 
   if (isLoading) {
@@ -106,7 +127,8 @@ const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* User/Provider Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {statCards.map((s) => (
                 <div key={s.label} className="rounded-xl p-4"
                   style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
@@ -116,10 +138,81 @@ const AdminDashboardPage: React.FC = () => {
                   </div>
                   <p className="text-lg font-900 text-white mb-0.5" style={{ fontFamily: "'Fraunces', serif" }}>{s.value}</p>
                   <p className="text-xs font-600" style={{ color: "#7A90A8" }}>{s.label}</p>
+                  {(s as any).sub && <p className="text-xs" style={{ color: "#4A6280" }}>{(s as any).sub}</p>}
                 </div>
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Revenue Section */}
+        <div className="rounded-2xl overflow-hidden border" style={{ background: "white", borderColor: "var(--border)" }}>
+          <div className="flex items-center justify-between px-6 py-4 border-b"
+            style={{ borderColor: "var(--border)", background: "#F0FDF4" }}>
+            <div className="flex items-center gap-3">
+              <span style={{ color: "#059669" }}><MoneyIcon size={18} /></span>
+              <h2 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>Revenue & Bookings</h2>
+            </div>
+            <Link href="/admin/activity" className="text-sm font-700" style={{ color: "var(--fur-teal)" }}>
+              View activity →
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x divide-y sm:divide-y-0"
+            style={{ borderColor: "var(--border)" }}>
+            {revenueCards.map((card) => (
+              <div key={card.label} className="p-6">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                  style={{ background: card.bg, color: card.color }}>
+                  {card.icon}
+                </div>
+                <p className="text-2xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: card.color }}>
+                  {card.value}
+                </p>
+                <p className="text-xs font-600" style={{ color: "var(--fur-slate-light)" }}>{card.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Revenue by Provider */}
+          {providers.filter(p => p.totalRevenue > 0).length > 0 && (
+            <div className="border-t px-6 py-4" style={{ borderColor: "var(--border)" }}>
+              <p className="text-xs font-700 uppercase tracking-widest mb-4" style={{ color: "var(--fur-slate-mid)" }}>
+                Top Earning Providers
+              </p>
+              <div className="space-y-3">
+                {providers
+                  .filter(p => p.isVerified && p.totalRevenue > 0)
+                  .sort((a, b) => b.totalRevenue - a.totalRevenue)
+                  .slice(0, 5)
+                  .map((provider) => {
+                    const maxRev = Math.max(...providers.map(p => p.totalRevenue), 1);
+                    const pct = Math.round((provider.totalRevenue / maxRev) * 100);
+                    return (
+                      <div key={provider.id} className="flex items-center gap-4">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: "#EDE9FE", color: "#5B21B6" }}>
+                          <BuildingIcon size={14} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-700 truncate" style={{ color: "var(--fur-slate)" }}>
+                              {provider.businessName}
+                            </p>
+                            <p className="text-sm font-700 ml-2 shrink-0" style={{ color: "#059669" }}>
+                              {formatCurrency(provider.totalRevenue)}
+                            </p>
+                          </div>
+                          <div className="h-1.5 rounded-full" style={{ background: "var(--fur-mist)" }}>
+                            <div className="h-1.5 rounded-full transition-all"
+                              style={{ width: `${pct}%`, background: "linear-gradient(90deg, #059669, #10B981)" }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pending Verifications */}
@@ -161,6 +254,11 @@ const AdminDashboardPage: React.FC = () => {
                       <p className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{provider.businessName}</p>
                       <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
                         {provider.email} · {provider.serviceCount} services
+                        {(provider.validIdUrl || provider.credentialsUrl) && (
+                          <span className="ml-2 font-700" style={{ color: "#059669" }}>
+                            · Docs submitted ✓
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -178,7 +276,13 @@ const AdminDashboardPage: React.FC = () => {
         {/* Recent Registrations */}
         <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
           <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-            <h2 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>Recent Registrations</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>Recent Registrations</h2>
+              <span className="text-xs font-600 px-2 py-0.5 rounded-full"
+                style={{ background: "#DBEAFE", color: "#1E40AF" }}>
+                {ownerCount} owners · {providerCount} providers
+              </span>
+            </div>
             <Link href="/admin/users" className="text-sm font-700" style={{ color: "var(--fur-teal)" }}>
               View all →
             </Link>
