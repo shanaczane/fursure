@@ -89,6 +89,12 @@ const InboxIcon = () => (
     <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
   </svg>
 );
+const PetIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+    <line x1="7" y1="7" x2="7.01" y2="7"/>
+  </svg>
+);
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -140,18 +146,15 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 /* ─── Button style helper ────────────────────────────────────────────────── */
 function btnStyle(variant: "teal" | "purple" | "rose" | "ghost"): React.CSSProperties {
   const variants = {
-    teal:   { background: "var(--fur-teal)",       color: "white",               border: "none" },
-    purple: { background: "#7C3AED",               color: "white",               border: "none" },
-    rose:   { background: "var(--fur-rose-light)",  color: "var(--fur-rose)",    border: "1px solid #FCA5A5" },
-    ghost:  { background: "white",                 color: "var(--fur-slate-mid)", border: "1px solid var(--border)" },
+    teal:   { background: "var(--fur-teal)",      color: "white",                border: "none" },
+    purple: { background: "#7C3AED",              color: "white",                border: "none" },
+    rose:   { background: "var(--fur-rose-light)", color: "var(--fur-rose)",     border: "1px solid #FCA5A5" },
+    ghost:  { background: "white",                color: "var(--fur-slate-mid)", border: "1px solid var(--border)" },
   };
   return {
-    padding: "7px 16px",
-    borderRadius: 8,
-    fontSize: "0.78rem",
-    fontWeight: 700,
-    cursor: "pointer",
-    fontFamily: "'Nunito', sans-serif",
+    padding: "7px 16px", borderRadius: 8,
+    fontSize: "0.78rem", fontWeight: 700,
+    cursor: "pointer", fontFamily: "'Nunito', sans-serif",
     ...variants[variant],
   };
 }
@@ -199,10 +202,12 @@ const BookingDetailPanel: React.FC<{
   onRejectEdit: (id: string) => void;
   onApproveCancel: (id: string) => void;
   onRejectCancel: (id: string) => void;
+  onOpenPetRecord: (b: ProviderBooking) => void;
 }> = ({
   booking, onOpenModal, onConfirmPayment,
   isConfirming, hasPayError,
   onApproveEdit, onRejectEdit, onApproveCancel, onRejectCancel,
+  onOpenPetRecord,
 }) => {
   const isCompleted        = booking.status === "completed";
   const isAwaitingPayment  = booking.status === "awaiting_downpayment";
@@ -347,15 +352,12 @@ const BookingDetailPanel: React.FC<{
                   <p style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "white" }}>💳 Payment Summary</p>
                 </div>
                 <div style={{ background: "var(--fur-teal-light)", padding: "14px" }}>
-                  {/* Total */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                     <span style={{ fontSize: "0.82rem", color: "var(--fur-slate)" }}>Total Service Fee</span>
                     <span style={{ fontSize: "1rem", fontWeight: 900, color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
                       {formatCurrency(booking.price)}
                     </span>
                   </div>
-
-                  {/* Down payment row */}
                   <div style={{
                     background: booking.downPaymentPaid ? "#D1FAE5" : isPaymentSubmitted ? "#DBEAFE" : "#FEF3C7",
                     border: `1px solid ${booking.downPaymentPaid ? "#6EE7B7" : isPaymentSubmitted ? "#BFDBFE" : "#FCD34D"}`,
@@ -395,8 +397,6 @@ const BookingDetailPanel: React.FC<{
                       </div>
                     </div>
                   </div>
-
-                  {/* Remaining balance */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--fur-teal)", paddingTop: 12 }}>
                     <div>
                       <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--fur-teal-dark)" }}>Remaining Balance</p>
@@ -484,6 +484,13 @@ const BookingDetailPanel: React.FC<{
               {(isCompleted || booking.status === "cancelled" || booking.status === "declined") && (
                 <p style={{ fontSize: "0.78rem", fontStyle: "italic", color: "var(--fur-slate-light)" }}>No further actions</p>
               )}
+              {booking.petId && (
+                <button
+                  onClick={() => onOpenPetRecord(booking)}
+                  style={{ ...btnStyle("ghost"), display: "flex", alignItems: "center", gap: 6, background: "#EDE9FE", color: "#5B21B6", border: "1px solid #C4B5FD" }}>
+                  <PetIcon /> View Pet Record
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -513,7 +520,7 @@ const ManageBookingsPage: React.FC = () => {
   const [confirmingPaymentId, setConfirmingPaymentId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  // Pet Record Modal
+  /* ── Pet Record Modal state ── */
   const [petRecordBooking, setPetRecordBooking] = useState<ProviderBooking | null>(null);
   const [petRecordTab, setPetRecordTab] = useState<"vaccinations" | "history">("vaccinations");
   const [petVaccinations, setPetVaccinations] = useState<Vaccination[]>([]);
@@ -589,16 +596,10 @@ const ManageBookingsPage: React.FC = () => {
     } finally { setSaving(false); }
   };
 
-  const filtered = useMemo(() => filterAndSortBookings(bookings, filters), [bookings, filters]);
+  const filtered = useMemo(() => filterAndSort(bookings, filters), [bookings, filters]);
 
-  const openModal = (booking: ProviderBooking, a: ActionType) => {
-    setSelectedBooking(booking);
-    setAction(a);
-  };
-  const closeModal = () => {
-    setSelectedBooking(null);
-    setAction(null);
-  };
+  const openModal = (booking: ProviderBooking, a: ActionType) => { setSelectedBooking(booking); setAction(a); };
+  const closeModal = () => { setSelectedBooking(null); setAction(null); };
 
   const handleApproveEdit   = (id: string) => updateBooking(id, { editRequestStatus: "approved" });
   const handleRejectEdit    = (id: string) => updateBooking(id, { editRequestStatus: "rejected" });
@@ -640,7 +641,6 @@ const ManageBookingsPage: React.FC = () => {
   const setFilter = (key: string, val: string) => setFilters(f => ({ ...f, [key]: val }));
   const hasActiveFilters = filters.month !== "all" || filters.serviceId !== "all" || filters.searchQuery !== "";
 
-  /* ── Table column proportions ── */
   const COL = ["3%", "23%", "15%", "14%", "11%", "14%", "20%"];
 
   return (
@@ -696,16 +696,12 @@ const ManageBookingsPage: React.FC = () => {
                 onClick={() => setFilter("status", tab.value)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  padding: "10px 16px",
-                  fontSize: "0.8rem", fontWeight: 700,
-                  whiteSpace: "nowrap", flexShrink: 0,
-                  border: "none",
+                  padding: "10px 16px", fontSize: "0.8rem", fontWeight: 700,
+                  whiteSpace: "nowrap", flexShrink: 0, border: "none",
                   borderBottom: active ? "2.5px solid var(--fur-teal)" : "2.5px solid transparent",
                   background: active ? "var(--fur-teal-light)" : "white",
                   color: active ? "var(--fur-teal)" : "var(--fur-slate-light)",
-                  cursor: "pointer",
-                  fontFamily: "'Nunito', sans-serif",
-                  transition: "all 0.15s",
+                  cursor: "pointer", fontFamily: "'Nunito', sans-serif", transition: "all 0.15s",
                 }}>
                 {tab.label}
                 {tab.count > 0 && (
@@ -722,9 +718,8 @@ const ManageBookingsPage: React.FC = () => {
           })}
         </div>
 
-        {/* ── Filter Row: search wide + month + service ── */}
+        {/* ── Filter Row ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-          {/* Search — expands to fill */}
           <div style={{ position: "relative", flex: "1 1 0", minWidth: 0 }}>
             <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--fur-slate-light)", display: "flex", pointerEvents: "none" }}>
               <SearchIcon />
@@ -735,23 +730,18 @@ const ManageBookingsPage: React.FC = () => {
               onChange={(e) => setFilter("searchQuery", e.target.value)}
               placeholder="Search by owner, pet, or service…"
               style={{
-                width: "100%", height: 40,
-                paddingLeft: 38, paddingRight: 12,
-                fontSize: "0.85rem",
-                fontFamily: "'Nunito', sans-serif", fontWeight: 600,
+                width: "100%", height: 40, paddingLeft: 38, paddingRight: 12,
+                fontSize: "0.85rem", fontFamily: "'Nunito', sans-serif", fontWeight: 600,
                 border: "1.5px solid var(--border)", borderRadius: 10,
-                background: "white", color: "var(--fur-slate)",
-                outline: "none",
+                background: "white", color: "var(--fur-slate)", outline: "none",
               }}
             />
           </div>
-          {/* Month */}
           <select value={filters.month} onChange={(e) => setFilter("month", e.target.value)}
             style={{ height: 40, width: 148, padding: "0 10px", flexShrink: 0, fontSize: "0.82rem", fontFamily: "'Nunito', sans-serif", fontWeight: 600, border: "1.5px solid var(--border)", borderRadius: 10, background: "white", color: "var(--fur-slate)", outline: "none", cursor: "pointer" }}>
             <option value="all">All months</option>
             {MONTHS.map((m, i) => <option key={i} value={String(i)}>{m}</option>)}
           </select>
-          {/* Service */}
           <select value={filters.serviceId} onChange={(e) => setFilter("serviceId", e.target.value)}
             style={{ height: 40, width: 170, padding: "0 10px", flexShrink: 0, fontSize: "0.82rem", fontFamily: "'Nunito', sans-serif", fontWeight: 600, border: "1.5px solid var(--border)", borderRadius: 10, background: "white", color: "var(--fur-slate)", outline: "none", cursor: "pointer" }}>
             <option value="all">All services</option>
@@ -759,7 +749,6 @@ const ManageBookingsPage: React.FC = () => {
           </select>
         </div>
 
-        {/* Results count */}
         {hasActiveFilters && (
           <p style={{ fontSize: "0.75rem", color: "var(--fur-slate-light)", marginBottom: 10 }}>
             Showing {filtered.length} of {bookings.length} bookings
@@ -781,23 +770,15 @@ const ManageBookingsPage: React.FC = () => {
               <colgroup>
                 {COL.map((w, i) => <col key={i} style={{ width: w }} />)}
               </colgroup>
-
-              {/* ── Table Header ── */}
               <thead>
                 <tr style={{ background: "var(--fur-mist)", borderBottom: "1.5px solid var(--border)" }}>
                   {[
-                    { label: "",           align: "left"  },
-                    { label: "Service / Pet", align: "left" },
-                    { label: "Owner",      align: "left"  },
-                    { label: "Date & Time",align: "left"  },
-                    { label: "Price",      align: "left"  },
-                    { label: "Status",     align: "left"  },
-                    { label: "Flags",      align: "left"  },
+                    { label: "" }, { label: "Service / Pet" }, { label: "Owner" },
+                    { label: "Date & Time" }, { label: "Price" }, { label: "Status" }, { label: "Flags" },
                   ].map((h, i) => (
                     <th key={i} style={{
                       padding: i === 0 ? "12px 0 12px 16px" : "12px 14px",
-                      textAlign: h.align as "left",
-                      fontSize: "0.67rem", fontWeight: 800,
+                      textAlign: "left", fontSize: "0.67rem", fontWeight: 800,
                       textTransform: "uppercase", letterSpacing: "0.07em",
                       color: "var(--fur-slate-light)", whiteSpace: "nowrap",
                     }}>
@@ -806,20 +787,18 @@ const ManageBookingsPage: React.FC = () => {
                   ))}
                 </tr>
               </thead>
-
               <tbody>
                 {filtered.map((booking, idx) => {
-                  const isExpanded = expandedId === booking.id;
-                  const isLast     = idx === filtered.length - 1;
-                  const effectiveDate = booking.rescheduleDate || booking.date;
-                  const effectiveTime = booking.rescheduleTime || booking.time;
+                  const isExpanded         = expandedId === booking.id;
+                  const isLast             = idx === filtered.length - 1;
+                  const effectiveDate      = booking.rescheduleDate || booking.date;
+                  const effectiveTime      = booking.rescheduleTime || booking.time;
                   const isPaymentSubmitted = booking.status === "payment_submitted";
                   const isAwaitingPayment  = booking.status === "awaiting_downpayment";
                   const dpExpired          = isDownPaymentExpired(booking);
                   const dpHoursLeft        = isAwaitingPayment ? downPaymentHoursRemaining(booking) : null;
                   const emoji              = getServiceEmoji(booking.serviceName);
 
-                  /* Flags */
                   const flags: { label: string; bg: string; color: string }[] = [];
                   if (booking.editRequestStatus === "pending")
                     flags.push({ label: "✏️ Edit Req", bg: "#FEF3C7", color: "#92400E" });
@@ -836,32 +815,20 @@ const ManageBookingsPage: React.FC = () => {
                   if (booking.status === "completed" && typeof booking.rating === "number" && booking.rating > 0)
                     flags.push({ label: `★ ${booking.rating.toFixed(1)}`, bg: "#FFFBEB", color: "#92400E" });
 
-                  const rowBg = isExpanded
-                    ? "var(--fur-teal-light)"
-                    : idx % 2 === 0 ? "white" : "#FAFAF9";
+                  const rowBg = isExpanded ? "var(--fur-teal-light)" : idx % 2 === 0 ? "white" : "#FAFAF9";
 
                   return (
                     <React.Fragment key={booking.id}>
-                      {/* ── Data row ── */}
                       <tr
                         onClick={() => setExpandedId(isExpanded ? null : booking.id)}
                         style={{
-                          borderBottom: isExpanded
-                            ? "none"
-                            : isLast ? "none" : "1px solid var(--border)",
-                          background: rowBg,
-                          cursor: "pointer",
-                          transition: "background 0.1s",
+                          borderBottom: isExpanded ? "none" : isLast ? "none" : "1px solid var(--border)",
+                          background: rowBg, cursor: "pointer", transition: "background 0.1s",
                         }}
-                        onMouseEnter={e => {
-                          if (!isExpanded)
-                            (e.currentTarget as HTMLTableRowElement).style.background = "#F0FBF8";
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLTableRowElement).style.background = rowBg;
-                        }}
+                        onMouseEnter={e => { if (!isExpanded) (e.currentTarget as HTMLTableRowElement).style.background = "#F0FBF8"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = rowBg; }}
                       >
-                        {/* Expand chevron */}
+                        {/* Chevron */}
                         <td style={{ padding: "13px 0 13px 16px", verticalAlign: "middle" }}>
                           <span style={{ color: isExpanded ? "var(--fur-teal)" : "var(--fur-slate-light)", display: "flex" }}>
                             {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -874,8 +841,7 @@ const ManageBookingsPage: React.FC = () => {
                             <div style={{
                               width: 36, height: 36, borderRadius: 9, flexShrink: 0,
                               background: "var(--fur-mist)",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              fontSize: "1rem",
+                              display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem",
                             }}>
                               {emoji}
                             </div>
@@ -899,213 +865,6 @@ const ManageBookingsPage: React.FC = () => {
                             <p style={{ fontSize: "0.7rem", color: "var(--fur-slate-light)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {booking.ownerEmail}
                             </p>
-                          </div>
-                        )}
-
-                        {/* ── Client Review (completed bookings only) ── */}
-                        {isCompleted && (
-                          <div className="rounded-xl border px-4 py-3" style={{ background: "white", borderColor: "var(--border)" }}>
-                            <ReviewCard booking={booking} />
-                          </div>
-                        )}
-
-                        {/* Reschedule proposal status */}
-                        {hasRescheduleProposal && !ownerRespondedToReschedule && (
-                          <div className="rounded-xl border px-4 py-3"
-                            style={{ background: "#F5F3FF", borderColor: "#C4B5FD" }}>
-                            <p className="text-sm font-700 mb-1" style={{ color: "#5B21B6" }}>
-                              📅 Reschedule proposal sent — awaiting owner response
-                            </p>
-                            <p className="text-sm" style={{ color: "#6D28D9" }}>
-                              <span className="font-700">Proposed time: </span>
-                              {formatBookingDateTime(booking.rescheduleDate!, booking.rescheduleTime!)}
-                            </p>
-                            <p className="text-xs mt-1" style={{ color: "#7C3AED", opacity: 0.7 }}>
-                              The owner will confirm or decline this proposal from their dashboard.
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Pending edit request */}
-                        {hasPendingEdit && (
-                          <div className="rounded-xl border px-4 py-3" style={{ background: "#FFFBEB", borderColor: "#FCD34D" }}>
-                            <p className="text-sm font-700 mb-1" style={{ color: "#92400E" }}>
-                              The owner is requesting to edit this booking.
-                            </p>
-                            <p className="text-xs mb-3" style={{ color: "#B45309" }}>
-                              Review the changes and approve or reject their request.
-                            </p>
-                            <div className="flex gap-2">
-                              <button onClick={() => handleApproveEdit(booking.id)}
-                                className="px-3 py-1.5 text-white text-xs font-700 rounded-lg transition-colors"
-                                style={{ background: "#059669" }}
-                                onMouseEnter={e => (e.currentTarget.style.background = "#047857")}
-                                onMouseLeave={e => (e.currentTarget.style.background = "#059669")}>
-                                Approve Edit
-                              </button>
-                              <button onClick={() => handleRejectEdit(booking.id)}
-                                className="px-3 py-1.5 text-xs font-700 rounded-lg border transition-colors"
-                                style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
-                                Reject Edit
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Pending cancel request */}
-                        {hasPendingCancel && (
-                          <div className="rounded-xl border px-4 py-3" style={{ background: "var(--fur-rose-light)", borderColor: "#FCA5A5" }}>
-                            <p className="text-sm font-700 mb-1" style={{ color: "var(--fur-rose)" }}>
-                              The owner is requesting to cancel this booking.
-                            </p>
-                            <p className="text-xs mb-3" style={{ color: "var(--fur-rose)" }}>
-                              Approving will cancel the booking immediately.
-                            </p>
-                            <div className="flex gap-2">
-                              <button onClick={() => handleApproveCancel(booking.id)}
-                                className="px-3 py-1.5 text-white text-xs font-700 rounded-lg transition-colors"
-                                style={{ background: "var(--fur-rose)" }}
-                                onMouseEnter={e => (e.currentTarget.style.background = "#b91c1c")}
-                                onMouseLeave={e => (e.currentTarget.style.background = "var(--fur-rose)")}>
-                                Approve Cancellation
-                              </button>
-                              <button onClick={() => handleRejectCancel(booking.id)}
-                                className="px-3 py-1.5 text-xs font-700 rounded-lg border transition-colors"
-                                style={{ background: "white", color: "var(--fur-slate-mid)", borderColor: "var(--border)" }}>
-                                Reject &amp; Keep Booking
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ── Primary Action Buttons ── */}
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {booking.status === "pending" && (
-                            <>
-                              <button onClick={() => openModal(booking, "accept")}
-                                className="px-4 py-2 text-white text-sm font-700 rounded-lg transition-colors"
-                                style={{ background: "#059669" }}
-                                onMouseEnter={e => (e.currentTarget.style.background = "#047857")}
-                                onMouseLeave={e => (e.currentTarget.style.background = "#059669")}>
-                                Accept
-                              </button>
-                              <button onClick={() => openModal(booking, "reschedule")}
-                                className="px-4 py-2 text-white text-sm font-700 rounded-lg transition-colors"
-                                style={{ background: "#7C3AED" }}
-                                onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")}
-                                onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
-                                Reschedule
-                              </button>
-                              <button onClick={() => openModal(booking, "reject")}
-                                className="px-4 py-2 text-sm font-700 rounded-lg border transition-colors"
-                                style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
-                                Reject
-                              </button>
-                            </>
-                          )}
-
-                          {isAwaitingPayment && (
-                            <button onClick={() => openModal(booking, "reject")}
-                              className="px-4 py-2 text-sm font-700 rounded-lg border transition-colors"
-                              style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
-                              Decline
-                            </button>
-                          )}
-
-                          {isPaymentSubmitted && (
-                            <div className="flex flex-col gap-2 w-full">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleConfirmPayment(booking.id)}
-                                  disabled={isConfirmingThisPayment}
-                                  className="px-4 py-2 text-white text-sm font-700 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                                  style={{ background: "#059669" }}
-                                  onMouseEnter={e => { if (!isConfirmingThisPayment) e.currentTarget.style.background = "#047857"; }}
-                                  onMouseLeave={e => { if (!isConfirmingThisPayment) e.currentTarget.style.background = "#059669"; }}>
-                                  {isConfirmingThisPayment ? "Confirming…" : "✓ Confirm Payment Received"}
-                                </button>
-                                <button
-                                  onClick={() => openModal(booking, "reject")}
-                                  disabled={isConfirmingThisPayment}
-                                  className="px-4 py-2 text-sm font-700 rounded-lg border transition-colors disabled:opacity-60"
-                                  style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
-                                  ✗ Payment Not Received
-                                </button>
-                              </div>
-                              {hasPaymentError && (
-                                <p className="text-xs font-700 rounded-lg px-3 py-2 border"
-                                  style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
-                                  ⚠️ Failed to confirm payment. Check your connection and try again.
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {booking.status === "confirmed" && (
-                            <>
-                              <button onClick={() => openModal(booking, "complete")}
-                                className="px-4 py-2 text-white text-sm font-700 rounded-lg transition-colors"
-                                style={{ background: "var(--fur-teal)" }}
-                                onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-teal-dark)")}
-                                onMouseLeave={e => (e.currentTarget.style.background = "var(--fur-teal)")}>
-                                Mark Complete
-                              </button>
-                              <button onClick={() => openModal(booking, "reschedule")}
-                                className="px-4 py-2 text-sm font-700 rounded-lg border transition-colors"
-                                style={{ background: "#EDE9FE", color: "#5B21B6", borderColor: "#C4B5FD" }}>
-                                Reschedule
-                              </button>
-                              <button onClick={() => openModal(booking, "reject")}
-                                className="px-4 py-2 text-sm font-700 rounded-lg border transition-colors"
-                                style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
-                                Cancel
-                              </button>
-                            </>
-                          )}
-
-                          {booking.status === "rescheduled" && (
-                            <>
-                              <button onClick={() => openModal(booking, "reschedule")}
-                                className="px-4 py-2 text-sm font-700 rounded-lg transition-colors"
-                                style={{ background: "#7C3AED", color: "white" }}
-                                onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")}
-                                onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
-                                📅 Change Proposal
-                              </button>
-                              <button onClick={() => openModal(booking, "reject")}
-                                className="px-4 py-2 text-sm font-700 rounded-lg border transition-colors"
-                                style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)", borderColor: "#FCA5A5" }}>
-                                ✗ Cancel Booking
-                              </button>
-                            </>
-                          )}
-
-                          {(booking.status === "completed" || booking.status === "cancelled" || booking.status === "declined") && (
-                            <p className="text-sm italic" style={{ color: "var(--fur-slate-light)" }}>
-                              No further actions available
-                            </p>
-                          )}
-
-                          {/* View Pet Record — always shown when petId exists */}
-                          {booking.petId && (
-                            <button
-                              onClick={() => openPetRecord(booking)}
-                              className="px-4 py-2 text-sm font-700 rounded-lg transition-colors flex items-center gap-1.5"
-                              style={{ background: "#EDE9FE", color: "#5B21B6" }}
-                              onMouseEnter={e => (e.currentTarget.style.background = "#DDD6FE")}
-                              onMouseLeave={e => (e.currentTarget.style.background = "#EDE9FE")}
-                            >
-                              <PetIcon />
-                              View Pet Record
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
                           )}
                         </td>
 
@@ -1131,7 +890,7 @@ const ManageBookingsPage: React.FC = () => {
                           )}
                         </td>
 
-                        {/* Status badge */}
+                        {/* Status */}
                         <td style={{ padding: "13px 14px", verticalAlign: "middle" }}>
                           <StatusBadge status={booking.status} />
                         </td>
@@ -1146,8 +905,7 @@ const ManageBookingsPage: React.FC = () => {
                                   display: "inline-flex", alignItems: "center",
                                   background: f.bg, color: f.color,
                                   fontSize: "0.67rem", fontWeight: 700,
-                                  padding: "2px 7px", borderRadius: 20,
-                                  whiteSpace: "nowrap",
+                                  padding: "2px 7px", borderRadius: 20, whiteSpace: "nowrap",
                                 }}>
                                   {f.label}
                                 </span>
@@ -1157,7 +915,7 @@ const ManageBookingsPage: React.FC = () => {
                         </td>
                       </tr>
 
-                      {/* ── Expanded detail ── */}
+                      {/* Expanded detail */}
                       {isExpanded && (
                         <BookingDetailPanel
                           booking={booking}
@@ -1169,6 +927,7 @@ const ManageBookingsPage: React.FC = () => {
                           onRejectEdit={handleRejectEdit}
                           onApproveCancel={handleApproveCancel}
                           onRejectCancel={handleRejectCancel}
+                          onOpenPetRecord={openPetRecord}
                         />
                       )}
                     </React.Fragment>
@@ -1191,31 +950,45 @@ const ManageBookingsPage: React.FC = () => {
         onComplete={completeBooking}
       />
 
-      {/* ── Pet Record Modal ──────────────────────────────────────────────── */}
+      {/* ── Pet Record Modal ── */}
       {petRecordBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ fontFamily: "'Nunito', sans-serif" }}>
           <div className="absolute inset-0" style={{ background: "rgba(26,35,50,0.45)", backdropFilter: "blur(4px)" }} onClick={closePetRecord} />
           <div className="relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: "90vh" }}>
-            {/* Header */}
+
+            {/* Modal Header */}
             <div className="flex items-center gap-4 px-6 py-5 shrink-0" style={{ background: "linear-gradient(135deg, #5B21B6 0%, #7C3AED 100%)" }}>
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-900 shrink-0" style={{ background: "rgba(255,255,255,0.2)", color: "white", fontFamily: "'Fraunces', serif", backdropFilter: "blur(4px)" }}>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-900 shrink-0"
+                style={{ background: "rgba(255,255,255,0.2)", color: "white", fontFamily: "'Fraunces', serif", backdropFilter: "blur(4px)" }}>
                 {petRecordBooking.petName.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="font-900 text-lg" style={{ fontFamily: "'Fraunces', serif", color: "white" }}>{petRecordBooking.petName}</h2>
-                <p className="text-sm capitalize" style={{ color: "rgba(255,255,255,0.75)" }}>{petRecordBooking.petType} · {petRecordBooking.petBreed} · Owner: {petRecordBooking.ownerName}</p>
+                <p className="text-sm capitalize" style={{ color: "rgba(255,255,255,0.75)" }}>
+                  {petRecordBooking.petType} · {petRecordBooking.petBreed} · Owner: {petRecordBooking.ownerName}
+                </p>
               </div>
-              <button onClick={closePetRecord} className="p-2 rounded-xl" style={{ color: "rgba(255,255,255,0.8)", background: "none" }} onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <button onClick={closePetRecord} className="p-2 rounded-xl"
+                style={{ color: "rgba(255,255,255,0.8)", background: "none" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
               </button>
             </div>
 
             {/* Tabs */}
             <div className="flex border-b shrink-0" style={{ background: "white", borderColor: "var(--border)" }}>
-              {([{ key: "vaccinations", label: `Vaccinations (${petVaccinations.length})` }, { key: "history", label: `Medical History (${petHistory.length})` }] as const).map(({ key, label }) => (
+              {([
+                { key: "vaccinations" as const, label: `Vaccinations (${petVaccinations.length})` },
+                { key: "history" as const, label: `Medical History (${petHistory.length})` },
+              ]).map(({ key, label }) => (
                 <button key={key} onClick={() => setPetRecordTab(key)}
                   className="px-6 py-3 text-sm font-700 border-b-2 transition-colors"
-                  style={petRecordTab === key ? { borderColor: "#7C3AED", color: "#5B21B6" } : { borderColor: "transparent", color: "var(--fur-slate-light)" }}>
+                  style={petRecordTab === key
+                    ? { borderColor: "#7C3AED", color: "#5B21B6" }
+                    : { borderColor: "transparent", color: "var(--fur-slate-light)" }}>
                   {label}
                 </button>
               ))}
@@ -1224,39 +997,60 @@ const ManageBookingsPage: React.FC = () => {
             {/* Body */}
             <div className="overflow-y-auto flex-1 p-6" style={{ background: "white" }}>
               {petRecordError && (
-                <div className="mb-4 px-4 py-3 rounded-xl border text-sm" style={{ background: "#FEF2F2", borderColor: "#FCA5A5", color: "#991B1B" }}>{petRecordError}</div>
+                <div className="mb-4 px-4 py-3 rounded-xl border text-sm"
+                  style={{ background: "#FEF2F2", borderColor: "#FCA5A5", color: "#991B1B" }}>
+                  {petRecordError}
+                </div>
               )}
+
               {petRecordLoading ? (
                 <p className="text-sm text-center py-8" style={{ color: "var(--fur-slate-light)" }}>Loading records...</p>
               ) : petRecordTab === "vaccinations" ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>{petVaccinations.length} record{petVaccinations.length !== 1 ? "s" : ""}</p>
+                    <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
+                      {petVaccinations.length} record{petVaccinations.length !== 1 ? "s" : ""}
+                    </p>
                     <button onClick={() => { setAddingVax(!addingVax); setPetRecordError(null); }}
                       className="px-4 py-2 text-sm font-700 rounded-xl text-white transition-colors"
-                      style={{ background: "#7C3AED" }} onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")} onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
+                      style={{ background: "#7C3AED" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
                       {addingVax ? "Cancel" : "+ Add Vaccination"}
                     </button>
                   </div>
+
                   {addingVax && (
                     <div className="rounded-xl border p-4 space-y-3" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
                       <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>New Vaccination Record (Verified)</p>
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2"><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Vaccine Name *</label>
-                          <input type="text" value={vaxForm.name} onChange={e => setVaxForm({ ...vaxForm, name: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Rabies" />
+                        <div className="col-span-2">
+                          <label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Vaccine Name *</label>
+                          <input type="text" value={vaxForm.name} onChange={e => setVaxForm({ ...vaxForm, name: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Rabies" />
                         </div>
-                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Date Given *</label>
-                          <input type="date" value={vaxForm.dateGiven} onChange={e => setVaxForm({ ...vaxForm, dateGiven: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} />
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Date Given *</label>
+                          <input type="date" value={vaxForm.dateGiven} onChange={e => setVaxForm({ ...vaxForm, dateGiven: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} />
                         </div>
-                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Next Due Date</label>
-                          <input type="date" value={vaxForm.nextDueDate} onChange={e => setVaxForm({ ...vaxForm, nextDueDate: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} />
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Next Due Date</label>
+                          <input type="date" value={vaxForm.nextDueDate} onChange={e => setVaxForm({ ...vaxForm, nextDueDate: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} />
                         </div>
-                        <div className="col-span-2"><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Notes</label>
-                          <input type="text" value={vaxForm.notes} onChange={e => setVaxForm({ ...vaxForm, notes: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="Any notes" />
+                        <div className="col-span-2">
+                          <label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Notes</label>
+                          <input type="text" value={vaxForm.notes} onChange={e => setVaxForm({ ...vaxForm, notes: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="Any notes" />
                         </div>
                       </div>
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setAddingVax(false)} className="px-4 py-2 text-sm font-700 rounded-xl border" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }}>Cancel</button>
+                        <button onClick={() => setAddingVax(false)}
+                          className="px-4 py-2 text-sm font-700 rounded-xl border"
+                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }}>
+                          Cancel
+                        </button>
                         <button onClick={handleProviderAddVax} disabled={!vaxForm.name || !vaxForm.dateGiven || saving}
                           className="px-4 py-2 text-sm font-700 rounded-xl text-white disabled:opacity-50"
                           style={{ background: "#7C3AED" }}>
@@ -1265,6 +1059,7 @@ const ManageBookingsPage: React.FC = () => {
                       </div>
                     </div>
                   )}
+
                   {petVaccinations.length === 0 && !addingVax ? (
                     <p className="text-sm text-center py-6" style={{ color: "var(--fur-slate-light)" }}>No vaccination records yet.</p>
                   ) : (
@@ -1274,7 +1069,12 @@ const ManageBookingsPage: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{v.name}</p>
-                              {v.isVerified && <span className="text-xs font-700 px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#DBEAFE", color: "#1E40AF" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Verified</span>}
+                              {v.isVerified && (
+                                <span className="text-xs font-700 px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#DBEAFE", color: "#1E40AF" }}>
+                                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  Verified
+                                </span>
+                              )}
                             </div>
                             <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
                               Given: {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
@@ -1290,35 +1090,54 @@ const ManageBookingsPage: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>{petHistory.length} record{petHistory.length !== 1 ? "s" : ""}</p>
+                    <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
+                      {petHistory.length} record{petHistory.length !== 1 ? "s" : ""}
+                    </p>
                     <button onClick={() => { setAddingHist(!addingHist); setPetRecordError(null); }}
                       className="px-4 py-2 text-sm font-700 rounded-xl text-white transition-colors"
-                      style={{ background: "#7C3AED" }} onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")} onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
+                      style={{ background: "#7C3AED" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
                       {addingHist ? "Cancel" : "+ Add Record"}
                     </button>
                   </div>
+
                   {addingHist && (
                     <div className="rounded-xl border p-4 space-y-3" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
                       <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>New Medical Record</p>
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2"><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Diagnosis *</label>
-                          <input type="text" value={histForm.diagnosis} onChange={e => setHistForm({ ...histForm, diagnosis: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Skin Allergy" />
+                        <div className="col-span-2">
+                          <label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Diagnosis *</label>
+                          <input type="text" value={histForm.diagnosis} onChange={e => setHistForm({ ...histForm, diagnosis: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Skin Allergy" />
                         </div>
-                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Date *</label>
-                          <input type="date" value={histForm.date} onChange={e => setHistForm({ ...histForm, date: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} />
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Date *</label>
+                          <input type="date" value={histForm.date} onChange={e => setHistForm({ ...histForm, date: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} />
                         </div>
-                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Treatment</label>
-                          <input type="text" value={histForm.treatment} onChange={e => setHistForm({ ...histForm, treatment: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Antihistamine" />
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Treatment</label>
+                          <input type="text" value={histForm.treatment} onChange={e => setHistForm({ ...histForm, treatment: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Antihistamine" />
                         </div>
-                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Prescription</label>
-                          <input type="text" value={histForm.prescription} onChange={e => setHistForm({ ...histForm, prescription: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Cetirizine 5mg" />
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Prescription</label>
+                          <input type="text" value={histForm.prescription} onChange={e => setHistForm({ ...histForm, prescription: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Cetirizine 5mg" />
                         </div>
-                        <div className="col-span-2"><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Notes</label>
-                          <input type="text" value={histForm.notes} onChange={e => setHistForm({ ...histForm, notes: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="Any additional notes" />
+                        <div className="col-span-2">
+                          <label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Notes</label>
+                          <input type="text" value={histForm.notes} onChange={e => setHistForm({ ...histForm, notes: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="Any additional notes" />
                         </div>
                       </div>
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setAddingHist(false)} className="px-4 py-2 text-sm font-700 rounded-xl border" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }}>Cancel</button>
+                        <button onClick={() => setAddingHist(false)}
+                          className="px-4 py-2 text-sm font-700 rounded-xl border"
+                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }}>
+                          Cancel
+                        </button>
                         <button onClick={handleProviderAddHistory} disabled={!histForm.diagnosis || !histForm.date || saving}
                           className="px-4 py-2 text-sm font-700 rounded-xl text-white disabled:opacity-50"
                           style={{ background: "#7C3AED" }}>
@@ -1327,6 +1146,7 @@ const ManageBookingsPage: React.FC = () => {
                       </div>
                     </div>
                   )}
+
                   {petHistory.length === 0 && !addingHist ? (
                     <p className="text-sm text-center py-6" style={{ color: "var(--fur-slate-light)" }}>No medical history yet.</p>
                   ) : (
@@ -1335,8 +1155,15 @@ const ManageBookingsPage: React.FC = () => {
                         <div key={h.id} className="rounded-xl border p-4" style={{ background: "white", borderColor: "var(--border)" }}>
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{h.diagnosis}</p>
-                            {h.addedBy === "provider" && <span className="text-xs font-700 px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#DBEAFE", color: "#1E40AF" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Verified</span>}
-                            <span className="text-xs ml-auto" style={{ color: "var(--fur-slate-light)" }}>{new Date(h.date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}</span>
+                            {h.addedBy === "provider" && (
+                              <span className="text-xs font-700 px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#DBEAFE", color: "#1E40AF" }}>
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                Verified
+                              </span>
+                            )}
+                            <span className="text-xs ml-auto" style={{ color: "var(--fur-slate-light)" }}>
+                              {new Date(h.date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                            </span>
                           </div>
                           {h.providerName && <p className="text-xs mb-2" style={{ color: "var(--fur-slate-light)" }}>by {h.providerName}</p>}
                           <div className="flex flex-wrap gap-2 mt-2">
