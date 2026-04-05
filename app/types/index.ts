@@ -27,6 +27,37 @@ export interface Vaccination {
   nextDueDate?: string;
   vetName?: string;
   notes?: string;
+  addedBy: "owner" | "provider";
+  isVerified: boolean;
+  providerName?: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// MEDICAL HISTORY
+// ─────────────────────────────────────────────────────────────
+
+export interface MedicalHistory {
+  id: string;
+  petId: string;
+  diagnosis: string;
+  treatment?: string;
+  prescription?: string;
+  notes?: string;
+  date: string;
+  addedBy: "owner" | "provider";
+  providerName?: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// VACCINATION REMINDER
+// ─────────────────────────────────────────────────────────────
+
+export interface VaccinationReminder {
+  petId: string;
+  petName: string;
+  vaccineName: string;
+  nextDueDate: string;
+  daysUntilDue: number; // negative = overdue
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -121,6 +152,7 @@ export interface Booking {
 
   status: BookingStatus;
 
+  petId?: string;
   petName: string;
   notes?: string;
 

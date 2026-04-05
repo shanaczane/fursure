@@ -30,64 +30,54 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isSuccess = !isError;
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Soft blurred overlay */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="absolute inset-0"
+        style={{ background: "rgba(26,35,50,0.45)", backdropFilter: "blur(4px)" }}
         onClick={onClose}
       />
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-          <div
-            className={`mx-auto flex items-center justify-center h-16 w-16 rounded-full mb-4 ${
-              isError ? "bg-red-100" : "bg-green-100"
-            }`}
-          >
-            {isError ? (
-              <svg
-                className="h-10 w-10 text-red-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            ) : (
-              <svg
-                className="h-10 w-10 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            )}
-          </div>
-          <div className="text-center">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
-            <p className="text-gray-600 mb-6">{message}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className={`w-full px-4 py-2 text-white rounded-lg font-medium transition-colors ${
-              isError
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-green-600 hover:bg-green-700"
-            }`}
-          >
-            OK
-          </button>
+
+      {/* Modal */}
+      <div
+        className="relative w-full max-w-sm rounded-2xl p-6 shadow-2xl text-center"
+        style={{ background: "white", fontFamily: "'Nunito', sans-serif" }}
+      >
+        {/* Icon */}
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+          style={{ background: isSuccess ? "#D1FAE5" : "#FEE2E2" }}
+        >
+          {isSuccess ? (
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          ) : (
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#991B1B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          )}
         </div>
+
+        {/* Text */}
+        <h3 className="font-900 text-lg mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+          {title}
+        </h3>
+        <p className="text-sm mb-6" style={{ color: "var(--fur-slate-light)" }}>{message}</p>
+
+        {/* Button */}
+        <button
+          onClick={onClose}
+          className="w-full py-2.5 rounded-xl text-sm font-700 text-white transition-colors"
+          style={{ background: isSuccess ? "var(--fur-teal)" : "#EF4444" }}
+          onMouseEnter={e => (e.currentTarget.style.background = isSuccess ? "var(--fur-teal-dark)" : "#DC2626")}
+          onMouseLeave={e => (e.currentTarget.style.background = isSuccess ? "var(--fur-teal)" : "#EF4444")}
+        >
+          {isSuccess ? "Got it" : "OK"}
+        </button>
       </div>
     </div>
   );

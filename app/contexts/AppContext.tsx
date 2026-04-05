@@ -7,7 +7,7 @@ import {
   ReactNode,
   useEffect,
 } from "react";
-import { type Service, type Booking, type Pet, type User } from "@/app/types";
+import { type Service, type Booking, type Pet, type User, type VaccinationReminder } from "@/app/types";
 import {
   getCurrentUser,
   upsertUserProfile,
@@ -20,6 +20,7 @@ import {
   updateBookingRecord,
   deleteBookingRecord,
   fetchServices,
+  fetchAllOwnerVaccinations,
 } from "@/app/lib/api";
 
 interface AppContextType {
@@ -27,6 +28,7 @@ interface AppContextType {
   services: Service[];
   bookings: Booking[];
   pets: Pet[];
+  vaccinationReminders: VaccinationReminder[];
   isLoading: boolean;
   updateUser: (updates: Partial<User>) => Promise<void>;
   addBooking: (booking: Omit<Booking, "id">) => Promise<void>;
@@ -36,6 +38,7 @@ interface AppContextType {
   addPet: (pet: Omit<Pet, "id">) => Promise<void>;
   updatePet: (id: string, updates: Partial<Pet>) => Promise<void>;
   deletePet: (id: string) => Promise<void>;
+  refreshReminders: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -61,6 +64,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [services, setServices] = useState<Service[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
+  const [vaccinationReminders, setVaccinationReminders] = useState<VaccinationReminder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load all data from Supabase after mount
@@ -75,12 +79,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
         if (currentUser) {
           setUser(currentUser);
-          const [userPets, userBookings] = await Promise.all([
+          const [userPets, userBookings, reminders] = await Promise.all([
             fetchUserPets(currentUser.id),
             fetchUserBookings(currentUser.id),
+            fetchAllOwnerVaccinations(currentUser.id),
           ]);
           setPets(userPets);
           setBookings(userBookings);
+          setVaccinationReminders(reminders);
         }
 
         setServices(allServices);
@@ -150,6 +156,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setPets((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const refreshReminders = async () => {
+    if (!user.id) return;
+    const reminders = await fetchAllOwnerVaccinations(user.id);
+    setVaccinationReminders(reminders);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -157,7 +169,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         services,
         bookings,
         pets,
+        vaccinationReminders,
         isLoading,
+        refreshReminders,
         updateUser,
         addBooking,
         updateBooking,

@@ -55,8 +55,11 @@ const OwnerDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { user, services, bookings, pets } = useAppContext();
   const { upcomingBookings, dashboardStats } = useDashboard({ services, bookings, pets, user });
+  // pets kept in context for dashboardStats but not rendered here
 
-  const recentBookings = bookings.slice(0, 4);
+  const recentBookings = [...bookings]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 4);
 
   const quickActions = [
     { icon: <SearchIcon />, label: "Find Pet Care", desc: "Browse local providers", href: "/owner/services", color: "var(--fur-teal-light)", accent: "var(--fur-teal)" },
@@ -184,77 +187,46 @@ const OwnerDashboard: React.FC = () => {
                 )}
               </div>
 
-              {/* My Pets & Recent Activity */}
-              <div className="space-y-6">
-                {/* My Pets */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>My Pets</h2>
-                    <Link href="/owner/pets" className="text-sm font-700" style={{ color: "var(--fur-teal)" }}>
-                      Manage →
-                    </Link>
-                  </div>
-                  {pets.length === 0 ? (
-                    <div className="rounded-2xl p-8 text-center border" style={{ background: "white", borderColor: "var(--border)" }}>
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
-                        style={{ background: "var(--fur-amber-light)", color: "var(--fur-amber-dark)" }}>
-                        <PawIcon />
-                      </div>
-                      <p className="font-700 text-sm mb-3" style={{ color: "var(--fur-slate)" }}>No pets yet</p>
-                      <Link href="/owner/pets" className="btn-amber inline-block text-sm px-4 py-2">
-                        Add a pet
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {pets.slice(0, 3).map((pet) => (
-                        <div key={pet.id} className="rounded-xl p-4 border flex items-center gap-3"
-                          style={{ background: "white", borderColor: "var(--border)" }}>
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-900"
-                            style={{ background: "var(--fur-teal)", color: "white", fontFamily: "'Fraunces', serif", fontSize: "1rem" }}>
-                            {pet.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-700 text-sm truncate" style={{ color: "var(--fur-slate)" }}>{pet.name}</p>
-                            <p className="text-xs capitalize truncate" style={{ color: "var(--fur-slate-light)" }}>
-                              {pet.breed} · {pet.age}yr
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                      {pets.length > 3 && (
-                        <Link href="/owner/pets" className="text-xs font-700 block text-center" style={{ color: "var(--fur-teal)" }}>
-                          +{pets.length - 3} more pets
-                        </Link>
-                      )}
-                    </div>
-                  )}
+              {/* Recent Activity */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>Recent Activity</h2>
+                  <Link href="/owner/bookings" className="text-sm font-700" style={{ color: "var(--fur-teal)" }}>
+                    View all →
+                  </Link>
                 </div>
-
-                {/* Recent Activity */}
-                {recentBookings.length > 0 && (
-                  <div>
-                    <h2 className="font-800 text-base mb-4" style={{ color: "var(--fur-slate)" }}>Recent Activity</h2>
-                    <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
-                      {recentBookings.map((booking, idx) => {
-                        const status = statusConfig[booking.status] ?? statusConfig.pending;
-                        return (
-                          <div key={booking.id}
-                            className={`flex items-center gap-3 p-4 ${idx < recentBookings.length - 1 ? "border-b" : ""}`}
-                            style={{ borderColor: "var(--border)" }}>
-                            <span style={{ color: status.color }}>{status.icon}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-700 truncate" style={{ color: "var(--fur-slate)" }}>{booking.serviceName}</p>
-                              <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{booking.petName}</p>
-                            </div>
-                            <span className="text-xs px-2 py-0.5 rounded-full font-600 shrink-0"
-                              style={{ background: status.bg, color: status.color }}>
-                              {status.label}
-                            </span>
-                          </div>
-                        );
-                      })}
+                {recentBookings.length === 0 ? (
+                  <div className="rounded-2xl p-8 text-center border" style={{ background: "white", borderColor: "var(--border)" }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
+                      style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal)" }}>
+                      <ClockIcon />
                     </div>
+                    <p className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>No activity yet</p>
+                    <p className="text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>Your booking history will appear here</p>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
+                    {recentBookings.map((booking, idx) => {
+                      const status = statusConfig[booking.status] ?? statusConfig.pending;
+                      return (
+                        <div key={booking.id}
+                          className={`flex items-center gap-3 p-4 ${idx < recentBookings.length - 1 ? "border-b" : ""}`}
+                          style={{ borderColor: "var(--border)" }}>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: status.bg, color: status.color }}>
+                            {status.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-700 truncate" style={{ color: "var(--fur-slate)" }}>{booking.serviceName}</p>
+                            <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{booking.petName} · {booking.date}</p>
+                          </div>
+                          <span className="text-xs px-2 py-0.5 rounded-full font-600 shrink-0"
+                            style={{ background: status.bg, color: status.color }}>
+                            {status.label}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

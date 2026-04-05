@@ -49,6 +49,7 @@ export interface ProviderBooking {
   ownerName: string;
   ownerEmail: string;
   ownerPhone?: string;
+  petId?: string;
   petName: string;
   petType: string;
   petBreed: string;
@@ -75,6 +76,10 @@ export interface ProviderBooking {
   // Edit / cancel request tracking
   editRequestStatus?: "none" | "pending" | "approved" | "rejected";
   cancelRequestStatus?: "none" | "pending" | "approved" | "rejected";
+
+  rating?: number;
+  reviewComment?: string;
+  reviewDate?: string;  
 }
 
 export interface ProviderUser {

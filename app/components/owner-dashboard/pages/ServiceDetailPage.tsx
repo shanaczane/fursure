@@ -91,6 +91,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
         date,
         time,
         status: "pending",
+        petId: pet.id,
         petName: pet.name,
         notes: notes || "Booked via service details",
         requiresDownPayment: false,
