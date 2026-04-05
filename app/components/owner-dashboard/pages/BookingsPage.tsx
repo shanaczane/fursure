@@ -14,6 +14,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import SuccessModal from "../components/SuccessModal";
 import {
   submitServiceReview,
+  submitBookingReview,       // ← NEW: writes review to bookings table
   requestBookingEdit,
   requestBookingCancel,
   payDownPayment,
@@ -396,17 +397,31 @@ const BookingsPage: React.FC = () => {
     setIsReviewFormOpen(true);
   };
 
-  const handleSubmitReview = (bookingId: string, rating: number, _comment: string) => {
+  const handleSubmitReview = async (bookingId: string, rating: number, comment: string) => {
     const booking = bookings.find((b) => b.id === bookingId);
+
+    // 1. Write rating + comment + date to the bookings row
+    //    so the provider sees it in Manage Bookings & Dashboard.
+    try {
+      await submitBookingReview(bookingId, rating, comment);
+    } catch (err) {
+      console.error("submitBookingReview failed:", err);
+    }
+
+    // 2. Also update the per-service aggregate rating (existing behaviour).
     if (booking?.serviceId) {
       submitServiceReview(booking.serviceId, rating).catch(console.error);
     }
-    // Mark this booking as reviewed — persisted to localStorage
+
+    // 3. Mark locally as reviewed so the "Leave Review" button disappears.
     setReviewedBookingIds((prev) => {
       const next = new Set(prev).add(bookingId);
-      try { localStorage.setItem("fur_reviewed_bookings", JSON.stringify([...next])); } catch {}
+      try {
+        localStorage.setItem("fur_reviewed_bookings", JSON.stringify([...next]));
+      } catch {}
       return next;
     });
+
     setIsReviewFormOpen(false);
     setReviewingBooking(null);
     showSuccess(

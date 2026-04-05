@@ -57,8 +57,6 @@ interface ProviderContextType {
   completeBooking: (id: string, providerNotes?: string) => void;
   updateBookingNotes: (id: string, providerNotes: string) => void;
   updateBooking: (id: string, updates: Partial<ProviderBooking>) => void;
-
-  // Confirm cash payment received → moves booking to confirmed
   confirmPaymentReceived: (id: string) => Promise<void>;
 }
 
@@ -89,17 +87,21 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
   const [bookings, setBookings] = useState<ProviderBooking[]>([]);
   const [policy, setPolicy] = useState<ProviderPolicy>(DEFAULT_POLICY);
   const [isLoading, setIsLoading] = useState(true);
+  const [providerDbId, setProviderDbId] = useState<string | null>(null);
 
+  // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user: authUser } }) => {
       if (!authUser) { setIsLoading(false); return; }
 
       try {
-        // Fetch profile from users table + provider row in parallel
         const [{ data: profile }, { data: provRow }] = await Promise.all([
           supabase.from("users").select("name, email, phone").eq("id", authUser.id).maybeSingle(),
-          supabase.from("providers").select("is_verified, rating, reviews").eq("user_id", authUser.id).maybeSingle(),
+          supabase.from("providers").select("id, is_verified, rating, reviews").eq("user_id", authUser.id).maybeSingle(),
         ]);
+
+        // Store the providers.id (not user_id) for the realtime filter
+        if (provRow?.id) setProviderDbId(String(provRow.id));
 
         setUser({
           ...EMPTY_USER,
@@ -128,8 +130,66 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
-  // ── Auto-expire unpaid down payments ─────────────────────────────────────
-  // Only expires "awaiting_downpayment" — never touches "payment_submitted"
+  // ── Real-time subscription ────────────────────────────────────────────────
+  // Listens for any UPDATE on bookings rows belonging to this provider.
+  // This picks up review fields (rating, review_comment, review_date) written
+  // by the owner, as well as any other field changes, and patches local state.
+  useEffect(() => {
+    if (!providerDbId) return;
+
+    const channel = supabase
+      .channel(`provider-bookings-${providerDbId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "bookings",
+          filter: `provider_id=eq.${providerDbId}`,
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          setBookings((prev) =>
+            prev.map((b) =>
+              b.id === String(row.id)
+                ? {
+                    ...b,
+                    status: (row.status as BookingStatus) ?? b.status,
+                    notes: (row.notes as string | undefined) ?? b.notes,
+                    providerNotes: (row.provider_notes as string | undefined) ?? b.providerNotes,
+                    rescheduleDate: (row.reschedule_date as string | undefined) ?? b.rescheduleDate,
+                    rescheduleTime: (row.reschedule_time as string | undefined) ?? b.rescheduleTime,
+                    rescheduleStatus: (row.reschedule_status as ProviderBooking["rescheduleStatus"]) ?? b.rescheduleStatus,
+                    downPaymentPaid: (row.down_payment_paid as boolean) ?? b.downPaymentPaid,
+                    downPaymentPaidAt: (row.down_payment_paid_at as string | undefined) ?? b.downPaymentPaidAt,
+                    downPaymentConfirmed: (row.down_payment_confirmed as boolean) ?? b.downPaymentConfirmed,
+                    downPaymentConfirmedAt: (row.down_payment_confirmed_at as string | undefined) ?? b.downPaymentConfirmedAt,
+                    editRequestStatus: (row.edit_request_status as ProviderBooking["editRequestStatus"]) ?? b.editRequestStatus,
+                    cancelRequestStatus: (row.cancel_request_status as ProviderBooking["cancelRequestStatus"]) ?? b.cancelRequestStatus,
+                    // ── Review fields written by the owner ──────────────────
+                    rating: row.rating !== undefined && row.rating !== null
+                      ? (row.rating as number)
+                      : b.rating,
+                    reviewComment: row.review_comment !== undefined && row.review_comment !== null
+                      ? (row.review_comment as string)
+                      : b.reviewComment,
+                    reviewDate: row.review_date !== undefined && row.review_date !== null
+                      ? (row.review_date as string)
+                      : b.reviewDate,
+                  }
+                : b
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [providerDbId]);
+
+  // ── Auto-expire unpaid down payments ──────────────────────────────────────
   useEffect(() => {
     if (bookings.length === 0) return;
 
@@ -231,7 +291,6 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     );
 
   const updateBooking = (id: string, updates: Partial<ProviderBooking>) => {
-    // Update local state immediately
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, ...updates } : b))
     );
@@ -239,7 +298,6 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     const current = bookings.find((b) => b.id === id);
     const status = updates.status ?? current?.status ?? "pending";
 
-    // Persist status + standard fields
     updateProviderBookingStatus(id, status, {
       providerNotes: updates.providerNotes,
       rescheduleDate: updates.rescheduleDate,
@@ -248,7 +306,6 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
       cancelRequestStatus: updates.cancelRequestStatus,
     }).catch(console.error);
 
-    // Persist payment fields directly if present
     const paymentUpdates: Record<string, unknown> = {};
     if (updates.downPaymentPaid !== undefined)
       paymentUpdates.down_payment_paid = updates.downPaymentPaid;
@@ -312,10 +369,6 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
     }).catch(console.error);
   };
 
-  // FIX: confirmPaymentReceived — bypass updateBooking entirely to avoid
-  // double Supabase calls and silent failures. Optimistically update local
-  // state first, then write both status + payment fields in a single query.
-  // If Supabase fails, roll back local state so the UI stays consistent.
   const confirmPaymentReceived = async (id: string): Promise<void> => {
     const now = new Date().toISOString();
 
@@ -345,7 +398,6 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
         .eq("id", id);
 
       if (error) {
-        // Log full error details
         console.error("Supabase error code:", error.code);
         console.error("Supabase error message:", error.message);
         console.error("Supabase error details:", error.details);

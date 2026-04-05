@@ -75,6 +75,10 @@ export interface ProviderBooking {
   // Edit / cancel request tracking
   editRequestStatus?: "none" | "pending" | "approved" | "rejected";
   cancelRequestStatus?: "none" | "pending" | "approved" | "rejected";
+
+  rating?: number;
+  reviewComment?: string;
+  reviewDate?: string;  
 }
 
 export interface ProviderUser {

@@ -851,6 +851,11 @@ export const fetchProviderOwnBookings = async (userId: string) => {
     editCancelGracePeriodHours: row.edit_cancel_grace_period_hours ?? 24,
     editRequestStatus: row.edit_request_status ?? "none",
     cancelRequestStatus: row.cancel_request_status ?? "none",
+    // ─── Review fields ────────────────────────────────────────────────────
+    rating: row.rating ?? undefined,
+    reviewComment: row.review_comment ?? undefined,
+    reviewDate: row.review_date ?? undefined,
+    // ─────────────────────────────────────────────────────────────────────
   }));
 };
 
@@ -886,6 +891,24 @@ export const submitServiceReview = async (
     p_service_id: serviceId,
     p_rating: rating,
   });
+  if (error) throw new Error(error.message);
+};
+
+// Writes rating + comment + date to the bookings row so the provider
+// can see the review in their Manage Bookings and Dashboard pages.
+export const submitBookingReview = async (
+  bookingId: string,
+  rating: number,
+  comment: string,
+): Promise<void> => {
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      rating,
+      review_comment: comment,
+      review_date: new Date().toISOString(),
+    })
+    .eq("id", bookingId);
   if (error) throw new Error(error.message);
 };
 
