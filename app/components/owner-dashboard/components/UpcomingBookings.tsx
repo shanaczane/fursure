@@ -130,7 +130,7 @@ const UpcomingBookings: React.FC<UpcomingBookingsProps> = ({
       )}
 
       {/* Booking cards */}
-      <div className="divide-y" style={{ divideColor: "var(--border)" }}>
+      <div className="divide-y" style={{ borderColor: "var(--border)" }}>
         {displayBookings.map((booking) => {
           const permissions = getBookingPermissions(booking);
           const hoursLeft = gracePeriodHoursRemaining(booking);
