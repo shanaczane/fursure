@@ -271,6 +271,8 @@ const PetsPage: React.FC = () => {
         nextDueDate: vaccinationForm.nextDueDate || undefined,
         vetName: vaccinationForm.vetName || undefined,
         notes: vaccinationForm.notes || undefined,
+        addedBy: "owner",
+        isVerified: false,
       });
       setVaccinations((prev) => [created, ...prev]);
       setVaccinationForm(emptyVaccinationForm);
