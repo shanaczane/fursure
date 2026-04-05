@@ -57,7 +57,9 @@ const OwnerDashboard: React.FC = () => {
   const { upcomingBookings, dashboardStats } = useDashboard({ services, bookings, pets, user });
   // pets kept in context for dashboardStats but not rendered here
 
-  const recentBookings = bookings.slice(0, 4);
+  const recentBookings = [...bookings]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 4);
 
   const quickActions = [
     { icon: <SearchIcon />, label: "Find Pet Care", desc: "Browse local providers", href: "/owner/services", color: "var(--fur-teal-light)", accent: "var(--fur-teal)" },
