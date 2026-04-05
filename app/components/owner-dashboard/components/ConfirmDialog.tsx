@@ -19,62 +19,73 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   confirmText = "Confirm",
   cancelText = "Cancel",
-  confirmColor = "blue",
+  confirmColor = "red",
   onConfirm,
   onCancel,
 }) => {
   if (!isOpen) return null;
 
-  const colorClasses = {
-    blue: "bg-blue-600 hover:bg-blue-700",
-    red: "bg-red-600 hover:bg-red-700",
-    yellow: "bg-yellow-600 hover:bg-yellow-700",
-    green: "bg-green-600 hover:bg-green-700",
+  const confirmStyles: Record<string, { background: string; hover: string }> = {
+    red:    { background: "#EF4444", hover: "#DC2626" },
+    blue:   { background: "var(--fur-teal)", hover: "var(--fur-teal-dark)" },
+    yellow: { background: "#F59E0B", hover: "#D97706" },
+    green:  { background: "#10B981", hover: "#059669" },
   };
 
+  const cs = confirmStyles[confirmColor];
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Overlay — soft blur instead of solid black */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="absolute inset-0"
+        style={{ background: "rgba(26,35,50,0.45)", backdropFilter: "blur(4px)" }}
         onClick={onCancel}
       />
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-            <svg
-              className="h-6 w-6 text-yellow-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-          </div>
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {title}
-            </h3>
-            <p className="text-sm text-gray-600 mb-6">{message}</p>
-          </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={onCancel}
-              className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-            >
-              {cancelText}
-            </button>
-            <button
-              onClick={onConfirm}
-              className={`flex-1 px-4 py-2 ${colorClasses[confirmColor]} text-white rounded-lg font-medium transition-colors`}
-            >
-              {confirmText}
-            </button>
-          </div>
+
+      {/* Dialog */}
+      <div
+        className="relative w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+        style={{ background: "white", fontFamily: "'Nunito', sans-serif" }}
+      >
+        {/* Icon */}
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+          style={{ background: "#FEF3C7" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#92400E"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+
+        {/* Text */}
+        <div className="text-center mb-6">
+          <h3 className="font-900 text-lg mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+            {title}
+          </h3>
+          <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>{message}</p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl text-sm font-700 transition-colors"
+            style={{ background: "var(--fur-cream)", color: "var(--fur-slate)", border: "1.5px solid var(--border)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--border)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "var(--fur-cream)")}
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl text-sm font-700 text-white transition-colors"
+            style={{ background: cs.background }}
+            onMouseEnter={e => (e.currentTarget.style.background = cs.hover)}
+            onMouseLeave={e => (e.currentTarget.style.background = cs.background)}
+          >
+            {confirmText}
+          </button>
         </div>
       </div>
     </div>
