@@ -365,6 +365,7 @@ const BookingsPage: React.FC = () => {
         date,
         time,
         status: "pending",
+        petId: pet.id,
         petName: pet.name,
         notes: notes || undefined,
         providerPhone: contactInfo.providerPhone,

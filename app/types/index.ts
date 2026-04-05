@@ -152,6 +152,7 @@ export interface Booking {
 
   status: BookingStatus;
 
+  petId?: string;
   petName: string;
   notes?: string;
 

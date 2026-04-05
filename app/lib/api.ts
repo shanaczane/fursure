@@ -224,12 +224,24 @@ export const insertBooking = async (
     .eq("id", userId)
     .maybeSingle();
 
-  const { data: petRow } = await supabase
-    .from("pets")
-    .select("id, type, breed")
-    .eq("owner_id", userId)
-    .eq("name", booking.petName)
-    .maybeSingle();
+  // Prefer explicit petId; fall back to name lookup for backwards-compat
+  let petRow: { id: string; type: string; breed: string } | null = null;
+  if (booking.petId) {
+    const { data } = await supabase
+      .from("pets")
+      .select("id, type, breed")
+      .eq("id", booking.petId)
+      .maybeSingle();
+    petRow = data;
+  } else {
+    const { data } = await supabase
+      .from("pets")
+      .select("id, type, breed")
+      .eq("owner_id", userId)
+      .eq("name", booking.petName)
+      .maybeSingle();
+    petRow = data;
+  }
 
   let requiresDownPayment = false;
   let downPaymentDeadlineHours = 24;
