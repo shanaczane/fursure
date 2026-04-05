@@ -33,14 +33,15 @@ const Icons = {
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
     </svg>
   ),
-  owner: (
+  reviews: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   ),
-  provider: (
+  moderation: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
     </svg>
   ),
   logout: (
@@ -54,10 +55,12 @@ const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const pathname = usePathname();
 
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: Icons.dashboard, path: "/admin" },
-    { id: "providers", label: "Provider Verification", icon: Icons.verify, path: "/admin/providers" },
-    { id: "users", label: "User Accounts", icon: Icons.users, path: "/admin/users" },
-    { id: "activity", label: "System Activity", icon: Icons.activity, path: "/admin/activity" },
+    { id: "dashboard",   label: "Dashboard",            icon: Icons.dashboard,   path: "/admin" },
+    { id: "providers",   label: "Provider Verification", icon: Icons.verify,      path: "/admin/providers" },
+    { id: "users",       label: "User Accounts",         icon: Icons.users,       path: "/admin/users" },
+    { id: "reviews",     label: "Reviews",               icon: Icons.reviews,     path: "/admin/reviews" },
+    { id: "activity",    label: "System Activity",       icon: Icons.activity,    path: "/admin/activity" },
+    { id: "moderation",  label: "Content Moderation",    icon: Icons.moderation,  path: "/admin/moderation" },
   ];
 
   const handleLogout = () => {
@@ -106,20 +109,6 @@ const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               </Link>
             );
           })}
-
-          <div className="pt-4 mt-4 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-            <p className="text-xs font-700 uppercase tracking-widest px-3 mb-3" style={{ color: "#4A6280" }}>
-              Other Panels
-            </p>
-            <Link href="/owner" className="sidebar-item" style={{ color: "#4A6280" }}>
-              <span className="w-5 flex items-center justify-center shrink-0">{Icons.owner}</span>
-              <span>Owner Dashboard</span>
-            </Link>
-            <Link href="/provider" className="sidebar-item" style={{ color: "#4A6280" }}>
-              <span className="w-5 flex items-center justify-center shrink-0">{Icons.provider}</span>
-              <span>Provider Dashboard</span>
-            </Link>
-          </div>
         </nav>
 
         {/* Bottom */}

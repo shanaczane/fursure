@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useAdminContext } from "../context/AdminContext";
 import AdminLayout from "../components/AdminLayout";
@@ -39,12 +39,27 @@ const KeyIcon = ({ size = 20 }: { size?: number }) => (
     <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
   </svg>
 );
+const ChevronLeftIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+const ChevronRightIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
+const ROWS_PER_PAGE = 5;
 
 const AdminDashboardPage: React.FC = () => {
   const { admin, stats, providers, users, isLoading } = useAdminContext();
+  const [regPage, setRegPage] = useState(1);
 
-  const pendingProviders = providers.filter((p) => !p.isVerified).slice(0, 4);
-  const recentUsers = users.filter((u) => u.role !== "admin").slice(0, 5);
+  const pendingProviders = providers.filter((p) => !p.isVerified && !p.isRejected).slice(0, 4);
+  const nonAdminUsers = users.filter((u) => u.role !== "admin");
+  const totalRegPages = Math.max(1, Math.ceil(nonAdminUsers.length / ROWS_PER_PAGE));
+  const pagedUsers = nonAdminUsers.slice((regPage - 1) * ROWS_PER_PAGE, regPage * ROWS_PER_PAGE);
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -147,6 +162,7 @@ const AdminDashboardPage: React.FC = () => {
                 <CheckCircleIcon size={22} />
               </div>
               <p className="font-700" style={{ color: "var(--fur-slate)" }}>All providers verified!</p>
+              <p className="text-sm mt-1" style={{ color: "var(--fur-slate-light)" }}>No pending verification requests at this time.</p>
             </div>
           ) : (
             <div className="divide-y" style={{ borderColor: "var(--border)" }}>
@@ -175,10 +191,15 @@ const AdminDashboardPage: React.FC = () => {
           )}
         </div>
 
-        {/* Recent Registrations */}
+        {/* Recent Registrations with Pagination */}
         <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
           <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-            <h2 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>Recent Registrations</h2>
+            <div>
+              <h2 className="font-800 text-base" style={{ color: "var(--fur-slate)" }}>Recent Registrations</h2>
+              <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
+                {nonAdminUsers.length} total user{nonAdminUsers.length !== 1 ? "s" : ""}
+              </p>
+            </div>
             <Link href="/admin/users" className="text-sm font-700" style={{ color: "var(--fur-teal)" }}>
               View all →
             </Link>
@@ -196,7 +217,7 @@ const AdminDashboardPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: "var(--border)" }}>
-                {recentUsers.map((user) => (
+                {pagedUsers.map((user) => (
                   <tr key={user.id}
                     onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
@@ -233,7 +254,7 @@ const AdminDashboardPage: React.FC = () => {
                     </td>
                   </tr>
                 ))}
-                {recentUsers.length === 0 && (
+                {pagedUsers.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center">
                       <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>No users found</p>
@@ -243,6 +264,51 @@ const AdminDashboardPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalRegPages > 1 && (
+            <div className="px-6 py-3 border-t flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
+              <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                Showing {(regPage - 1) * ROWS_PER_PAGE + 1}–{Math.min(regPage * ROWS_PER_PAGE, nonAdminUsers.length)} of {nonAdminUsers.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setRegPage(p => Math.max(1, p - 1))}
+                  disabled={regPage === 1}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40"
+                  style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}
+                  onMouseEnter={e => !e.currentTarget.disabled && (e.currentTarget.style.background = "var(--fur-mist)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
+                  <ChevronLeftIcon />
+                </button>
+                {Array.from({ length: totalRegPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setRegPage(p)}
+                    className="w-7 h-7 rounded-lg text-xs font-700 border transition-all"
+                    style={regPage === p
+                      ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
+                      : { borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}
+                    onMouseEnter={e => regPage !== p && (e.currentTarget.style.background = "var(--fur-mist)")}
+                    onMouseLeave={e => regPage !== p && (e.currentTarget.style.background = "transparent")}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setRegPage(p => Math.min(totalRegPages, p + 1))}
+                  disabled={regPage === totalRegPages}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40"
+                  style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}
+                  onMouseEnter={e => !e.currentTarget.disabled && (e.currentTarget.style.background = "var(--fur-mist)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
+                  <ChevronRightIcon />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>

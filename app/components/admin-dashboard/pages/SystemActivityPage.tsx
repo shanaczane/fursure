@@ -23,7 +23,6 @@ const getRelativeTime = (dateStr: string) => {
   return formatDate(dateStr);
 };
 
-// SVG icons
 const CalendarIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
@@ -49,13 +48,18 @@ const WrenchIcon = ({ size = 16 }: { size?: number }) => (
     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
   </svg>
 );
+const StarIcon = ({ size = 14, filled = false }: { size?: number; filled?: boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "#F59E0B" : "none"} stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
 const RefreshIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
   </svg>
 );
-const InboxIcon = ({ size = 40 }: { size?: number }) => (
+const InboxIcon = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
     <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
@@ -64,6 +68,21 @@ const InboxIcon = ({ size = 40 }: { size?: number }) => (
 const ActivityIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+  </svg>
+);
+const ChevronLeftIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+);
+const ChevronRightIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+const MessageIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
 
@@ -75,22 +94,54 @@ const typeConfig: Record<ActivityLog["type"], { icon: React.ReactNode; bg: strin
   service:      { icon: <WrenchIcon />,      bg: "#EDE9FE", color: "#5B21B6", label: "Service" },
 };
 
+const ROWS_PER_PAGE = 10;
+
+const StarRow: React.FC<{ rating: number }> = ({ rating }) => (
+  <div style={{ display: "flex", gap: 2 }}>
+    {[1,2,3,4,5].map(i => <StarIcon key={i} size={12} filled={i <= rating} />)}
+  </div>
+);
+
 const SystemActivityPage: React.FC = () => {
-  const { activityLogs, isLoading, refreshData } = useAdminContext();
-  const [filterType, setFilterType] = useState<ActivityLog["type"] | "all">("all");
+  const { activityLogs, bookings, isLoading, refreshData } = useAdminContext();
+  const [filterType, setFilterType] = useState<ActivityLog["type"] | "all" | "reviews">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activityPage, setActivityPage] = useState(1);
+
+  // Derive review logs from bookings that have ratings
+  const reviewLogs = useMemo(() => {
+    return (bookings ?? [])
+      .filter((b: any) => typeof b.rating === "number" && b.rating > 0)
+      .map((b: any) => ({
+        id: `review-${b.id}`,
+        type: "booking" as ActivityLog["type"],
+        description: `Review for "${b.service_name ?? b.serviceName ?? "Service"}"`,
+        userId: b.owner_id,
+        userName: b.owner_name ?? b.ownerName ?? "Pet Owner",
+        createdAt: b.review_date ?? b.created_at ?? new Date().toISOString(),
+        rating: b.rating,
+        reviewComment: b.review_comment ?? b.reviewComment ?? "",
+        serviceName: b.service_name ?? b.serviceName ?? "",
+      }));
+  }, [bookings]);
 
   const filtered = useMemo(() => {
-    return activityLogs.filter((log) => {
-      if (filterType !== "all" && log.type !== filterType) return false;
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        if (!log.description.toLowerCase().includes(q) && !(log.userName ?? "").toLowerCase().includes(q)) return false;
-      }
-      return true;
-    });
-  }, [activityLogs, filterType, searchQuery]);
+    let list: any[] = filterType === "reviews"
+      ? reviewLogs
+      : activityLogs.filter((log) => filterType === "all" || log.type === filterType);
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((log) =>
+        log.description.toLowerCase().includes(q) || (log.userName ?? "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [activityLogs, reviewLogs, filterType, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
+  const pagedLogs = filtered.slice((activityPage - 1) * ROWS_PER_PAGE, activityPage * ROWS_PER_PAGE);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -98,11 +149,16 @@ const SystemActivityPage: React.FC = () => {
     setIsRefreshing(false);
   };
 
+  const handleFilterChange = (type: typeof filterType) => {
+    setFilterType(type);
+    setActivityPage(1);
+  };
+
   const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: activityLogs.length };
+    const counts: Record<string, number> = { all: activityLogs.length, reviews: reviewLogs.length };
     activityLogs.forEach((log) => { counts[log.type] = (counts[log.type] ?? 0) + 1; });
     return counts;
-  }, [activityLogs]);
+  }, [activityLogs, reviewLogs]);
 
   return (
     <AdminLayout>
@@ -114,7 +170,7 @@ const SystemActivityPage: React.FC = () => {
               System Activity
             </h1>
             <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
-              Real-time overview of all platform activity and events.
+              Real-time overview of all platform activity, events, and reviews.
             </p>
           </div>
           <button
@@ -135,7 +191,7 @@ const SystemActivityPage: React.FC = () => {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setActivityPage(1); }}
                   placeholder="Search activity..."
                   className="fur-input text-sm"
                   style={{ paddingLeft: "2.5rem" }}
@@ -146,19 +202,29 @@ const SystemActivityPage: React.FC = () => {
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => setFilterType("all")}
+                  onClick={() => handleFilterChange("all")}
                   className="px-3 py-1.5 rounded-full text-xs font-700 border-2 transition-all"
                   style={filterType === "all"
                     ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
                     : { background: "white", color: "var(--fur-slate-mid)", borderColor: "var(--border)" }}>
                   All ({typeCounts.all})
                 </button>
+                {/* Reviews tab */}
+                <button
+                  onClick={() => handleFilterChange("reviews")}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-700 border-2 transition-all"
+                  style={filterType === "reviews"
+                    ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
+                    : { background: "white", color: "var(--fur-slate-mid)", borderColor: "var(--border)" }}>
+                  <span style={{ color: filterType === "reviews" ? "white" : "#F59E0B" }}><StarIcon size={12} filled /></span>
+                  Reviews ({typeCounts.reviews ?? 0})
+                </button>
                 {(Object.keys(typeConfig) as ActivityLog["type"][]).map((type) => {
                   const cfg = typeConfig[type];
                   return (
                     <button
                       key={type}
-                      onClick={() => setFilterType(type)}
+                      onClick={() => handleFilterChange(type)}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-700 border-2 transition-all"
                       style={filterType === type
                         ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
@@ -189,41 +255,119 @@ const SystemActivityPage: React.FC = () => {
               <p className="font-700" style={{ color: "var(--fur-slate)" }}>No activity found</p>
             </div>
           ) : (
-            <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-              {filtered.map((log) => {
-                const cfg = typeConfig[log.type];
-                return (
-                  <div key={log.id} className="px-6 py-4 flex items-start gap-4 transition-colors"
-                    onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ background: cfg.bg, color: cfg.color }}>
-                      {cfg.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-xs font-700 px-2 py-0.5 rounded-full"
-                          style={{ background: cfg.bg, color: cfg.color }}>
-                          {cfg.label}
-                        </span>
-                        <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
-                          {getRelativeTime(log.createdAt)}
-                        </span>
+            <>
+              <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                {pagedLogs.map((log: any) => {
+                  const isReview = typeof log.rating === "number" && log.rating > 0;
+                  const cfg = typeConfig[log.type as ActivityLog["type"]];
+                  return (
+                    <div key={log.id} className="px-6 py-4 transition-colors"
+                      onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                          style={{ background: isReview ? "#FFFBEB" : cfg?.bg, color: isReview ? "#92400E" : cfg?.color }}>
+                          {isReview ? <StarIcon size={16} filled /> : cfg?.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-xs font-700 px-2 py-0.5 rounded-full"
+                              style={{ background: isReview ? "#FEF3C7" : cfg?.bg, color: isReview ? "#92400E" : cfg?.color }}>
+                              {isReview ? "Review" : cfg?.label}
+                            </span>
+                            <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                              {getRelativeTime(log.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{log.description}</p>
+                          {log.userName && (
+                            <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--fur-slate-light)" }}>
+                              <PersonIcon size={11} /> {log.userName}
+                            </p>
+                          )}
+
+                          {/* Review details inline */}
+                          {isReview && (
+                            <div className="mt-2 p-3 rounded-xl border"
+                              style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}>
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <StarRow rating={log.rating} />
+                                <span className="text-xs font-700" style={{ color: "#92400E" }}>
+                                  {log.rating.toFixed(1)} / 5
+                                </span>
+                              </div>
+                              {log.reviewComment ? (
+                                <p className="text-xs italic leading-relaxed" style={{ color: "#92400E" }}>
+                                  "{log.reviewComment}"
+                                </p>
+                              ) : (
+                                <p className="text-xs italic" style={{ color: "#B45309" }}>Rating only — no written comment.</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs shrink-0" style={{ color: "var(--fur-slate-light)" }}>
+                          {formatDate(log.createdAt)}
+                        </div>
                       </div>
-                      <p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{log.description}</p>
-                      {log.userName && (
-                        <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--fur-slate-light)" }}>
-                          <PersonIcon size={11} /> {log.userName}
-                        </p>
-                      )}
                     </div>
-                    <div className="text-xs shrink-0" style={{ color: "var(--fur-slate-light)" }}>
-                      {formatDate(log.createdAt)}
-                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="px-6 py-3 border-t flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
+                  <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                    Showing {(activityPage - 1) * ROWS_PER_PAGE + 1}–{Math.min(activityPage * ROWS_PER_PAGE, filtered.length)} of {filtered.length}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setActivityPage(p => Math.max(1, p - 1))}
+                      disabled={activityPage === 1}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40"
+                      style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}
+                    >
+                      <ChevronLeftIcon />
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let p: number;
+                      if (totalPages <= 7) {
+                        p = i + 1;
+                      } else if (activityPage <= 4) {
+                        p = i + 1;
+                        if (i === 6) p = totalPages;
+                      } else if (activityPage >= totalPages - 3) {
+                        p = i === 0 ? 1 : totalPages - 6 + i;
+                      } else {
+                        const mid = [1, activityPage - 1, activityPage, activityPage + 1, totalPages];
+                        p = [1, activityPage - 1, activityPage, activityPage + 1, totalPages][Math.min(i, 4)] ?? i + 1;
+                      }
+                      return (
+                        <button
+                          key={`pg-${i}-${p}`}
+                          onClick={() => setActivityPage(p)}
+                          className="w-7 h-7 rounded-lg text-xs font-700 border transition-all"
+                          style={activityPage === p
+                            ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
+                            : { borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => setActivityPage(p => Math.min(totalPages, p + 1))}
+                      disabled={activityPage === totalPages}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40"
+                      style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}
+                    >
+                      <ChevronRightIcon />
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
