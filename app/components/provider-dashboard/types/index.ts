@@ -49,6 +49,7 @@ export interface ProviderBooking {
   ownerName: string;
   ownerEmail: string;
   ownerPhone?: string;
+  petId?: string;
   petName: string;
   petType: string;
   petBreed: string;

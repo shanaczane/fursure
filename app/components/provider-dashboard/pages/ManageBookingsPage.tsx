@@ -15,6 +15,13 @@ import {
 } from "../utils/providerUtils";
 import ProviderLayout from "../components/ProviderLayout";
 import BookingActionModal from "../components/BookingActionModal";
+import {
+  fetchPetVaccinations,
+  fetchMedicalHistory,
+  providerInsertVaccination,
+  providerInsertMedicalHistory,
+} from "@/app/lib/api";
+import type { Vaccination, MedicalHistory } from "@/app/types";
 
 type ActionType = "accept" | "reject" | "reschedule" | "complete" | "approve_edit" | "approve_cancel";
 
@@ -162,6 +169,7 @@ const InfoPair: React.FC<{ label: string; value: string; sub?: string }> = ({ la
 /* ─── Main Page ──────────────────────────────────────────────────────────── */
 const ManageBookingsPage: React.FC = () => {
   const {
+    user,
     bookings,
     services,
     acceptBooking,
@@ -183,6 +191,82 @@ const ManageBookingsPage: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmingPaymentId, setConfirmingPaymentId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Pet Record Modal
+  const [petRecordBooking, setPetRecordBooking] = useState<ProviderBooking | null>(null);
+  const [petRecordTab, setPetRecordTab] = useState<"vaccinations" | "history">("vaccinations");
+  const [petVaccinations, setPetVaccinations] = useState<Vaccination[]>([]);
+  const [petHistory, setPetHistory] = useState<MedicalHistory[]>([]);
+  const [petRecordLoading, setPetRecordLoading] = useState(false);
+  const [petRecordError, setPetRecordError] = useState<string | null>(null);
+  const [addingVax, setAddingVax] = useState(false);
+  const [addingHist, setAddingHist] = useState(false);
+  const [vaxForm, setVaxForm] = useState({ name: "", dateGiven: "", nextDueDate: "", notes: "" });
+  const [histForm, setHistForm] = useState({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
+  const [saving, setSaving] = useState(false);
+
+  const openPetRecord = async (booking: ProviderBooking) => {
+    if (!booking.petId) { setPetRecordError("Pet ID not found for this booking."); setPetRecordBooking(booking); return; }
+    setPetRecordBooking(booking);
+    setPetRecordTab("vaccinations");
+    setPetRecordLoading(true);
+    setPetRecordError(null);
+    try {
+      const [vax, hist] = await Promise.all([
+        fetchPetVaccinations(booking.petId),
+        fetchMedicalHistory(booking.petId),
+      ]);
+      setPetVaccinations(vax);
+      setPetHistory(hist);
+    } catch (err) {
+      setPetRecordError(err instanceof Error ? err.message : "Failed to load pet records.");
+    } finally {
+      setPetRecordLoading(false);
+    }
+  };
+
+  const closePetRecord = () => {
+    setPetRecordBooking(null);
+    setPetVaccinations([]);
+    setPetHistory([]);
+    setPetRecordError(null);
+    setAddingVax(false);
+    setAddingHist(false);
+    setVaxForm({ name: "", dateGiven: "", nextDueDate: "", notes: "" });
+    setHistForm({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
+  };
+
+  const handleProviderAddVax = async () => {
+    if (!petRecordBooking?.petId || !vaxForm.name || !vaxForm.dateGiven) return;
+    setSaving(true);
+    try {
+      const created = await providerInsertVaccination(petRecordBooking.petId, user.id, user.name, {
+        name: vaxForm.name, dateGiven: vaxForm.dateGiven,
+        nextDueDate: vaxForm.nextDueDate || undefined, notes: vaxForm.notes || undefined,
+      });
+      setPetVaccinations((prev) => [created, ...prev]);
+      setVaxForm({ name: "", dateGiven: "", nextDueDate: "", notes: "" });
+      setAddingVax(false);
+    } catch (err) {
+      setPetRecordError(err instanceof Error ? err.message : "Failed to save vaccination.");
+    } finally { setSaving(false); }
+  };
+
+  const handleProviderAddHistory = async () => {
+    if (!petRecordBooking?.petId || !histForm.diagnosis || !histForm.date) return;
+    setSaving(true);
+    try {
+      const created = await providerInsertMedicalHistory(petRecordBooking.petId, user.name, {
+        diagnosis: histForm.diagnosis, treatment: histForm.treatment || undefined,
+        prescription: histForm.prescription || undefined, notes: histForm.notes || undefined, date: histForm.date,
+      });
+      setPetHistory((prev) => [created, ...prev]);
+      setHistForm({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
+      setAddingHist(false);
+    } catch (err) {
+      setPetRecordError(err instanceof Error ? err.message : "Failed to save record.");
+    } finally { setSaving(false); }
+  };
 
   const filtered = useMemo(() => filterAndSortBookings(bookings, filters), [bookings, filters]);
 
@@ -779,6 +863,20 @@ const ManageBookingsPage: React.FC = () => {
                               No further actions available
                             </p>
                           )}
+
+                          {/* View Pet Record — always shown when petId exists */}
+                          {booking.petId && (
+                            <button
+                              onClick={() => openPetRecord(booking)}
+                              className="px-4 py-2 text-sm font-700 rounded-lg transition-colors flex items-center gap-1.5"
+                              style={{ background: "#EDE9FE", color: "#5B21B6" }}
+                              onMouseEnter={e => (e.currentTarget.style.background = "#DDD6FE")}
+                              onMouseLeave={e => (e.currentTarget.style.background = "#EDE9FE")}
+                            >
+                              <PetIcon />
+                              View Pet Record
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -800,6 +898,170 @@ const ManageBookingsPage: React.FC = () => {
         onReschedule={rescheduleBooking}
         onComplete={completeBooking}
       />
+
+      {/* ── Pet Record Modal ──────────────────────────────────────────────── */}
+      {petRecordBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ fontFamily: "'Nunito', sans-serif" }}>
+          <div className="absolute inset-0" style={{ background: "rgba(26,35,50,0.45)", backdropFilter: "blur(4px)" }} onClick={closePetRecord} />
+          <div className="relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: "90vh" }}>
+            {/* Header */}
+            <div className="flex items-center gap-4 px-6 py-5 shrink-0" style={{ background: "linear-gradient(135deg, #5B21B6 0%, #7C3AED 100%)" }}>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-900 shrink-0" style={{ background: "rgba(255,255,255,0.2)", color: "white", fontFamily: "'Fraunces', serif", backdropFilter: "blur(4px)" }}>
+                {petRecordBooking.petName.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="font-900 text-lg" style={{ fontFamily: "'Fraunces', serif", color: "white" }}>{petRecordBooking.petName}</h2>
+                <p className="text-sm capitalize" style={{ color: "rgba(255,255,255,0.75)" }}>{petRecordBooking.petType} · {petRecordBooking.petBreed} · Owner: {petRecordBooking.ownerName}</p>
+              </div>
+              <button onClick={closePetRecord} className="p-2 rounded-xl" style={{ color: "rgba(255,255,255,0.8)", background: "none" }} onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b shrink-0" style={{ background: "white", borderColor: "var(--border)" }}>
+              {([{ key: "vaccinations", label: `Vaccinations (${petVaccinations.length})` }, { key: "history", label: `Medical History (${petHistory.length})` }] as const).map(({ key, label }) => (
+                <button key={key} onClick={() => setPetRecordTab(key)}
+                  className="px-6 py-3 text-sm font-700 border-b-2 transition-colors"
+                  style={petRecordTab === key ? { borderColor: "#7C3AED", color: "#5B21B6" } : { borderColor: "transparent", color: "var(--fur-slate-light)" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 p-6" style={{ background: "white" }}>
+              {petRecordError && (
+                <div className="mb-4 px-4 py-3 rounded-xl border text-sm" style={{ background: "#FEF2F2", borderColor: "#FCA5A5", color: "#991B1B" }}>{petRecordError}</div>
+              )}
+              {petRecordLoading ? (
+                <p className="text-sm text-center py-8" style={{ color: "var(--fur-slate-light)" }}>Loading records...</p>
+              ) : petRecordTab === "vaccinations" ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>{petVaccinations.length} record{petVaccinations.length !== 1 ? "s" : ""}</p>
+                    <button onClick={() => { setAddingVax(!addingVax); setPetRecordError(null); }}
+                      className="px-4 py-2 text-sm font-700 rounded-xl text-white transition-colors"
+                      style={{ background: "#7C3AED" }} onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")} onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
+                      {addingVax ? "Cancel" : "+ Add Vaccination"}
+                    </button>
+                  </div>
+                  {addingVax && (
+                    <div className="rounded-xl border p-4 space-y-3" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
+                      <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>New Vaccination Record (Verified)</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2"><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Vaccine Name *</label>
+                          <input type="text" value={vaxForm.name} onChange={e => setVaxForm({ ...vaxForm, name: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Rabies" />
+                        </div>
+                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Date Given *</label>
+                          <input type="date" value={vaxForm.dateGiven} onChange={e => setVaxForm({ ...vaxForm, dateGiven: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} />
+                        </div>
+                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Next Due Date</label>
+                          <input type="date" value={vaxForm.nextDueDate} onChange={e => setVaxForm({ ...vaxForm, nextDueDate: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} />
+                        </div>
+                        <div className="col-span-2"><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Notes</label>
+                          <input type="text" value={vaxForm.notes} onChange={e => setVaxForm({ ...vaxForm, notes: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="Any notes" />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => setAddingVax(false)} className="px-4 py-2 text-sm font-700 rounded-xl border" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }}>Cancel</button>
+                        <button onClick={handleProviderAddVax} disabled={!vaxForm.name || !vaxForm.dateGiven || saving}
+                          className="px-4 py-2 text-sm font-700 rounded-xl text-white disabled:opacity-50"
+                          style={{ background: "#7C3AED" }}>
+                          {saving ? "Saving..." : "Save Record"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {petVaccinations.length === 0 && !addingVax ? (
+                    <p className="text-sm text-center py-6" style={{ color: "var(--fur-slate-light)" }}>No vaccination records yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {petVaccinations.map((v) => (
+                        <div key={v.id} className="rounded-xl border p-4 flex items-start gap-3" style={{ background: "white", borderColor: "var(--border)" }}>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{v.name}</p>
+                              {v.isVerified && <span className="text-xs font-700 px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#DBEAFE", color: "#1E40AF" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Verified</span>}
+                            </div>
+                            <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                              Given: {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                              {v.nextDueDate && ` · Next: ${new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}`}
+                            </p>
+                            {v.providerName && <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>by {v.providerName}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>{petHistory.length} record{petHistory.length !== 1 ? "s" : ""}</p>
+                    <button onClick={() => { setAddingHist(!addingHist); setPetRecordError(null); }}
+                      className="px-4 py-2 text-sm font-700 rounded-xl text-white transition-colors"
+                      style={{ background: "#7C3AED" }} onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")} onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
+                      {addingHist ? "Cancel" : "+ Add Record"}
+                    </button>
+                  </div>
+                  {addingHist && (
+                    <div className="rounded-xl border p-4 space-y-3" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
+                      <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>New Medical Record</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2"><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Diagnosis *</label>
+                          <input type="text" value={histForm.diagnosis} onChange={e => setHistForm({ ...histForm, diagnosis: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Skin Allergy" />
+                        </div>
+                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Date *</label>
+                          <input type="date" value={histForm.date} onChange={e => setHistForm({ ...histForm, date: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} />
+                        </div>
+                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Treatment</label>
+                          <input type="text" value={histForm.treatment} onChange={e => setHistForm({ ...histForm, treatment: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Antihistamine" />
+                        </div>
+                        <div><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Prescription</label>
+                          <input type="text" value={histForm.prescription} onChange={e => setHistForm({ ...histForm, prescription: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="e.g., Cetirizine 5mg" />
+                        </div>
+                        <div className="col-span-2"><label className="block text-xs font-700 mb-1 uppercase" style={{ color: "var(--fur-slate-mid)" }}>Notes</label>
+                          <input type="text" value={histForm.notes} onChange={e => setHistForm({ ...histForm, notes: e.target.value })} className="w-full px-3 py-2 border rounded-xl text-sm" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }} placeholder="Any additional notes" />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => setAddingHist(false)} className="px-4 py-2 text-sm font-700 rounded-xl border" style={{ borderColor: "var(--border)", color: "var(--fur-slate)" }}>Cancel</button>
+                        <button onClick={handleProviderAddHistory} disabled={!histForm.diagnosis || !histForm.date || saving}
+                          className="px-4 py-2 text-sm font-700 rounded-xl text-white disabled:opacity-50"
+                          style={{ background: "#7C3AED" }}>
+                          {saving ? "Saving..." : "Save Record"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {petHistory.length === 0 && !addingHist ? (
+                    <p className="text-sm text-center py-6" style={{ color: "var(--fur-slate-light)" }}>No medical history yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {petHistory.map((h) => (
+                        <div key={h.id} className="rounded-xl border p-4" style={{ background: "white", borderColor: "var(--border)" }}>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{h.diagnosis}</p>
+                            {h.addedBy === "provider" && <span className="text-xs font-700 px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#DBEAFE", color: "#1E40AF" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Verified</span>}
+                            <span className="text-xs ml-auto" style={{ color: "var(--fur-slate-light)" }}>{new Date(h.date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}</span>
+                          </div>
+                          {h.providerName && <p className="text-xs mb-2" style={{ color: "var(--fur-slate-light)" }}>by {h.providerName}</p>}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {h.treatment && <span className="text-xs px-2 py-1 rounded-lg" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Treatment: {h.treatment}</span>}
+                            {h.prescription && <span className="text-xs px-2 py-1 rounded-lg" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Rx: {h.prescription}</span>}
+                            {h.notes && <span className="text-xs px-2 py-1 rounded-lg" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Notes: {h.notes}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </ProviderLayout>
   );
 };

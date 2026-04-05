@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAppContext } from "@/app/contexts/AppContext";
-import { type Pet, type Vaccination } from "@/app/types";
+import { type Pet, type Vaccination, type MedicalHistory } from "@/app/types";
 import Sidebar from "../components/Sidebar";
 import TopNavbar from "../components/TopNavbar";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -11,6 +11,9 @@ import {
   fetchPetVaccinations,
   insertVaccination,
   deleteVaccinationRecord,
+  fetchMedicalHistory,
+  insertMedicalHistory,
+  deleteMedicalHistoryRecord,
 } from "@/app/lib/api";
 
 const PetAvatar = ({ name, size = "md" }: { name: string; size?: "md" | "lg" }) => {
@@ -100,7 +103,12 @@ const PetsPage: React.FC = () => {
   const [loadingVaccinations, setLoadingVaccinations] = useState(false);
   const [isAddingVaccination, setIsAddingVaccination] = useState(false);
   const [vaccinationForm, setVaccinationForm] = useState(emptyVaccinationForm);
-  const [activeTab, setActiveTab] = useState<"profile" | "vaccinations">("profile");
+  const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isAddingHistory, setIsAddingHistory] = useState(false);
+  const [historyForm, setHistoryForm] = useState({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"profile" | "vaccinations" | "history">("profile");
 
   // ── Error state (replaces alert()) ──────────────────────────────────────────
   const [formError, setFormError] = useState<string | null>(null);
@@ -130,17 +138,26 @@ const PetsPage: React.FC = () => {
 
   useEffect(() => {
     if (!selectedPet) return;
-    setLoadingVaccinations(true);
-    setVaccinationError(null);
-    fetchPetVaccinations(selectedPet.id)
-      .then(setVaccinations)
-      .catch((err) => {
-        setVaccinations([]);
-        setVaccinationError(
-          err instanceof Error ? err.message : "Failed to load vaccination records.",
-        );
-      })
-      .finally(() => setLoadingVaccinations(false));
+    const load = async () => {
+      setLoadingVaccinations(true);
+      setLoadingHistory(true);
+      setVaccinationError(null);
+      setHistoryError(null);
+      try {
+        const [vax, hist] = await Promise.all([
+          fetchPetVaccinations(selectedPet.id),
+          fetchMedicalHistory(selectedPet.id),
+        ]);
+        setVaccinations(vax);
+        setMedicalHistory(hist);
+      } catch (err) {
+        setVaccinationError(err instanceof Error ? err.message : "Failed to load records.");
+      } finally {
+        setLoadingVaccinations(false);
+        setLoadingHistory(false);
+      }
+    };
+    load();
   }, [selectedPet]);
 
   const handleStartAdd = () => {
@@ -282,6 +299,44 @@ const PetsPage: React.FC = () => {
               ? err.message
               : "Failed to delete record. Please try again.",
           );
+        }
+      },
+    });
+  };
+
+  const handleAddHistory = async () => {
+    if (!historyForm.diagnosis || !historyForm.date || !selectedPet) return;
+    setHistoryError(null);
+    try {
+      const created = await insertMedicalHistory(selectedPet.id, user.id, {
+        diagnosis: historyForm.diagnosis,
+        treatment: historyForm.treatment || undefined,
+        prescription: historyForm.prescription || undefined,
+        notes: historyForm.notes || undefined,
+        date: historyForm.date,
+        addedBy: "owner",
+      });
+      setMedicalHistory((prev) => [created, ...prev]);
+      setHistoryForm({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
+      setIsAddingHistory(false);
+    } catch (err) {
+      setHistoryError(err instanceof Error ? err.message : "Failed to save. Please try again.");
+    }
+  };
+
+  const handleDeleteHistory = (id: string, diagnosis: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete Record",
+      message: `Remove "${diagnosis}" from medical history?`,
+      onConfirm: async () => {
+        try {
+          await deleteMedicalHistoryRecord(id);
+          setMedicalHistory((prev) => prev.filter((h) => h.id !== id));
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        } catch (err) {
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+          setHistoryError(err instanceof Error ? err.message : "Failed to delete record.");
         }
       },
     });
@@ -643,16 +698,20 @@ const PetsPage: React.FC = () => {
 
             {/* Tabs */}
             <div className="flex border-b shrink-0" style={{ background: "white", borderColor: "var(--border)" }}>
-              {(["profile", "vaccinations"] as const).map(tab => (
+              {([
+                { key: "profile", label: "Profile" },
+                { key: "vaccinations", label: `Vaccinations${vaccinations.length > 0 ? ` (${vaccinations.length})` : ""}` },
+                { key: "history", label: `Medical History${medicalHistory.length > 0 ? ` (${medicalHistory.length})` : ""}` },
+              ] as const).map(({ key, label }) => (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className="px-6 py-3 text-sm font-700 capitalize transition-colors border-b-2"
-                  style={activeTab === tab
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className="px-5 py-3 text-sm font-700 transition-colors border-b-2 whitespace-nowrap"
+                  style={activeTab === key
                     ? { borderColor: "var(--fur-teal)", color: "var(--fur-teal)" }
                     : { borderColor: "transparent", color: "var(--fur-slate-light)" }}
                 >
-                  {tab === "vaccinations" ? "Vaccinations" : "Profile"}
+                  {label}
                 </button>
               ))}
             </div>
@@ -771,7 +830,18 @@ const PetsPage: React.FC = () => {
                                   onMouseEnter={e => (e.currentTarget.style.background = isDue ? "#FEE2E2" : "var(--fur-cream)")}
                                   onMouseLeave={e => (e.currentTarget.style.background = isDue ? "#FFF5F5" : "white")}
                                 >
-                                  <td style={{ padding: "0.85rem 1rem", minWidth: "130px" }}><p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{v.name}</p></td>
+                                  <td style={{ padding: "0.85rem 1rem", minWidth: "150px" }}>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{v.name}</p>
+                                      {v.isVerified && (
+                                        <span className="text-xs font-700 px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#DBEAFE", color: "#1E40AF" }}>
+                                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                          Verified
+                                        </span>
+                                      )}
+                                    </div>
+                                    {v.providerName && <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>by {v.providerName}</p>}
+                                  </td>
                                   <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}><p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}</p></td>
                                   <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
                                     {v.nextDueDate ? (
@@ -784,9 +854,13 @@ const PetsPage: React.FC = () => {
                                   <td style={{ padding: "0.85rem 1rem", minWidth: "120px" }}><p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{v.vetName || <span style={{ color: "var(--fur-slate-light)" }}>—</span>}</p></td>
                                   <td style={{ padding: "0.85rem 1rem", minWidth: "140px" }}><p className="text-xs" style={{ color: "var(--fur-slate-light)", maxWidth: "160px" }}>{v.notes || "—"}</p></td>
                                   <td style={{ padding: "0.85rem 1rem" }}>
-                                    <button onClick={() => handleDeleteVaccination(v.id, v.name)} className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--fur-rose)", background: "none", border: "none", cursor: "pointer" }} onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-rose-light)")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")} title="Delete record">
-                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                    </button>
+                                    {v.isVerified ? (
+                                      <span title="Verified records cannot be deleted" style={{ color: "var(--fur-slate-light)", fontSize: "0.7rem" }}>—</span>
+                                    ) : (
+                                      <button onClick={() => handleDeleteVaccination(v.id, v.name)} className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--fur-rose)", background: "none", border: "none", cursor: "pointer" }} onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-rose-light)")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")} title="Delete record">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                      </button>
+                                    )}
                                   </td>
                                 </tr>
                               );
@@ -794,6 +868,119 @@ const PetsPage: React.FC = () => {
                           </tbody>
                         </table>
                       </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Medical History Tab */}
+              {activeTab === "history" && (
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
+                      {medicalHistory.length} record{medicalHistory.length !== 1 ? "s" : ""}
+                    </p>
+                    <button
+                      onClick={() => { setIsAddingHistory(!isAddingHistory); setHistoryError(null); }}
+                      className="btn-primary px-4 py-2 text-sm flex items-center gap-1.5"
+                    >
+                      {isAddingHistory ? "Cancel" : (
+                        <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Record</>
+                      )}
+                    </button>
+                  </div>
+
+                  {historyError && <ErrorBanner message={historyError} onClose={() => setHistoryError(null)} />}
+
+                  {isAddingHistory && (
+                    <div className="rounded-xl p-5 border space-y-3" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
+                      <h4 className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>New Medical Record</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Diagnosis *</label>
+                          <input type="text" value={historyForm.diagnosis} onChange={e => setHistoryForm({ ...historyForm, diagnosis: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Skin Allergy" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Date *</label>
+                          <input type="date" value={historyForm.date} onChange={e => setHistoryForm({ ...historyForm, date: e.target.value })} className={inputClass} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Treatment</label>
+                          <input type="text" value={historyForm.treatment} onChange={e => setHistoryForm({ ...historyForm, treatment: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Antihistamine" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Prescription</label>
+                          <input type="text" value={historyForm.prescription} onChange={e => setHistoryForm({ ...historyForm, prescription: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Cetirizine 5mg" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Notes</label>
+                          <input type="text" value={historyForm.notes} onChange={e => setHistoryForm({ ...historyForm, notes: e.target.value })} className={inputClass} style={inputStyle} placeholder="Any additional notes" />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button onClick={() => { setIsAddingHistory(false); setHistoryError(null); }} className="btn-secondary px-4 py-2 text-sm">Cancel</button>
+                        <button onClick={handleAddHistory} disabled={!historyForm.diagnosis || !historyForm.date} className="btn-primary px-4 py-2 text-sm disabled:opacity-50">Save Record</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {loadingHistory ? (
+                    <p className="text-sm text-center py-4" style={{ color: "var(--fur-slate-light)" }}>Loading records...</p>
+                  ) : medicalHistory.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ background: "var(--fur-mist)", color: "var(--fur-slate-light)" }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                      </div>
+                      <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>No medical history yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {medicalHistory.map((h) => (
+                        <div key={h.id} className="rounded-xl border p-4" style={{ background: "white", borderColor: "var(--border)" }}>
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{h.diagnosis}</p>
+                              {h.addedBy === "provider" && (
+                                <span className="text-xs font-700 px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ background: "#DBEAFE", color: "#1E40AF" }}>
+                                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  Verified
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs font-600" style={{ color: "var(--fur-slate-light)" }}>
+                                {new Date(h.date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                              </span>
+                              {h.addedBy === "owner" && (
+                                <button onClick={() => handleDeleteHistory(h.id, h.diagnosis)} className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--fur-rose)", background: "none" }} onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-rose-light)")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          {h.providerName && <p className="text-xs mb-2" style={{ color: "var(--fur-slate-light)" }}>by {h.providerName}</p>}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {h.treatment && (
+                              <div className="rounded-lg px-3 py-2" style={{ background: "var(--fur-cream)" }}>
+                                <p className="text-xs font-700 uppercase tracking-wide mb-0.5" style={{ color: "var(--fur-slate-light)" }}>Treatment</p>
+                                <p className="text-xs font-600" style={{ color: "var(--fur-slate)" }}>{h.treatment}</p>
+                              </div>
+                            )}
+                            {h.prescription && (
+                              <div className="rounded-lg px-3 py-2" style={{ background: "var(--fur-cream)" }}>
+                                <p className="text-xs font-700 uppercase tracking-wide mb-0.5" style={{ color: "var(--fur-slate-light)" }}>Prescription</p>
+                                <p className="text-xs font-600" style={{ color: "var(--fur-slate)" }}>{h.prescription}</p>
+                              </div>
+                            )}
+                            {h.notes && (
+                              <div className="rounded-lg px-3 py-2" style={{ background: "var(--fur-cream)" }}>
+                                <p className="text-xs font-700 uppercase tracking-wide mb-0.5" style={{ color: "var(--fur-slate-light)" }}>Notes</p>
+                                <p className="text-xs font-600" style={{ color: "var(--fur-slate)" }}>{h.notes}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

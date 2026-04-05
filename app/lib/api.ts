@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { User, Pet, Booking, Service, BookingStatus, Vaccination } from "@/app/types";
+import type { User, Pet, Booking, Service, BookingStatus, Vaccination, MedicalHistory, VaccinationReminder } from "@/app/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -226,7 +226,7 @@ export const insertBooking = async (
 
   const { data: petRow } = await supabase
     .from("pets")
-    .select("type, breed")
+    .select("id, type, breed")
     .eq("owner_id", userId)
     .eq("name", booking.petName)
     .maybeSingle();
@@ -278,6 +278,7 @@ export const insertBooking = async (
       service_id: booking.serviceId || null,
       service_name: booking.serviceName,
       provider_name: booking.providerName,
+      pet_id: petRow?.id ?? null,
       pet_name: booking.petName,
       pet_type: petRow?.type ?? "",
       pet_breed: petRow?.breed ?? "",
@@ -476,6 +477,9 @@ export const fetchPetVaccinations = async (petId: string): Promise<Vaccination[]
     nextDueDate: v.next_due_date ?? undefined,
     vetName: v.vet_name ?? undefined,
     notes: v.notes ?? undefined,
+    addedBy: (v.added_by ?? "owner") as "owner" | "provider",
+    isVerified: v.is_verified ?? false,
+    providerName: v.provider_name ?? undefined,
   }));
 };
 
@@ -483,6 +487,7 @@ export const insertVaccination = async (
   userId: string,
   petId: string,
   record: Omit<Vaccination, "id" | "petId">,
+  options?: { addedBy?: "owner" | "provider"; isVerified?: boolean; providerName?: string },
 ): Promise<Vaccination> => {
   const { data, error } = await supabase
     .from("pet_vaccinations")
@@ -494,6 +499,9 @@ export const insertVaccination = async (
       next_due_date: record.nextDueDate ?? null,
       vet_name: record.vetName ?? null,
       notes: record.notes ?? null,
+      added_by: options?.addedBy ?? record.addedBy ?? "owner",
+      is_verified: options?.isVerified ?? record.isVerified ?? false,
+      provider_name: options?.providerName ?? record.providerName ?? null,
     })
     .select()
     .single();
@@ -506,6 +514,187 @@ export const insertVaccination = async (
     nextDueDate: data.next_due_date ?? undefined,
     vetName: data.vet_name ?? undefined,
     notes: data.notes ?? undefined,
+    addedBy: (data.added_by ?? "owner") as "owner" | "provider",
+    isVerified: data.is_verified ?? false,
+    providerName: data.provider_name ?? undefined,
+  };
+};
+
+// ─── Medical History ──────────────────────────────────────────────────────────
+
+export const fetchMedicalHistory = async (petId: string): Promise<MedicalHistory[]> => {
+  const { data, error } = await supabase
+    .from("pet_medical_history")
+    .select("*")
+    .eq("pet_id", petId)
+    .order("date", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    petId: r.pet_id,
+    diagnosis: r.diagnosis,
+    treatment: r.treatment ?? undefined,
+    prescription: r.prescription ?? undefined,
+    notes: r.notes ?? undefined,
+    date: r.date,
+    addedBy: (r.added_by ?? "owner") as "owner" | "provider",
+    providerName: r.provider_name ?? undefined,
+  }));
+};
+
+export const insertMedicalHistory = async (
+  petId: string,
+  ownerId: string,
+  record: Omit<MedicalHistory, "id" | "petId">,
+): Promise<MedicalHistory> => {
+  const { data, error } = await supabase
+    .from("pet_medical_history")
+    .insert({
+      pet_id: petId,
+      owner_id: ownerId,
+      diagnosis: record.diagnosis,
+      treatment: record.treatment ?? null,
+      prescription: record.prescription ?? null,
+      notes: record.notes ?? null,
+      date: record.date,
+      added_by: record.addedBy ?? "owner",
+      provider_name: record.providerName ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    petId: data.pet_id,
+    diagnosis: data.diagnosis,
+    treatment: data.treatment ?? undefined,
+    prescription: data.prescription ?? undefined,
+    notes: data.notes ?? undefined,
+    date: data.date,
+    addedBy: (data.added_by ?? "owner") as "owner" | "provider",
+    providerName: data.provider_name ?? undefined,
+  };
+};
+
+export const deleteMedicalHistoryRecord = async (id: string): Promise<void> => {
+  const { error } = await supabase.from("pet_medical_history").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+};
+
+// ─── Vaccination Reminders (all pets for an owner) ────────────────────────────
+
+export const fetchAllOwnerVaccinations = async (userId: string): Promise<VaccinationReminder[]> => {
+  // Get all pet IDs for this owner
+  const { data: pets } = await supabase
+    .from("pets")
+    .select("id, name")
+    .eq("owner_id", userId);
+  if (!pets || pets.length === 0) return [];
+
+  const petIds = pets.map((p) => p.id);
+  const petNameMap: Record<string, string> = {};
+  pets.forEach((p) => { petNameMap[p.id] = p.name; });
+
+  const { data, error } = await supabase
+    .from("pet_vaccinations")
+    .select("pet_id, name, next_due_date")
+    .in("pet_id", petIds)
+    .not("next_due_date", "is", null);
+  if (error) throw new Error(error.message);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return (data ?? [])
+    .map((v) => {
+      const due = new Date(v.next_due_date);
+      due.setHours(0, 0, 0, 0);
+      const daysUntilDue = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        petId: v.pet_id,
+        petName: petNameMap[v.pet_id] ?? "Unknown",
+        vaccineName: v.name,
+        nextDueDate: v.next_due_date,
+        daysUntilDue,
+      } as VaccinationReminder;
+    })
+    .filter((r) => r.daysUntilDue <= 30) // only show within 30 days or overdue
+    .sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+};
+
+// ─── Provider-side pet record access ─────────────────────────────────────────
+
+export const providerInsertVaccination = async (
+  petId: string,
+  providerUserId: string,
+  providerName: string,
+  record: { name: string; dateGiven: string; nextDueDate?: string; notes?: string },
+): Promise<Vaccination> => {
+  // Look up owner_id from pet
+  const { data: pet } = await supabase.from("pets").select("owner_id").eq("id", petId).maybeSingle();
+  const { data, error } = await supabase
+    .from("pet_vaccinations")
+    .insert({
+      owner_id: pet?.owner_id ?? null,
+      pet_id: petId,
+      name: record.name,
+      date_given: record.dateGiven,
+      next_due_date: record.nextDueDate ?? null,
+      vet_name: providerName,
+      notes: record.notes ?? null,
+      added_by: "provider",
+      is_verified: true,
+      provider_name: providerName,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    petId: data.pet_id,
+    name: data.name,
+    dateGiven: data.date_given,
+    nextDueDate: data.next_due_date ?? undefined,
+    vetName: data.vet_name ?? undefined,
+    notes: data.notes ?? undefined,
+    addedBy: "provider",
+    isVerified: true,
+    providerName: data.provider_name ?? undefined,
+  };
+};
+
+export const providerInsertMedicalHistory = async (
+  petId: string,
+  providerName: string,
+  record: { diagnosis: string; treatment?: string; prescription?: string; notes?: string; date: string },
+): Promise<MedicalHistory> => {
+  const { data: pet } = await supabase.from("pets").select("owner_id").eq("id", petId).maybeSingle();
+  const { data, error } = await supabase
+    .from("pet_medical_history")
+    .insert({
+      pet_id: petId,
+      owner_id: pet?.owner_id ?? null,
+      diagnosis: record.diagnosis,
+      treatment: record.treatment ?? null,
+      prescription: record.prescription ?? null,
+      notes: record.notes ?? null,
+      date: record.date,
+      added_by: "provider",
+      provider_name: providerName,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return {
+    id: data.id,
+    petId: data.pet_id,
+    diagnosis: data.diagnosis,
+    treatment: data.treatment ?? undefined,
+    prescription: data.prescription ?? undefined,
+    notes: data.notes ?? undefined,
+    date: data.date,
+    addedBy: "provider",
+    providerName: data.provider_name ?? undefined,
   };
 };
 
@@ -829,6 +1018,7 @@ export const fetchProviderOwnBookings = async (userId: string) => {
     ownerName: row.owner_name ?? "Unknown",
     ownerEmail: row.owner_email ?? "",
     ownerPhone: row.owner_phone ?? undefined,
+    petId: row.pet_id ?? undefined,
     petName: row.pet_name ?? "",
     petType: row.pet_type ?? "",
     petBreed: row.pet_breed ?? "",
