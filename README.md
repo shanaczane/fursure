@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FurSure 🐾
 
-## Getting Started
+A web platform that connects pet owners with trusted pet care service providers.
 
-First, run the development server:
+**Live Demo:** [fursure-theta.vercel.app](https://fursure-theta.vercel.app)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## What is FurSure?
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+FurSure makes it easy for pet owners to find and book services like grooming, veterinary care, training, boarding, and more — all in one place. Service providers can manage their listings, bookings, and client pet records through their own dedicated dashboard.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## What You Can Do
 
-To learn more about Next.js, take a look at the following resources:
+### As a Pet Owner
+- Create an account and manage your profile
+- Add your pets with their breed, age, and medical notes
+- Browse and search for pet care services near you
+- Book appointments with your preferred provider
+- Track your booking status from pending to confirmed to completed
+- Edit or cancel bookings based on the provider's policy
+- View your pet's vaccination records and medical history
+- Get notified when a vaccination is coming up or overdue
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### As a Service Provider
+- Set up your provider profile and list your services
+- Accept, decline, or reschedule booking requests
+- Set your own booking and cancellation policies
+- Access pet health records for booked clients
+- Add verified vaccination records and medical notes to a pet's profile
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### As an Admin
+- View and manage all user accounts
+- Verify service providers before they go live
+- Moderate platform content
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Built With
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Next.js 16** — React framework
+- **Supabase** — authentication and database
+- **Tailwind CSS** — styling
+- **Vercel** — deployment
