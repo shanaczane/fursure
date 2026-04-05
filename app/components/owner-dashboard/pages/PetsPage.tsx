@@ -519,104 +519,109 @@ const PetsPage: React.FC = () => {
               {pets.map((pet) => (
                 <div
                   key={pet.id}
-                  onClick={() => handleSelectPet(pet)}
-                  className="rounded-2xl border-2 p-5 cursor-pointer transition-all card-hover"
+                  className="rounded-2xl border-2 overflow-hidden transition-all"
                   style={{
                     background: "white",
-                    borderColor:
-                      selectedPet?.id === pet.id ? "var(--fur-teal)" : "var(--border)",
+                    borderColor: selectedPet?.id === pet.id ? "var(--fur-teal)" : "var(--border)",
+                    boxShadow: selectedPet?.id === pet.id ? "0 0 0 3px var(--fur-teal-light)" : "none",
                   }}
                 >
-                  <div className="flex items-center gap-4 mb-4">
+                  {/* Card Header */}
+                  <div className="px-5 pt-5 pb-4 flex items-start gap-3">
                     <PetAvatar name={pet.name} />
-                    <div className="min-w-0">
+                    <div className="flex-1 min-w-0 pt-0.5">
                       <h3
                         className="font-800 text-base truncate"
-                        style={{ color: "var(--fur-slate)" }}
+                        style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}
                       >
                         {pet.name}
                       </h3>
-                      <p
-                        className="text-xs capitalize truncate"
-                        style={{ color: "var(--fur-slate-light)" }}
-                      >
+                      <p className="text-xs mt-0.5 capitalize truncate" style={{ color: "var(--fur-slate-light)" }}>
                         {pet.type} · {pet.breed}
+                      </p>
+                    </div>
+                    {/* Icon actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleStartEdit(pet)}
+                        className="p-1.5 rounded-lg transition-colors"
+                        style={{ color: "var(--fur-teal)", background: "none" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-teal-light)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                        title="Edit pet"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeletePet(pet.id, pet.name)}
+                        className="p-1.5 rounded-lg transition-colors"
+                        style={{ color: "var(--fur-rose)", background: "none" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-rose-light)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                        title="Delete pet"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                          <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Info rows */}
+                  <div
+                    className="mx-5 mb-4 rounded-xl px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-3"
+                    style={{ background: "var(--fur-cream)" }}
+                  >
+                    <div>
+                      <p className="text-xs mb-0.5" style={{ color: "var(--fur-slate-light)" }}>Age</p>
+                      <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>
+                        {pet.age} yr{pet.age !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs mb-0.5" style={{ color: "var(--fur-slate-light)" }}>Gender</p>
+                      <p className="text-sm font-700 capitalize" style={{ color: "var(--fur-slate)" }}>
+                        {pet.gender && pet.gender !== "unknown" ? GENDER_LABELS[pet.gender] : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs mb-0.5" style={{ color: "var(--fur-slate-light)" }}>Weight</p>
+                      <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>
+                        {pet.weight || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs mb-0.5" style={{ color: "var(--fur-slate-light)" }}>Color / Coat</p>
+                      <p className="text-sm font-700 truncate" style={{ color: "var(--fur-slate)" }}>
+                        {pet.color || "—"}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    <span
-                      className="px-2.5 py-1 text-xs rounded-full font-600"
-                      style={{
-                        background: "var(--fur-teal-light)",
-                        color: "var(--fur-teal-dark)",
-                      }}
-                    >
-                      {pet.age} yr{pet.age !== 1 ? "s" : ""}
-                    </span>
-                    {pet.gender && pet.gender !== "unknown" && (
-                      <span
-                        className="px-2.5 py-1 text-xs rounded-full font-600"
-                        style={{ background: "#EDE9FE", color: "#5B21B6" }}
-                      >
-                        {GENDER_LABELS[pet.gender]}
-                      </span>
-                    )}
-                    {pet.weight && (
-                      <span
-                        className="px-2.5 py-1 text-xs rounded-full font-600"
-                        style={{ background: "#D1FAE5", color: "#065F46" }}
-                      >
-                        {pet.weight}
-                      </span>
-                    )}
-                    {pet.color && (
-                      <span
-                        className="px-2.5 py-1 text-xs rounded-full font-600"
-                        style={{
-                          background: "var(--fur-amber-light)",
-                          color: "var(--fur-amber-dark)",
-                        }}
-                      >
-                        {pet.color}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                  {/* Footer button */}
+                  <div className="px-5 pb-5">
                     <button
                       onClick={() => handleSelectPet(pet)}
-                      className="flex-1 py-2 rounded-xl text-xs font-700 transition-colors border"
+                      className="w-full py-2 rounded-xl text-sm font-700 transition-colors"
                       style={{
-                        borderColor: "var(--border)",
-                        color: "var(--fur-slate-mid)",
-                        background: "var(--fur-mist)",
+                        background: selectedPet?.id === pet.id ? "var(--fur-teal)" : "var(--fur-teal-light)",
+                        color: selectedPet?.id === pet.id ? "white" : "var(--fur-teal-dark)",
+                      }}
+                      onMouseEnter={e => {
+                        if (selectedPet?.id !== pet.id) e.currentTarget.style.background = "var(--fur-teal)";
+                        if (selectedPet?.id !== pet.id) e.currentTarget.style.color = "white";
+                      }}
+                      onMouseLeave={e => {
+                        if (selectedPet?.id !== pet.id) e.currentTarget.style.background = "var(--fur-teal-light)";
+                        if (selectedPet?.id !== pet.id) e.currentTarget.style.color = "var(--fur-teal-dark)";
                       }}
                     >
-                      Details
-                    </button>
-                    <button
-                      onClick={() => handleStartEdit(pet)}
-                      className="flex-1 py-2 rounded-xl text-xs font-700 transition-colors border"
-                      style={{
-                        borderColor: "var(--fur-teal)",
-                        color: "var(--fur-teal)",
-                        background: "var(--fur-teal-light)",
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeletePet(pet.id, pet.name)}
-                      className="flex-1 py-2 rounded-xl text-xs font-700 transition-colors border"
-                      style={{
-                        borderColor: "#FCA5A5",
-                        color: "var(--fur-rose)",
-                        background: "var(--fur-rose-light)",
-                      }}
-                    >
-                      Delete
+                      {selectedPet?.id === pet.id ? "Viewing Details" : "View Details"}
                     </button>
                   </div>
                 </div>
@@ -662,49 +667,69 @@ const PetsPage: React.FC = () => {
               >
                 {/* Detail header */}
                 <div
-                  className="flex items-center gap-4 p-6 border-b"
-                  style={{ borderColor: "var(--border)" }}
+                  className="relative flex items-center gap-5 px-6 py-6"
+                  style={{
+                    background: "linear-gradient(135deg, var(--fur-teal) 0%, var(--fur-teal-dark) 100%)",
+                  }}
                 >
-                  <PetAvatar name={selectedPet.name} size="lg" />
+                  {/* Avatar */}
+                  <div
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-2xl font-900"
+                    style={{
+                      background: "rgba(255,255,255,0.2)",
+                      color: "white",
+                      fontFamily: "'Fraunces', serif",
+                      backdropFilter: "blur(4px)",
+                    }}
+                  >
+                    {selectedPet.name.charAt(0).toUpperCase()}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <h2
                       className="font-900 text-xl"
-                      style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}
+                      style={{ fontFamily: "'Fraunces', serif", color: "white" }}
                     >
                       {selectedPet.name}
                     </h2>
-                    <p
-                      className="text-sm capitalize"
-                      style={{ color: "var(--fur-slate-light)" }}
-                    >
+                    <p className="text-sm mt-0.5 capitalize" style={{ color: "rgba(255,255,255,0.75)" }}>
                       {selectedPet.type} · {selectedPet.breed}
                     </p>
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="text-xs font-700 px-2.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>
+                        {selectedPet.age} yr{selectedPet.age !== 1 ? "s" : ""}
+                      </span>
+                      {selectedPet.gender && selectedPet.gender !== "unknown" && (
+                        <span className="text-xs font-700 px-2.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>
+                          {GENDER_LABELS[selectedPet.gender]}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedPet(null)}
-                    className="p-2 rounded-xl transition-colors"
-                    style={{ color: "var(--fur-slate-light)" }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "var(--fur-mist)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "transparent")
-                    }
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleStartEdit(selectedPet)}
+                      className="px-3 py-2 rounded-xl text-xs font-700 transition-colors"
+                      style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
                     >
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setSelectedPet(null)}
+                      className="p-2 rounded-xl transition-colors"
+                      style={{ color: "rgba(255,255,255,0.8)", background: "none" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                      title="Close"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Tabs */}
@@ -727,68 +752,49 @@ const PetsPage: React.FC = () => {
 
                 {/* Profile Tab */}
                 {activeTab === "profile" && (
-                  <div className="p-6 grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {[
-                      { label: "Type", value: selectedPet.type },
-                      { label: "Breed", value: selectedPet.breed },
-                      {
-                        label: "Age",
-                        value: `${selectedPet.age} year${selectedPet.age !== 1 ? "s" : ""}`,
-                      },
-                      {
-                        label: "Gender",
-                        value: selectedPet.gender ? GENDER_LABELS[selectedPet.gender] : "—",
-                      },
-                      { label: "Weight", value: selectedPet.weight || "—" },
-                      { label: "Color / Coat", value: selectedPet.color || "—" },
-                    ].map(({ label, value }) => (
-                      <div
-                        key={label}
-                        className="rounded-xl p-4"
-                        style={{ background: "var(--fur-cream)" }}
-                      >
-                        <p
-                          className="text-xs font-700 uppercase tracking-wide mb-1"
-                          style={{ color: "var(--fur-slate-light)" }}
+                  <div className="p-6 space-y-4">
+                    {/* Info grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {[
+                        { label: "Type", value: selectedPet.type, capitalize: true },
+                        { label: "Breed", value: selectedPet.breed },
+                        { label: "Age", value: `${selectedPet.age} year${selectedPet.age !== 1 ? "s" : ""}` },
+                        { label: "Gender", value: selectedPet.gender ? GENDER_LABELS[selectedPet.gender] : "—" },
+                        { label: "Weight", value: selectedPet.weight || "—" },
+                        { label: "Color / Coat", value: selectedPet.color || "—" },
+                      ].map(({ label, value, capitalize }) => (
+                        <div
+                          key={label}
+                          className="rounded-xl p-4 border"
+                          style={{ background: "white", borderColor: "var(--border)" }}
                         >
-                          {label}
-                        </p>
-                        <p
-                          className="text-sm font-700 capitalize"
-                          style={{ color: "var(--fur-slate)" }}
-                        >
-                          {value}
-                        </p>
-                      </div>
-                    ))}
-                    {selectedPet.medicalNotes && (
-                      <div
-                        className="col-span-2 md:col-span-3 rounded-xl p-4 border"
-                        style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#92400E"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                          </svg>
-                          <p
-                            className="text-xs font-700 uppercase tracking-wide"
-                            style={{ color: "#92400E" }}
-                          >
-                            Medical Notes
+                          <p className="text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-light)" }}>
+                            {label}
+                          </p>
+                          <p className={`text-sm font-700 ${capitalize ? "capitalize" : ""}`} style={{ color: "var(--fur-slate)" }}>
+                            {value}
                           </p>
                         </div>
-                        <p className="text-sm" style={{ color: "var(--fur-slate)" }}>
-                          {selectedPet.medicalNotes}
-                        </p>
+                      ))}
+                    </div>
+                    {selectedPet.medicalNotes && (
+                      <div
+                        className="rounded-xl p-4 border flex gap-3"
+                        style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}
+                      >
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: "#FEF3C7" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-700 uppercase tracking-wide mb-1" style={{ color: "#92400E" }}>
+                            Medical Notes
+                          </p>
+                          <p className="text-sm" style={{ color: "var(--fur-slate)" }}>
+                            {selectedPet.medicalNotes}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
