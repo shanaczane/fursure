@@ -116,6 +116,7 @@ const PetsPage: React.FC = () => {
     isOpen: false,
     title: "",
     message: "",
+    isError: false,
   });
 
   const { user, pets, bookings, addPet, updatePet, deletePet } = useAppContext();
@@ -187,6 +188,7 @@ const PetsPage: React.FC = () => {
           isOpen: true,
           title: "Pet Updated",
           message: `${formData.name}'s profile has been updated successfully!`,
+          isError: false,
         });
       } else {
         await addPet(formData);
@@ -194,6 +196,7 @@ const PetsPage: React.FC = () => {
           isOpen: true,
           title: "Pet Added",
           message: `${formData.name} has been added to your pets!`,
+          isError: false,
         });
       }
       handleCancelEdit();
@@ -218,12 +221,16 @@ const PetsPage: React.FC = () => {
             isOpen: true,
             title: "Pet Deleted",
             message: `${name} has been removed from your pets.`,
+            isError: false,
           });
         } catch (err) {
           setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-          setFormError(
-            err instanceof Error ? err.message : "Failed to delete pet. Please try again.",
-          );
+          setSuccessModal({
+            isOpen: true,
+            title: "Delete Failed",
+            message: err instanceof Error ? err.message : "Failed to delete pet. Please try again.",
+            isError: true,
+          });
         }
       },
     });
@@ -342,178 +349,6 @@ const PetsPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Global form error (pet add/edit/delete) */}
-            {formError && (
-              <ErrorBanner message={formError} onClose={() => setFormError(null)} />
-            )}
-
-            {/* Add / Edit Form */}
-            {(isAddingPet || editingPet) && (
-              <div
-                className="rounded-2xl border p-6"
-                style={{ background: "white", borderColor: "var(--border)" }}
-              >
-                <h2
-                  className="font-900 text-lg mb-5"
-                  style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}
-                >
-                  {editingPet ? "Edit Pet" : "Add New Pet"}
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      className="block text-xs font-700 mb-1.5 uppercase tracking-wide"
-                      style={{ color: "var(--fur-slate-mid)" }}
-                    >
-                      Pet Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className={inputClass}
-                      style={inputStyle}
-                      placeholder="e.g., Max"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-xs font-700 mb-1.5 uppercase tracking-wide"
-                      style={{ color: "var(--fur-slate-mid)" }}
-                    >
-                      Type *
-                    </label>
-                    <select
-                      value={formData.type}
-                      onChange={(e) =>
-                        setFormData({ ...formData, type: e.target.value as Pet["type"] })
-                      }
-                      className={inputClass}
-                      style={inputStyle}
-                    >
-                      <option value="dog">Dog</option>
-                      <option value="cat">Cat</option>
-                      <option value="bird">Bird</option>
-                      <option value="rabbit">Rabbit</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      className="block text-xs font-700 mb-1.5 uppercase tracking-wide"
-                      style={{ color: "var(--fur-slate-mid)" }}
-                    >
-                      Breed *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.breed}
-                      onChange={(e) => setFormData({ ...formData, breed: e.target.value })}
-                      className={inputClass}
-                      style={inputStyle}
-                      placeholder="e.g., Golden Retriever"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-xs font-700 mb-1.5 uppercase tracking-wide"
-                      style={{ color: "var(--fur-slate-mid)" }}
-                    >
-                      Age (years) *
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.age}
-                      onChange={(e) =>
-                        setFormData({ ...formData, age: parseInt(e.target.value) || 0 })
-                      }
-                      className={inputClass}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-xs font-700 mb-1.5 uppercase tracking-wide"
-                      style={{ color: "var(--fur-slate-mid)" }}
-                    >
-                      Gender
-                    </label>
-                    <select
-                      value={formData.gender}
-                      onChange={(e) =>
-                        setFormData({ ...formData, gender: e.target.value as Pet["gender"] })
-                      }
-                      className={inputClass}
-                      style={inputStyle}
-                    >
-                      <option value="unknown">Unknown</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      className="block text-xs font-700 mb-1.5 uppercase tracking-wide"
-                      style={{ color: "var(--fur-slate-mid)" }}
-                    >
-                      Weight
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.weight}
-                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                      className={inputClass}
-                      style={inputStyle}
-                      placeholder="e.g., 5 kg"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-xs font-700 mb-1.5 uppercase tracking-wide"
-                      style={{ color: "var(--fur-slate-mid)" }}
-                    >
-                      Color / Coat
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.color}
-                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      className={inputClass}
-                      style={inputStyle}
-                      placeholder="e.g., Golden, White"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label
-                      className="block text-xs font-700 mb-1.5 uppercase tracking-wide"
-                      style={{ color: "var(--fur-slate-mid)" }}
-                    >
-                      Medical Notes
-                    </label>
-                    <textarea
-                      value={formData.medicalNotes}
-                      onChange={(e) =>
-                        setFormData({ ...formData, medicalNotes: e.target.value })
-                      }
-                      rows={3}
-                      className={inputClass}
-                      style={inputStyle}
-                      placeholder="Allergies, conditions, special care instructions..."
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3 mt-5">
-                  <button onClick={handleCancelEdit} className="btn-secondary px-5 py-2">
-                    Cancel
-                  </button>
-                  <button onClick={handleSavePet} className="btn-primary px-5 py-2">
-                    {editingPet ? "Save Changes" : "Add Pet"}
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Pet Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {pets.map((pet) => (
@@ -522,8 +357,7 @@ const PetsPage: React.FC = () => {
                   className="rounded-2xl border-2 overflow-hidden transition-all"
                   style={{
                     background: "white",
-                    borderColor: selectedPet?.id === pet.id ? "var(--fur-teal)" : "var(--border)",
-                    boxShadow: selectedPet?.id === pet.id ? "0 0 0 3px var(--fur-teal-light)" : "none",
+                    borderColor: "var(--border)",
                   }}
                 >
                   {/* Card Header */}
@@ -608,20 +442,11 @@ const PetsPage: React.FC = () => {
                     <button
                       onClick={() => handleSelectPet(pet)}
                       className="w-full py-2 rounded-xl text-sm font-700 transition-colors"
-                      style={{
-                        background: selectedPet?.id === pet.id ? "var(--fur-teal)" : "var(--fur-teal-light)",
-                        color: selectedPet?.id === pet.id ? "white" : "var(--fur-teal-dark)",
-                      }}
-                      onMouseEnter={e => {
-                        if (selectedPet?.id !== pet.id) e.currentTarget.style.background = "var(--fur-teal)";
-                        if (selectedPet?.id !== pet.id) e.currentTarget.style.color = "white";
-                      }}
-                      onMouseLeave={e => {
-                        if (selectedPet?.id !== pet.id) e.currentTarget.style.background = "var(--fur-teal-light)";
-                        if (selectedPet?.id !== pet.id) e.currentTarget.style.color = "var(--fur-teal-dark)";
-                      }}
+                      style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "var(--fur-teal)"; e.currentTarget.style.color = "white"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "var(--fur-teal-light)"; e.currentTarget.style.color = "var(--fur-teal-dark)"; }}
                     >
-                      {selectedPet?.id === pet.id ? "Viewing Details" : "View Details"}
+                      View Details
                     </button>
                   </div>
                 </div>
@@ -659,480 +484,324 @@ const PetsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Pet Detail Panel */}
-            {selectedPet && !isAddingPet && !editingPet && (
-              <div
-                className="rounded-2xl border overflow-hidden"
-                style={{ background: "white", borderColor: "var(--border)" }}
-              >
-                {/* Detail header */}
-                <div
-                  className="relative flex items-center gap-5 px-6 py-6"
-                  style={{
-                    background: "linear-gradient(135deg, var(--fur-teal) 0%, var(--fur-teal-dark) 100%)",
-                  }}
-                >
-                  {/* Avatar */}
-                  <div
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-2xl font-900"
-                    style={{
-                      background: "rgba(255,255,255,0.2)",
-                      color: "white",
-                      fontFamily: "'Fraunces', serif",
-                      backdropFilter: "blur(4px)",
-                    }}
-                  >
-                    {selectedPet.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h2
-                      className="font-900 text-xl"
-                      style={{ fontFamily: "'Fraunces', serif", color: "white" }}
-                    >
-                      {selectedPet.name}
-                    </h2>
-                    <p className="text-sm mt-0.5 capitalize" style={{ color: "rgba(255,255,255,0.75)" }}>
-                      {selectedPet.type} · {selectedPet.breed}
-                    </p>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="text-xs font-700 px-2.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>
-                        {selectedPet.age} yr{selectedPet.age !== 1 ? "s" : ""}
-                      </span>
-                      {selectedPet.gender && selectedPet.gender !== "unknown" && (
-                        <span className="text-xs font-700 px-2.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>
-                          {GENDER_LABELS[selectedPet.gender]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleStartEdit(selectedPet)}
-                      className="px-3 py-2 rounded-xl text-xs font-700 transition-colors"
-                      style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
-                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setSelectedPet(null)}
-                      className="p-2 rounded-xl transition-colors"
-                      style={{ color: "rgba(255,255,255,0.8)", background: "none" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
-                      onMouseLeave={e => (e.currentTarget.style.background = "none")}
-                      title="Close"
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
-                  {(["profile", "vaccinations"] as const).map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className="px-6 py-3 text-sm font-700 capitalize transition-colors border-b-2"
-                      style={
-                        activeTab === tab
-                          ? { borderColor: "var(--fur-teal)", color: "var(--fur-teal)" }
-                          : { borderColor: "transparent", color: "var(--fur-slate-light)" }
-                      }
-                    >
-                      {tab === "vaccinations" ? "Vaccinations" : "Profile"}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Profile Tab */}
-                {activeTab === "profile" && (
-                  <div className="p-6 space-y-4">
-                    {/* Info grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {[
-                        { label: "Type", value: selectedPet.type, capitalize: true },
-                        { label: "Breed", value: selectedPet.breed },
-                        { label: "Age", value: `${selectedPet.age} year${selectedPet.age !== 1 ? "s" : ""}` },
-                        { label: "Gender", value: selectedPet.gender ? GENDER_LABELS[selectedPet.gender] : "—" },
-                        { label: "Weight", value: selectedPet.weight || "—" },
-                        { label: "Color / Coat", value: selectedPet.color || "—" },
-                      ].map(({ label, value, capitalize }) => (
-                        <div
-                          key={label}
-                          className="rounded-xl p-4 border"
-                          style={{ background: "white", borderColor: "var(--border)" }}
-                        >
-                          <p className="text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-light)" }}>
-                            {label}
-                          </p>
-                          <p className={`text-sm font-700 ${capitalize ? "capitalize" : ""}`} style={{ color: "var(--fur-slate)" }}>
-                            {value}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    {selectedPet.medicalNotes && (
-                      <div
-                        className="rounded-xl p-4 border flex gap-3"
-                        style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}
-                      >
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: "#FEF3C7" }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-xs font-700 uppercase tracking-wide mb-1" style={{ color: "#92400E" }}>
-                            Medical Notes
-                          </p>
-                          <p className="text-sm" style={{ color: "var(--fur-slate)" }}>
-                            {selectedPet.medicalNotes}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Vaccinations Tab */}
-                {activeTab === "vaccinations" && (
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
-                        {vaccinations.length} vaccination record
-                        {vaccinations.length !== 1 ? "s" : ""}
-                      </p>
-                      <button
-                        onClick={() => {
-                          setIsAddingVaccination(!isAddingVaccination);
-                          setVaccinationError(null);
-                          setVaccinationForm(emptyVaccinationForm);
-                        }}
-                        className="btn-primary px-4 py-2 text-sm flex items-center gap-1.5"
-                      >
-                        {isAddingVaccination ? (
-                          "Cancel"
-                        ) : (
-                          <>
-                            <svg
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <line x1="12" y1="5" x2="12" y2="19" />
-                              <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                            Add Record
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Vaccination error banner */}
-                    {vaccinationError && (
-                      <ErrorBanner
-                        message={vaccinationError}
-                        onClose={() => setVaccinationError(null)}
-                      />
-                    )}
-
-                    {isAddingVaccination && (
-                      <div
-                        className="rounded-xl p-5 border space-y-3"
-                        style={{
-                          background: "var(--fur-cream)",
-                          borderColor: "var(--border)",
-                        }}
-                      >
-                        <h4
-                          className="font-700 text-sm"
-                          style={{ color: "var(--fur-slate)" }}
-                        >
-                          New Vaccination Record
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label
-                              className="block text-xs font-700 mb-1 uppercase tracking-wide"
-                              style={{ color: "var(--fur-slate-mid)" }}
-                            >
-                              Vaccine Name *
-                            </label>
-                            <input
-                              type="text"
-                              value={vaccinationForm.name}
-                              onChange={(e) =>
-                                setVaccinationForm({
-                                  ...vaccinationForm,
-                                  name: e.target.value,
-                                })
-                              }
-                              className={inputClass}
-                              style={inputStyle}
-                              placeholder="e.g., Rabies, DHPP"
-                            />
-                          </div>
-                          <div>
-                            <label
-                              className="block text-xs font-700 mb-1 uppercase tracking-wide"
-                              style={{ color: "var(--fur-slate-mid)" }}
-                            >
-                              Date Given *
-                            </label>
-                            <input
-                              type="date"
-                              value={vaccinationForm.dateGiven}
-                              onChange={(e) =>
-                                setVaccinationForm({
-                                  ...vaccinationForm,
-                                  dateGiven: e.target.value,
-                                })
-                              }
-                              className={inputClass}
-                              style={inputStyle}
-                            />
-                          </div>
-                          <div>
-                            <label
-                              className="block text-xs font-700 mb-1 uppercase tracking-wide"
-                              style={{ color: "var(--fur-slate-mid)" }}
-                            >
-                              Next Due Date
-                            </label>
-                            <input
-                              type="date"
-                              value={vaccinationForm.nextDueDate}
-                              onChange={(e) =>
-                                setVaccinationForm({
-                                  ...vaccinationForm,
-                                  nextDueDate: e.target.value,
-                                })
-                              }
-                              className={inputClass}
-                              style={inputStyle}
-                            />
-                          </div>
-                          <div>
-                            <label
-                              className="block text-xs font-700 mb-1 uppercase tracking-wide"
-                              style={{ color: "var(--fur-slate-mid)" }}
-                            >
-                              Veterinarian
-                            </label>
-                            <input
-                              type="text"
-                              value={vaccinationForm.vetName}
-                              onChange={(e) =>
-                                setVaccinationForm({
-                                  ...vaccinationForm,
-                                  vetName: e.target.value,
-                                })
-                              }
-                              className={inputClass}
-                              style={inputStyle}
-                              placeholder="Vet name or clinic"
-                            />
-                          </div>
-                          <div className="md:col-span-2">
-                            <label
-                              className="block text-xs font-700 mb-1 uppercase tracking-wide"
-                              style={{ color: "var(--fur-slate-mid)" }}
-                            >
-                              Notes
-                            </label>
-                            <input
-                              type="text"
-                              value={vaccinationForm.notes}
-                              onChange={(e) =>
-                                setVaccinationForm({
-                                  ...vaccinationForm,
-                                  notes: e.target.value,
-                                })
-                              }
-                              className={inputClass}
-                              style={inputStyle}
-                              placeholder="Any additional notes"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-end gap-2 pt-1">
-                          <button
-                            onClick={() => {
-                              setIsAddingVaccination(false);
-                              setVaccinationForm(emptyVaccinationForm);
-                              setVaccinationError(null);
-                            }}
-                            className="btn-secondary px-4 py-2 text-sm"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleAddVaccination}
-                            disabled={!vaccinationForm.name || !vaccinationForm.dateGiven}
-                            className="btn-primary px-4 py-2 text-sm disabled:opacity-50"
-                          >
-                            Save Record
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {loadingVaccinations ? (
-                      <p
-                        className="text-sm text-center py-4"
-                        style={{ color: "var(--fur-slate-light)" }}
-                      >
-                        Loading records...
-                      </p>
-                    ) : vaccinations.length === 0 ? (
-                      <div className="text-center py-8">
-                        <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
-                          style={{
-                            background: "var(--fur-mist)",
-                            color: "var(--fur-slate-light)",
-                          }}
-                        >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.75"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                          </svg>
-                        </div>
-                        <p
-                          className="text-sm"
-                          style={{ color: "var(--fur-slate-light)" }}
-                        >
-                          No vaccination records yet.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-                        <div className="overflow-x-auto">
-                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                            <thead>
-                              <tr style={{ background: "var(--fur-cream)" }}>
-                                {["Vaccine", "Date Given", "Next Due Date", "Veterinarian", "Notes", ""].map((h) => (
-                                  <th key={h} style={{
-                                    padding: "0.6rem 1rem",
-                                    textAlign: "left",
-                                    fontSize: "0.68rem",
-                                    fontWeight: 800,
-                                    letterSpacing: "0.06em",
-                                    textTransform: "uppercase",
-                                    color: "var(--fur-slate-mid)",
-                                    whiteSpace: "nowrap",
-                                    borderBottom: "1.5px solid var(--border)",
-                                  }}>
-                                    {h}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {vaccinations.map((v, idx) => {
-                                const isDue = v.nextDueDate && new Date(v.nextDueDate) <= new Date();
-                                const isLast = idx === vaccinations.length - 1;
-                                return (
-                                  <tr key={v.id}
-                                    style={{ borderBottom: isLast ? "none" : "1px solid var(--border)", background: isDue ? "#FFF5F5" : "white" }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = isDue ? "#FEE2E2" : "var(--fur-cream)")}
-                                    onMouseLeave={e => (e.currentTarget.style.background = isDue ? "#FFF5F5" : "white")}
-                                  >
-                                    {/* Vaccine name */}
-                                    <td style={{ padding: "0.85rem 1rem", minWidth: "130px" }}>
-                                      <p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{v.name}</p>
-                                    </td>
-
-                                    {/* Date given */}
-                                    <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
-                                      <p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>
-                                        {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-                                      </p>
-                                    </td>
-
-                                    {/* Next due */}
-                                    <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
-                                      {v.nextDueDate ? (
-                                        <div className="flex items-center gap-2">
-                                          <p className="text-sm font-600" style={{ color: isDue ? "var(--fur-rose)" : "var(--fur-slate)" }}>
-                                            {new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-                                          </p>
-                                          {isDue && (
-                                            <span className="text-xs font-700 px-2 py-0.5 rounded-full" style={{ background: "#FEE2E2", color: "#991B1B" }}>
-                                              Overdue
-                                            </span>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <span className="text-sm" style={{ color: "var(--fur-slate-light)" }}>—</span>
-                                      )}
-                                    </td>
-
-                                    {/* Vet */}
-                                    <td style={{ padding: "0.85rem 1rem", minWidth: "120px" }}>
-                                      <p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>
-                                        {v.vetName || <span style={{ color: "var(--fur-slate-light)" }}>—</span>}
-                                      </p>
-                                    </td>
-
-                                    {/* Notes */}
-                                    <td style={{ padding: "0.85rem 1rem", minWidth: "140px" }}>
-                                      <p className="text-xs" style={{ color: "var(--fur-slate-light)", maxWidth: "160px" }}>
-                                        {v.notes || "—"}
-                                      </p>
-                                    </td>
-
-                                    {/* Delete */}
-                                    <td style={{ padding: "0.85rem 1rem" }}>
-                                      <button
-                                        onClick={() => handleDeleteVaccination(v.id, v.name)}
-                                        className="p-1.5 rounded-lg transition-colors"
-                                        style={{ color: "var(--fur-rose)", background: "none", border: "none", cursor: "pointer" }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-rose-light)")}
-                                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                                        title="Delete record"
-                                      >
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                          <polyline points="3 6 5 6 21 6"/>
-                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                          <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                                        </svg>
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </main>
       </div>
+
+      {/* ── Add / Edit Pet Modal ──────────────────────────────────────────── */}
+      {(isAddingPet || editingPet) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(26,35,50,0.45)", backdropFilter: "blur(4px)" }}
+            onClick={handleCancelEdit}
+          />
+          <div
+            className="relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{ background: "white", fontFamily: "'Nunito', sans-serif", maxHeight: "90vh" }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: "var(--border)" }}>
+              <h2 className="font-900 text-lg" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+                {editingPet ? "Edit Pet" : "Add New Pet"}
+              </h2>
+              <button
+                onClick={handleCancelEdit}
+                className="p-2 rounded-xl transition-colors"
+                style={{ color: "var(--fur-slate-light)" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-mist)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "none")}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            {/* Scrollable body */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {formError && <div className="mb-4"><ErrorBanner message={formError} onClose={() => setFormError(null)} /></div>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Pet Name *</label>
+                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Max" />
+                </div>
+                <div>
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Type *</label>
+                  <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as Pet["type"] })} className={inputClass} style={inputStyle}>
+                    <option value="dog">Dog</option>
+                    <option value="cat">Cat</option>
+                    <option value="bird">Bird</option>
+                    <option value="rabbit">Rabbit</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Breed *</label>
+                  <input type="text" value={formData.breed} onChange={e => setFormData({ ...formData, breed: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Golden Retriever" />
+                </div>
+                <div>
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Age (years) *</label>
+                  <input type="number" min="0" value={formData.age} onChange={e => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })} className={inputClass} style={inputStyle} />
+                </div>
+                <div>
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Gender</label>
+                  <select value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value as Pet["gender"] })} className={inputClass} style={inputStyle}>
+                    <option value="unknown">Unknown</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Weight</label>
+                  <input type="text" value={formData.weight} onChange={e => setFormData({ ...formData, weight: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., 5 kg" />
+                </div>
+                <div>
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Color / Coat</label>
+                  <input type="text" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Golden, White" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Medical Notes</label>
+                  <textarea value={formData.medicalNotes} onChange={e => setFormData({ ...formData, medicalNotes: e.target.value })} rows={3} className={inputClass} style={inputStyle} placeholder="Allergies, conditions, special care instructions..." />
+                </div>
+              </div>
+            </div>
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: "var(--border)" }}>
+              <button onClick={handleCancelEdit} className="btn-secondary px-5 py-2">Cancel</button>
+              <button onClick={handleSavePet} className="btn-primary px-5 py-2">
+                {editingPet ? "Save Changes" : "Add Pet"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pet Detail Modal ───────────────────────────────────────────────── */}
+      {selectedPet && !isAddingPet && !editingPet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(26,35,50,0.45)", backdropFilter: "blur(4px)" }}
+            onClick={() => setSelectedPet(null)}
+          />
+          <div
+            className="relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{ fontFamily: "'Nunito', sans-serif", maxHeight: "90vh" }}
+          >
+            {/* Gradient header */}
+            <div
+              className="flex items-center gap-5 px-6 py-6 shrink-0"
+              style={{ background: "linear-gradient(135deg, var(--fur-teal) 0%, var(--fur-teal-dark) 100%)" }}
+            >
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-2xl font-900"
+                style={{ background: "rgba(255,255,255,0.2)", color: "white", fontFamily: "'Fraunces', serif", backdropFilter: "blur(4px)" }}
+              >
+                {selectedPet.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="font-900 text-xl" style={{ fontFamily: "'Fraunces', serif", color: "white" }}>
+                  {selectedPet.name}
+                </h2>
+                <p className="text-sm mt-0.5 capitalize" style={{ color: "rgba(255,255,255,0.75)" }}>
+                  {selectedPet.type} · {selectedPet.breed}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs font-700 px-2.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>
+                    {selectedPet.age} yr{selectedPet.age !== 1 ? "s" : ""}
+                  </span>
+                  {selectedPet.gender && selectedPet.gender !== "unknown" && (
+                    <span className="text-xs font-700 px-2.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.2)", color: "white" }}>
+                      {GENDER_LABELS[selectedPet.gender]}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => handleStartEdit(selectedPet)}
+                  className="px-3 py-2 rounded-xl text-xs font-700 transition-colors"
+                  style={{ background: "rgba(255,255,255,0.2)", color: "white", border: "1px solid rgba(255,255,255,0.3)" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.2)")}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setSelectedPet(null)}
+                  className="p-2 rounded-xl transition-colors"
+                  style={{ color: "rgba(255,255,255,0.8)", background: "none" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b shrink-0" style={{ background: "white", borderColor: "var(--border)" }}>
+              {(["profile", "vaccinations"] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className="px-6 py-3 text-sm font-700 capitalize transition-colors border-b-2"
+                  style={activeTab === tab
+                    ? { borderColor: "var(--fur-teal)", color: "var(--fur-teal)" }
+                    : { borderColor: "transparent", color: "var(--fur-slate-light)" }}
+                >
+                  {tab === "vaccinations" ? "Vaccinations" : "Profile"}
+                </button>
+              ))}
+            </div>
+
+            {/* Scrollable tab content */}
+            <div className="overflow-y-auto flex-1" style={{ background: "white" }}>
+              {/* Profile Tab */}
+              {activeTab === "profile" && (
+                <div className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                      { label: "Type", value: selectedPet.type, capitalize: true },
+                      { label: "Breed", value: selectedPet.breed },
+                      { label: "Age", value: `${selectedPet.age} year${selectedPet.age !== 1 ? "s" : ""}` },
+                      { label: "Gender", value: selectedPet.gender ? GENDER_LABELS[selectedPet.gender] : "—" },
+                      { label: "Weight", value: selectedPet.weight || "—" },
+                      { label: "Color / Coat", value: selectedPet.color || "—" },
+                    ].map(({ label, value, capitalize }) => (
+                      <div key={label} className="rounded-xl p-4 border" style={{ background: "white", borderColor: "var(--border)" }}>
+                        <p className="text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-light)" }}>{label}</p>
+                        <p className={`text-sm font-700 ${capitalize ? "capitalize" : ""}`} style={{ color: "var(--fur-slate)" }}>{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedPet.medicalNotes && (
+                    <div className="rounded-xl p-4 border flex gap-3" style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: "#FEF3C7" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-xs font-700 uppercase tracking-wide mb-1" style={{ color: "#92400E" }}>Medical Notes</p>
+                        <p className="text-sm" style={{ color: "var(--fur-slate)" }}>{selectedPet.medicalNotes}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Vaccinations Tab */}
+              {activeTab === "vaccinations" && (
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
+                      {vaccinations.length} vaccination record{vaccinations.length !== 1 ? "s" : ""}
+                    </p>
+                    <button
+                      onClick={() => { setIsAddingVaccination(!isAddingVaccination); setVaccinationError(null); setVaccinationForm(emptyVaccinationForm); }}
+                      className="btn-primary px-4 py-2 text-sm flex items-center gap-1.5"
+                    >
+                      {isAddingVaccination ? "Cancel" : (
+                        <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Record</>
+                      )}
+                    </button>
+                  </div>
+                  {vaccinationError && <ErrorBanner message={vaccinationError} onClose={() => setVaccinationError(null)} />}
+                  {isAddingVaccination && (
+                    <div className="rounded-xl p-5 border space-y-3" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
+                      <h4 className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>New Vaccination Record</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Vaccine Name *</label>
+                          <input type="text" value={vaccinationForm.name} onChange={e => setVaccinationForm({ ...vaccinationForm, name: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Rabies, DHPP" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Date Given *</label>
+                          <input type="date" value={vaccinationForm.dateGiven} onChange={e => setVaccinationForm({ ...vaccinationForm, dateGiven: e.target.value })} className={inputClass} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Next Due Date</label>
+                          <input type="date" value={vaccinationForm.nextDueDate} onChange={e => setVaccinationForm({ ...vaccinationForm, nextDueDate: e.target.value })} className={inputClass} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Veterinarian</label>
+                          <input type="text" value={vaccinationForm.vetName} onChange={e => setVaccinationForm({ ...vaccinationForm, vetName: e.target.value })} className={inputClass} style={inputStyle} placeholder="Vet name or clinic" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-700 mb-1 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Notes</label>
+                          <input type="text" value={vaccinationForm.notes} onChange={e => setVaccinationForm({ ...vaccinationForm, notes: e.target.value })} className={inputClass} style={inputStyle} placeholder="Any additional notes" />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button onClick={() => { setIsAddingVaccination(false); setVaccinationForm(emptyVaccinationForm); setVaccinationError(null); }} className="btn-secondary px-4 py-2 text-sm">Cancel</button>
+                        <button onClick={handleAddVaccination} disabled={!vaccinationForm.name || !vaccinationForm.dateGiven} className="btn-primary px-4 py-2 text-sm disabled:opacity-50">Save Record</button>
+                      </div>
+                    </div>
+                  )}
+                  {loadingVaccinations ? (
+                    <p className="text-sm text-center py-4" style={{ color: "var(--fur-slate-light)" }}>Loading records...</p>
+                  ) : vaccinations.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ background: "var(--fur-mist)", color: "var(--fur-slate-light)" }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                      </div>
+                      <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>No vaccination records yet.</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+                      <div className="overflow-x-auto">
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <thead>
+                            <tr style={{ background: "var(--fur-cream)" }}>
+                              {["Vaccine", "Date Given", "Next Due Date", "Veterinarian", "Notes", ""].map(h => (
+                                <th key={h} style={{ padding: "0.6rem 1rem", textAlign: "left", fontSize: "0.68rem", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--fur-slate-mid)", whiteSpace: "nowrap", borderBottom: "1.5px solid var(--border)" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {vaccinations.map((v, idx) => {
+                              const isDue = v.nextDueDate && new Date(v.nextDueDate) <= new Date();
+                              const isLast = idx === vaccinations.length - 1;
+                              return (
+                                <tr key={v.id}
+                                  style={{ borderBottom: isLast ? "none" : "1px solid var(--border)", background: isDue ? "#FFF5F5" : "white" }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = isDue ? "#FEE2E2" : "var(--fur-cream)")}
+                                  onMouseLeave={e => (e.currentTarget.style.background = isDue ? "#FFF5F5" : "white")}
+                                >
+                                  <td style={{ padding: "0.85rem 1rem", minWidth: "130px" }}><p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{v.name}</p></td>
+                                  <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}><p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}</p></td>
+                                  <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
+                                    {v.nextDueDate ? (
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-600" style={{ color: isDue ? "var(--fur-rose)" : "var(--fur-slate)" }}>{new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}</p>
+                                        {isDue && <span className="text-xs font-700 px-2 py-0.5 rounded-full" style={{ background: "#FEE2E2", color: "#991B1B" }}>Overdue</span>}
+                                      </div>
+                                    ) : <span className="text-sm" style={{ color: "var(--fur-slate-light)" }}>—</span>}
+                                  </td>
+                                  <td style={{ padding: "0.85rem 1rem", minWidth: "120px" }}><p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{v.vetName || <span style={{ color: "var(--fur-slate-light)" }}>—</span>}</p></td>
+                                  <td style={{ padding: "0.85rem 1rem", minWidth: "140px" }}><p className="text-xs" style={{ color: "var(--fur-slate-light)", maxWidth: "160px" }}>{v.notes || "—"}</p></td>
+                                  <td style={{ padding: "0.85rem 1rem" }}>
+                                    <button onClick={() => handleDeleteVaccination(v.id, v.name)} className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--fur-rose)", background: "none", border: "none", cursor: "pointer" }} onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-rose-light)")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")} title="Delete record">
+                                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
@@ -1146,6 +815,7 @@ const PetsPage: React.FC = () => {
         isOpen={successModal.isOpen}
         title={successModal.title}
         message={successModal.message}
+        isError={successModal.isError}
         onClose={() => setSuccessModal({ ...successModal, isOpen: false })}
       />
     </div>
