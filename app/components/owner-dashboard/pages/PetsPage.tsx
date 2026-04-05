@@ -1019,104 +1019,105 @@ const PetsPage: React.FC = () => {
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {vaccinations.map((v) => {
-                          const isDue =
-                            v.nextDueDate && new Date(v.nextDueDate) <= new Date();
-                          return (
-                            <div
-                              key={v.id}
-                              className="flex items-start justify-between p-4 rounded-xl border"
-                              style={
-                                isDue
-                                  ? {
-                                      borderColor: "#FCA5A5",
-                                      background: "var(--fur-rose-light)",
-                                    }
-                                  : {
-                                      borderColor: "var(--border)",
-                                      background: "var(--fur-cream)",
-                                    }
-                              }
-                            >
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <p
-                                    className="font-700 text-sm"
-                                    style={{ color: "var(--fur-slate)" }}
+                      <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+                        <div className="overflow-x-auto">
+                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead>
+                              <tr style={{ background: "var(--fur-cream)" }}>
+                                {["Vaccine", "Date Given", "Next Due Date", "Veterinarian", "Notes", ""].map((h) => (
+                                  <th key={h} style={{
+                                    padding: "0.6rem 1rem",
+                                    textAlign: "left",
+                                    fontSize: "0.68rem",
+                                    fontWeight: 800,
+                                    letterSpacing: "0.06em",
+                                    textTransform: "uppercase",
+                                    color: "var(--fur-slate-mid)",
+                                    whiteSpace: "nowrap",
+                                    borderBottom: "1.5px solid var(--border)",
+                                  }}>
+                                    {h}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {vaccinations.map((v, idx) => {
+                                const isDue = v.nextDueDate && new Date(v.nextDueDate) <= new Date();
+                                const isLast = idx === vaccinations.length - 1;
+                                return (
+                                  <tr key={v.id}
+                                    style={{ borderBottom: isLast ? "none" : "1px solid var(--border)", background: isDue ? "#FFF5F5" : "white" }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = isDue ? "#FEE2E2" : "var(--fur-cream)")}
+                                    onMouseLeave={e => (e.currentTarget.style.background = isDue ? "#FFF5F5" : "white")}
                                   >
-                                    {v.name}
-                                  </p>
-                                  {isDue && (
-                                    <span
-                                      className="px-2 py-0.5 rounded-full text-xs font-600"
-                                      style={{
-                                        background: "var(--fur-rose-light)",
-                                        color: "var(--fur-rose)",
-                                        border: "1px solid #FCA5A5",
-                                      }}
-                                    >
-                                      Due
-                                    </span>
-                                  )}
-                                </div>
-                                <p
-                                  className="text-xs"
-                                  style={{ color: "var(--fur-slate-light)" }}
-                                >
-                                  Given: {new Date(v.dateGiven).toLocaleDateString()}
-                                  {v.nextDueDate &&
-                                    ` · Next due: ${new Date(v.nextDueDate).toLocaleDateString()}`}
-                                </p>
-                                {v.vetName && (
-                                  <p
-                                    className="text-xs"
-                                    style={{ color: "var(--fur-slate-light)" }}
-                                  >
-                                    {v.vetName}
-                                  </p>
-                                )}
-                                {v.notes && (
-                                  <p
-                                    className="text-xs italic"
-                                    style={{ color: "var(--fur-slate-light)" }}
-                                  >
-                                    {v.notes}
-                                  </p>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => handleDeleteVaccination(v.id, v.name)}
-                                className="p-1.5 rounded-lg transition-colors shrink-0"
-                                style={{ color: "var(--fur-rose)" }}
-                                onMouseEnter={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "var(--fur-rose-light)")
-                                }
-                                onMouseLeave={(e) =>
-                                  (e.currentTarget.style.background = "transparent")
-                                }
-                              >
-                                <svg
-                                  width="15"
-                                  height="15"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <polyline points="3 6 5 6 21 6" />
-                                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                  <path d="M10 11v6" />
-                                  <path d="M14 11v6" />
-                                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                                </svg>
-                              </button>
-                            </div>
-                          );
-                        })}
+                                    {/* Vaccine name */}
+                                    <td style={{ padding: "0.85rem 1rem", minWidth: "130px" }}>
+                                      <p className="font-800 text-sm" style={{ color: "var(--fur-slate)" }}>{v.name}</p>
+                                    </td>
+
+                                    {/* Date given */}
+                                    <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
+                                      <p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>
+                                        {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                                      </p>
+                                    </td>
+
+                                    {/* Next due */}
+                                    <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
+                                      {v.nextDueDate ? (
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-600" style={{ color: isDue ? "var(--fur-rose)" : "var(--fur-slate)" }}>
+                                            {new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                                          </p>
+                                          {isDue && (
+                                            <span className="text-xs font-700 px-2 py-0.5 rounded-full" style={{ background: "#FEE2E2", color: "#991B1B" }}>
+                                              Overdue
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-sm" style={{ color: "var(--fur-slate-light)" }}>—</span>
+                                      )}
+                                    </td>
+
+                                    {/* Vet */}
+                                    <td style={{ padding: "0.85rem 1rem", minWidth: "120px" }}>
+                                      <p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>
+                                        {v.vetName || <span style={{ color: "var(--fur-slate-light)" }}>—</span>}
+                                      </p>
+                                    </td>
+
+                                    {/* Notes */}
+                                    <td style={{ padding: "0.85rem 1rem", minWidth: "140px" }}>
+                                      <p className="text-xs" style={{ color: "var(--fur-slate-light)", maxWidth: "160px" }}>
+                                        {v.notes || "—"}
+                                      </p>
+                                    </td>
+
+                                    {/* Delete */}
+                                    <td style={{ padding: "0.85rem 1rem" }}>
+                                      <button
+                                        onClick={() => handleDeleteVaccination(v.id, v.name)}
+                                        className="p-1.5 rounded-lg transition-colors"
+                                        style={{ color: "var(--fur-rose)", background: "none", border: "none", cursor: "pointer" }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-rose-light)")}
+                                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                        title="Delete record"
+                                      >
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6"/>
+                                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                          <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                        </svg>
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )}
                   </div>
