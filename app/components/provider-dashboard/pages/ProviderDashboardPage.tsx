@@ -60,44 +60,32 @@ const PetIcon = () => (
   </svg>
 );
 
-/** Renders filled/half/empty stars derived live from bookings reviews */
-const StarRating: React.FC<{ rating: number; count: number }> = ({ rating, count }) => {
-  const stars = Array.from({ length: 5 }, (_, i) => {
-    const filled = rating >= i + 1;
-    const half = !filled && rating >= i + 0.5;
-    return (
-      <svg
-        key={i}
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill={filled || half ? "#F59E0B" : "none"}
-        stroke="#F59E0B"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{ opacity: filled || half ? 1 : 0.35 }}
-      >
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-      </svg>
-    );
-  });
-
-  return (
-    <div className="flex items-center gap-2 px-4 py-2 rounded-xl"
-      style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}>
-      <div className="flex items-center gap-0.5">{stars}</div>
-      <div>
-        <p className="text-xl font-900 text-white leading-none" style={{ fontFamily: "'Fraunces', serif" }}>
-          {rating > 0 ? rating.toFixed(1) : "—"}
-        </p>
-        <p className="text-xs mt-0.5" style={{ color: "#7A90A8" }}>
-          {count > 0 ? `${count} review${count !== 1 ? "s" : ""}` : "No reviews yet"}
-        </p>
-      </div>
+const StarRating: React.FC<{ rating: number; count: number }> = ({ rating, count }) => (
+  <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: 5 }, (_, i) => {
+        const filled = rating >= i + 1;
+        const half = !filled && rating >= i + 0.5;
+        return (
+          <svg key={i} width="12" height="12" viewBox="0 0 24 24"
+            fill={filled || half ? "#F59E0B" : "none"}
+            stroke="#F59E0B" strokeWidth="1.5"
+            strokeLinecap="round" strokeLinejoin="round"
+            style={{ opacity: filled || half ? 1 : 0.3 }}>
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+        );
+      })}
     </div>
-  );
-};
+    <span className="text-sm font-800 text-white" style={{ fontFamily: "'Fraunces', serif" }}>
+      {rating > 0 ? rating.toFixed(1) : "—"}
+    </span>
+    <span className="text-xs" style={{ color: "#7A90A8" }}>
+      ({count > 0 ? `${count} review${count !== 1 ? "s" : ""}` : "no reviews"})
+    </span>
+  </div>
+);
 
 const ProviderDashboardPage: React.FC = () => {
   const { user, services, bookings } = useProviderContext();
@@ -105,11 +93,6 @@ const ProviderDashboardPage: React.FC = () => {
   const upcomingBookings = getUpcomingBookings(bookings).slice(0, 4);
   const pendingBookings = bookings.filter(b => b.status === "pending").slice(0, 3);
 
-  /**
-   * Compute live rating & review count directly from bookings that have a review.
-   * This keeps the dashboard star display in real-time sync whenever an owner
-   * submits a rating — no separate context field needed.
-   */
   const { liveRating, liveReviewCount } = useMemo(() => {
     const reviewed = bookings.filter(
       b => b.status === "completed" && typeof b.rating === "number" && b.rating > 0
@@ -154,7 +137,7 @@ const ProviderDashboardPage: React.FC = () => {
             style={{ background: "var(--fur-teal)" }} />
 
           <div className="relative p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
               <div>
                 <p className="text-sm font-600 mb-1" style={{ color: "#7A90A8" }}>{getGreeting()}</p>
                 <h1 className="text-2xl md:text-3xl font-900 text-white" style={{ fontFamily: "'Fraunces', serif" }}>
@@ -166,7 +149,6 @@ const ProviderDashboardPage: React.FC = () => {
                     : "All caught up! No pending bookings."}
                 </p>
               </div>
-              {/* Live-synced star rating derived from completed bookings with reviews */}
               <StarRating rating={liveRating} count={liveReviewCount} />
             </div>
 
@@ -174,7 +156,8 @@ const ProviderDashboardPage: React.FC = () => {
               {statCards.map((s) => (
                 <div key={s.label} className="rounded-xl p-4"
                   style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3" style={{ background: s.bg, color: s.color }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
+                    style={{ background: s.bg, color: s.color }}>
                     {s.icon}
                   </div>
                   <p className="text-xl font-900 text-white mb-0.5" style={{ fontFamily: "'Fraunces', serif" }}>{s.value}</p>
