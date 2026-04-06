@@ -61,12 +61,15 @@ export interface ActivityLog {
 export interface SystemStats {
   totalUsers: number;
   totalProviders: number;
+  verifiedProviders: number;
+  rejectedProviders: number;
   totalBookings: number;
   pendingVerifications: number;
   activeServices: number;
   completedBookings: number;
   cancelledBookings: number;
-  totalRevenue: number;
+  ownerBookings: number;
+  providerBookings: number;
 }
 
 interface AdminContextType {
@@ -95,12 +98,15 @@ export const useAdminContext = () => {
 const EMPTY_STATS: SystemStats = {
   totalUsers: 0,
   totalProviders: 0,
+  verifiedProviders: 0,
+  rejectedProviders: 0,
   totalBookings: 0,
   pendingVerifications: 0,
   activeServices: 0,
   completedBookings: 0,
   cancelledBookings: 0,
-  totalRevenue: 0,
+  ownerBookings: 0,
+  providerBookings: 0,
 };
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
@@ -155,7 +161,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         email: (p.users as any)?.email ?? "",
         businessName: p.name ?? "Unknown Business",
         isVerified: p.is_verified ?? false,
-        isRejected: p.is_rejected ?? false, // ← read from DB, not hardcoded
+        isRejected: p.is_rejected ?? false,
         rating: p.rating ?? 0,
         totalReviews: p.reviews ?? 0,
         serviceCount: servicesData.filter(
@@ -169,6 +175,19 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         validIdUrl: p.valid_id_url ?? undefined,
         credentialsUrl: p.credentials_url ?? undefined,
       }));
+
+      // Build provider user ID set for quick lookup
+      const providerUserIds = new Set(providersData.map((p: any) => p.user_id));
+
+      // Bookings by owner (non-provider users)
+      const ownerBookings = bookingsData.filter(
+        (b: any) => b.owner_id && !providerUserIds.has(b.owner_id)
+      ).length;
+
+      // Bookings attributed to providers (as the service provider side)
+      const providerBookings = bookingsData.filter(
+        (b: any) => b.provider_id != null
+      ).length;
 
       const logs: ActivityLog[] = [
         ...bookingsData.slice(0, 30).map((b: any) => ({
@@ -203,23 +222,26 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
       const completedBookings = bookingsData.filter(
         (b: any) => b.status === "completed",
       );
+
+      // Only count providers with no verification decision yet (not verified AND not rejected)
+      const pendingVerifications = mappedProviders.filter(
+        (p) => !p.isVerified && !p.isRejected,
+      ).length;
+
       setStats({
-        totalUsers: mappedUsers.length,
+        totalUsers: mappedUsers.filter(u => u.role !== "admin").length,
         totalProviders: mappedProviders.length,
+        verifiedProviders: mappedProviders.filter(p => p.isVerified).length,
+        rejectedProviders: mappedProviders.filter(p => p.isRejected).length,
         totalBookings: bookingsData.length,
-        // pending = not verified AND not rejected
-        pendingVerifications: mappedProviders.filter(
-          (p) => !p.isVerified && !p.isRejected,
-        ).length,
+        pendingVerifications,
         activeServices: servicesData.filter((s: any) => s.is_active).length,
         completedBookings: completedBookings.length,
         cancelledBookings: bookingsData.filter(
           (b: any) => b.status === "cancelled",
         ).length,
-        totalRevenue: completedBookings.reduce(
-          (sum: number, b: any) => sum + (b.price ?? 0),
-          0,
-        ),
+        ownerBookings,
+        providerBookings,
       });
     } catch (err) {
       console.error("Admin data load error:", err);
@@ -255,6 +277,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     setStats((prev) => ({
       ...prev,
       pendingVerifications: Math.max(0, prev.pendingVerifications - 1),
+      verifiedProviders: prev.verifiedProviders + 1,
     }));
   };
 
@@ -270,17 +293,25 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     setStats((prev) => ({
       ...prev,
       pendingVerifications: prev.pendingVerifications + 1,
+      verifiedProviders: Math.max(0, prev.verifiedProviders - 1),
     }));
   };
 
   const rejectProvider = async (providerId: string) => {
     await callVerifyApi(providerId, "reject");
+    const wasVerified = providers.find(p => p.id === providerId)?.isVerified ?? false;
     setProviders((prev) =>
       prev.map((p) =>
         p.id === providerId ? { ...p, isVerified: false, isRejected: true } : p,
       ),
     );
-    // pending count stays the same (was pending, now rejected — still not verified)
+    setStats((prev) => ({
+      ...prev,
+      rejectedProviders: prev.rejectedProviders + 1,
+      verifiedProviders: wasVerified ? Math.max(0, prev.verifiedProviders - 1) : prev.verifiedProviders,
+      // If it was pending (not verified, not rejected), pending count decreases
+      pendingVerifications: !wasVerified ? Math.max(0, prev.pendingVerifications - 1) : prev.pendingVerifications,
+    }));
   };
 
   const deleteUser = async (userId: string) => {

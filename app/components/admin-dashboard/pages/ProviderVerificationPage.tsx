@@ -591,7 +591,6 @@ const ProviderVerificationPage: React.FC = () => {
                       </a>
                     )}
 
-                    {/* ── Action buttons: verified → Revoke | rejected → locked badge | pending → Verify + Reject ── */}
                     {provider.isVerified ? (
                       <button
                         onClick={() => handleUnverify(provider)}
@@ -601,7 +600,6 @@ const ProviderVerificationPage: React.FC = () => {
                         {actionLoading === provider.id ? "..." : "Revoke"}
                       </button>
                     ) : provider.isRejected ? (
-                      // Rejected providers are locked — no further actions available
                       <span
                         className="px-4 py-2 rounded-xl text-sm font-700 border flex items-center gap-1.5"
                         style={{ borderColor: "#FCA5A5", color: "#991B1B", background: "#FEF2F2", opacity: 0.75 }}>

@@ -8,8 +8,8 @@ import type { RegisterData } from "@/app/types/auth";
 type RegisterRole = "PET_OWNER" | "SERVICE_PROVIDER";
 
 export default function Register() {
-  const [formData, setFormData] = useState<RegisterData>({
-    email: "", password: "", firstName: "", lastName: "", role: "PET_OWNER",
+  const [formData, setFormData] = useState<RegisterData & { contactLink?: string }>({
+    email: "", password: "", firstName: "", lastName: "", role: "PET_OWNER", contactLink: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,12 +25,17 @@ export default function Register() {
   ];
 
   const isPasswordValid = passwordRules.every(r => r.test(formData.password));
+  const isContactLinkValid = formData.role !== "SERVICE_PROVIDER" || (formData.contactLink ?? "").trim().length > 0;
 
   const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!isPasswordValid) return;
     if (formData.role === "SERVICE_PROVIDER" && !validIdFile) {
       setError("Please upload a valid government ID before submitting.");
+      return;
+    }
+    if (formData.role === "SERVICE_PROVIDER" && !(formData.contactLink ?? "").trim()) {
+      setError("Please provide a social media or contact link.");
       return;
     }
     setLoading(true);
@@ -46,7 +51,6 @@ export default function Register() {
 
       const userId = authData.user.id;
 
-      // Convert files to base64 to send to server route (which uses service role key)
       const toBase64 = (file: File): Promise<string> =>
         new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -71,7 +75,6 @@ export default function Register() {
         }
       }
 
-      // Sync user + provider records + file uploads via server route (service role key, bypasses RLS)
       const syncRes = await fetch("/api/auth/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,6 +84,7 @@ export default function Register() {
           firstName: formData.firstName,
           lastName: formData.lastName,
           role: formData.role,
+          contactLink: formData.role === "SERVICE_PROVIDER" ? formData.contactLink : undefined,
           validIdBase64,
           validIdExt,
           credentialsBase64,
@@ -109,6 +113,10 @@ export default function Register() {
     { role: "PET_OWNER",        label: "Pet Owner",        desc: "Book and manage pet care services" },
     { role: "SERVICE_PROVIDER", label: "Service Provider", desc: "List services and manage bookings"  },
   ];
+
+  const isProviderFormValid =
+    formData.role !== "SERVICE_PROVIDER" ||
+    (!!validIdFile && (formData.contactLink ?? "").trim().length > 0);
 
   return (
     <div className="min-h-screen flex flex-col" style={{
@@ -253,14 +261,43 @@ export default function Register() {
               )}
             </div>
 
-            {/* Document uploads — only for providers */}
+            {/* Provider-specific fields */}
             {formData.role === "SERVICE_PROVIDER" && (
               <div className="space-y-3 p-4 rounded-2xl border" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
                 <p className="text-xs font-800 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>
+                  Provider Details
+                </p>
+
+                {/* Social / Contact Link — REQUIRED */}
+                <div>
+                  <label className="block text-xs font-700 mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>
+                    Social Media / Contact Link <span style={{ color: "var(--fur-rose)" }}>*</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.contactLink ?? ""}
+                    onChange={(e) => setFormData(prev => ({ ...prev, contactLink: e.target.value }))}
+                    required={formData.role === "SERVICE_PROVIDER"}
+                    disabled={loading}
+                    placeholder="https://facebook.com/yourpage or https://instagram.com/..."
+                    className="fur-input"
+                    style={(formData.contactLink ?? "").trim().length === 0 && formData.role === "SERVICE_PROVIDER"
+                      ? { borderColor: "#FCA5A5" }
+                      : {}}
+                  />
+                  <p className="text-xs mt-1.5 font-600 flex items-start gap-1.5" style={{ color: "var(--fur-slate-light)" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 1, flexShrink: 0 }}>
+                      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    This is displayed to pet owners after their booking is confirmed so they can reach you.
+                  </p>
+                </div>
+
+                <p className="text-xs font-800 uppercase tracking-wide mt-2" style={{ color: "var(--fur-slate-mid)" }}>
                   Verification Documents
                 </p>
                 <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
-                  Upload your valid government ID and any supporting credentials (certificates, licenses). These will be reviewed by an admin before your account is activated.
+                  Upload your valid government ID and any supporting credentials. These will be reviewed by an admin before your account is activated.
                 </p>
 
                 {/* Valid ID */}
@@ -346,7 +383,7 @@ export default function Register() {
               </div>
             )}
 
-            <button type="submit" disabled={loading || (formData.role === "SERVICE_PROVIDER" && !validIdFile)} className="btn-primary w-full py-3 text-sm disabled:opacity-60">
+            <button type="submit" disabled={loading || !isProviderFormValid} className="btn-primary w-full py-3 text-sm disabled:opacity-60">
               {loading ? "Creating account..." : `Create Account as ${formData.role === "SERVICE_PROVIDER" ? "Provider" : "Pet Owner"}`}
             </button>
           </form>
