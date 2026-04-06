@@ -96,6 +96,69 @@ const PetIcon = () => (
   </svg>
 );
 
+/* ─── Action Button SVG Icons ────────────────────────────────────────────── */
+const CompleteIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+const RescheduleIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+);
+const RejectIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+const AcceptIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+const CancelIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+const DeclineIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+  </svg>
+);
+const EditApproveIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+const AlertIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+);
+const PaymentIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+    <line x1="1" y1="10" x2="23" y2="10"/>
+  </svg>
+);
+const RescheduleProposalIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 /* ─── Star Row ───────────────────────────────────────────────────────────── */
@@ -152,9 +215,11 @@ function btnStyle(variant: "teal" | "purple" | "rose" | "ghost"): React.CSSPrope
     ghost:  { background: "white",                color: "var(--fur-slate-mid)", border: "1px solid var(--border)" },
   };
   return {
-    padding: "7px 16px", borderRadius: 8,
-    fontSize: "0.78rem", fontWeight: 700,
+    padding: "7px 15px", borderRadius: 8,
+    fontSize: "0.8rem", fontWeight: 700,
     cursor: "pointer", fontFamily: "'Nunito', sans-serif",
+    whiteSpace: "nowrap" as const,
+    display: "inline-flex", alignItems: "center", gap: 6,
     ...variants[variant],
   };
 }
@@ -194,6 +259,7 @@ function filterAndSort(
 /* ─── Expanded Detail Panel ──────────────────────────────────────────────── */
 const BookingDetailPanel: React.FC<{
   booking: ProviderBooking;
+  isLast: boolean;
   onOpenModal: (b: ProviderBooking, a: ActionType) => void;
   onConfirmPayment: (id: string) => void;
   isConfirming: boolean;
@@ -204,7 +270,7 @@ const BookingDetailPanel: React.FC<{
   onRejectCancel: (id: string) => void;
   onOpenPetRecord: (b: ProviderBooking) => void;
 }> = ({
-  booking, onOpenModal, onConfirmPayment,
+  booking, isLast, onOpenModal, onConfirmPayment,
   isConfirming, hasPayError,
   onApproveEdit, onRejectEdit, onApproveCancel, onRejectCancel,
   onOpenPetRecord,
@@ -234,266 +300,287 @@ const BookingDetailPanel: React.FC<{
 
   return (
     <tr>
-      <td colSpan={7} style={{ padding: 0, borderBottom: "2px solid var(--fur-teal)" }}>
+      <td colSpan={7} style={{ padding: 0, borderBottom: isLast ? "none" : "2px solid var(--fur-teal)" }}>
         <div style={{
           background: "var(--fur-cream)",
-          padding: "20px 24px",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          padding: "16px 20px",
+          display: "flex",
+          flexDirection: "column",
           gap: 16,
         }}>
+          {/* Two-column content area */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
 
-          {/* ══ LEFT COLUMN ══ */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* ══ LEFT COLUMN ══ */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-            {/* Owner & Pet */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div style={cell}>
-                <p style={cellLabel}>Owner</p>
-                <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--fur-slate)", marginBottom: 2 }}>{booking.ownerName}</p>
-                {booking.ownerEmail && <p style={{ fontSize: "0.72rem", color: "var(--fur-slate-light)" }}>{booking.ownerEmail}</p>}
-                {booking.ownerPhone && <p style={{ fontSize: "0.72rem", color: "var(--fur-slate-light)" }}>{booking.ownerPhone}</p>}
+              {/* Owner & Pet */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={cell}>
+                  <p style={cellLabel}>Owner</p>
+                  <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--fur-slate)", marginBottom: 2 }}>{booking.ownerName}</p>
+                  {booking.ownerEmail && <p style={{ fontSize: "0.72rem", color: "var(--fur-slate-light)" }}>{booking.ownerEmail}</p>}
+                  {booking.ownerPhone && <p style={{ fontSize: "0.72rem", color: "var(--fur-slate-light)" }}>{booking.ownerPhone}</p>}
+                </div>
+                <div style={cell}>
+                  <p style={cellLabel}>Pet</p>
+                  <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--fur-slate)", marginBottom: 2 }}>{booking.petName}</p>
+                  <p style={{ fontSize: "0.72rem", color: "var(--fur-slate-light)", textTransform: "capitalize" }}>{booking.petType} · {booking.petBreed}</p>
+                </div>
               </div>
-              <div style={cell}>
-                <p style={cellLabel}>Pet</p>
-                <p style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--fur-slate)", marginBottom: 2 }}>{booking.petName}</p>
-                <p style={{ fontSize: "0.72rem", color: "var(--fur-slate-light)", textTransform: "capitalize" }}>{booking.petType} · {booking.petBreed}</p>
-              </div>
-            </div>
 
-            {/* Owner notes */}
-            {booking.notes && (
-              <div style={cell}>
-                <p style={cellLabel}>Owner Notes</p>
-                <p style={{ fontSize: "0.8rem", color: "var(--fur-slate)", lineHeight: 1.5 }}>{booking.notes}</p>
-              </div>
-            )}
+              {/* Owner notes */}
+              {booking.notes && (
+                <div style={cell}>
+                  <p style={cellLabel}>Owner Notes</p>
+                  <p style={{ fontSize: "0.8rem", color: "var(--fur-slate)", lineHeight: 1.5 }}>{booking.notes}</p>
+                </div>
+              )}
 
-            {/* Provider notes */}
-            {booking.providerNotes && (
-              <div style={{ background: "var(--fur-teal-light)", border: "1px solid var(--fur-teal)", borderRadius: 10, padding: "10px 14px" }}>
-                <p style={{ ...cellLabel, color: "var(--fur-teal-dark)" }}>Your Notes</p>
-                <p style={{ fontSize: "0.8rem", color: "var(--fur-slate)", lineHeight: 1.5 }}>{booking.providerNotes}</p>
-              </div>
-            )}
+              {/* Provider notes */}
+              {booking.providerNotes && (
+                <div style={{ background: "var(--fur-teal-light)", border: "1px solid var(--fur-teal)", borderRadius: 10, padding: "10px 14px" }}>
+                  <p style={{ ...cellLabel, color: "var(--fur-teal-dark)" }}>Your Notes</p>
+                  <p style={{ fontSize: "0.8rem", color: "var(--fur-slate)", lineHeight: 1.5 }}>{booking.providerNotes}</p>
+                </div>
+              )}
 
-            {/* Client review */}
-            {isCompleted && (
-              typeof booking.rating === "number" && booking.rating > 0 ? (
-                <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid #FDE68A" }}>
-                  <div style={{ background: "#FFFBEB", borderBottom: "1px solid #FDE68A", padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#92400E" }}>Client Review</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <StarRow rating={booking.rating} />
-                      <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#92400E" }}>{booking.rating.toFixed(1)}</span>
+              {/* Client review */}
+              {isCompleted && (
+                typeof booking.rating === "number" && booking.rating > 0 ? (
+                  <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid #FDE68A" }}>
+                    <div style={{ background: "#FFFBEB", borderBottom: "1px solid #FDE68A", padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#92400E" }}>Client Review</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <StarRow rating={booking.rating} />
+                        <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#92400E" }}>{booking.rating.toFixed(1)}</span>
+                      </div>
+                    </div>
+                    <div style={{ background: "#FFFBEB", padding: "10px 14px" }}>
+                      {booking.reviewComment
+                        ? <p style={{ fontSize: "0.8rem", color: "#92400E", fontStyle: "italic", lineHeight: 1.5 }}>"{booking.reviewComment}"</p>
+                        : <p style={{ fontSize: "0.8rem", color: "#B45309", fontStyle: "italic" }}>Rating only — no written comment.</p>
+                      }
+                      {booking.reviewDate && (
+                        <p style={{ fontSize: "0.72rem", color: "#B45309", marginTop: 4 }}>
+                          {new Date(booking.reviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <div style={{ background: "#FFFBEB", padding: "10px 14px" }}>
-                    {booking.reviewComment
-                      ? <p style={{ fontSize: "0.8rem", color: "#92400E", fontStyle: "italic", lineHeight: 1.5 }}>"{booking.reviewComment}"</p>
-                      : <p style={{ fontSize: "0.8rem", color: "#B45309", fontStyle: "italic" }}>Rating only — no written comment.</p>
-                    }
-                    {booking.reviewDate && (
-                      <p style={{ fontSize: "0.72rem", color: "#B45309", marginTop: 4 }}>
-                        {new Date(booking.reviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                ) : null
+              )}
+
+              {/* Reschedule proposal */}
+              {hasRescheduleProposal && !ownerResponded && (
+                <div style={{ background: "#F5F3FF", border: "1px solid #C4B5FD", borderRadius: 10, padding: "10px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <RescheduleProposalIcon />
+                    <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#5B21B6" }}>Reschedule proposal sent</p>
+                  </div>
+                  <p style={{ fontSize: "0.78rem", color: "#6D28D9" }}>
+                    Proposed: {formatBookingDateTime(booking.rescheduleDate!, booking.rescheduleTime!)}
+                  </p>
+                  <p style={{ fontSize: "0.72rem", color: "#7C3AED", marginTop: 3 }}>Awaiting owner response</p>
+                </div>
+              )}
+
+              {/* Edit request */}
+              {hasPendingEdit && (
+                <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, padding: "10px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <EditApproveIcon />
+                    <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#92400E" }}>Owner requested to edit this booking</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => onApproveEdit(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 14px", background: "#059669", color: "white", border: "none", borderRadius: 8, fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      <AcceptIcon /> Approve Edit
+                    </button>
+                    <button onClick={() => onRejectEdit(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 14px", background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      <RejectIcon /> Reject Edit
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Cancel request */}
+              {hasPendingCancel && (
+                <div style={{ background: "var(--fur-rose-light)", border: "1px solid #FCA5A5", borderRadius: 10, padding: "10px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <CancelIcon />
+                    <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--fur-rose)" }}>Owner requested to cancel this booking</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => onApproveCancel(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 14px", background: "var(--fur-rose)", color: "white", border: "none", borderRadius: 8, fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      <AcceptIcon /> Approve Cancel
+                    </button>
+                    <button onClick={() => onRejectCancel(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 14px", background: "white", color: "var(--fur-slate-mid)", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      Keep Booking
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ══ RIGHT COLUMN ══ */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+              {/* Payment Summary Card */}
+              {showPaySection && (
+                <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid var(--fur-teal)" }}>
+                  <div style={{ background: "var(--fur-teal)", padding: "9px 14px", display: "flex", alignItems: "center", gap: 6 }}>
+                    <PaymentIcon />
+                    <p style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "white" }}>Payment Summary</p>
+                  </div>
+                  <div style={{ background: "var(--fur-teal-light)", padding: "14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <span style={{ fontSize: "0.82rem", color: "var(--fur-slate)" }}>Total Service Fee</span>
+                      <span style={{ fontSize: "1rem", fontWeight: 900, color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
+                        {formatCurrency(booking.price)}
+                      </span>
+                    </div>
+                    <div style={{
+                      background: booking.downPaymentPaid ? "#D1FAE5" : isPaymentSubmitted ? "#DBEAFE" : "#FEF3C7",
+                      border: `1px solid ${booking.downPaymentPaid ? "#6EE7B7" : isPaymentSubmitted ? "#BFDBFE" : "#FCD34D"}`,
+                      borderRadius: 8, padding: "10px 12px", marginBottom: 12,
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <p style={{ fontSize: "0.8rem", fontWeight: 700, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E" }}>
+                            Down Payment (30%)
+                          </p>
+                          {booking.downPaymentPaid && booking.downPaymentPaidAt && (
+                            <p style={{ fontSize: "0.7rem", color: "#059669", marginTop: 2 }}>
+                              Paid · {new Date(booking.downPaymentPaidAt).toLocaleString()}
+                            </p>
+                          )}
+                          {!booking.downPaymentPaid && isPaymentSubmitted && (
+                            <p style={{ fontSize: "0.7rem", color: "#1D4ED8", marginTop: 2 }}>Owner marked as paid — verify below</p>
+                          )}
+                          {!booking.downPaymentPaid && isAwaitingPayment && (
+                            <p style={{ fontSize: "0.7rem", color: dpExpired ? "var(--fur-rose)" : "#D97706", marginTop: 2 }}>
+                              {dpExpired ? "Deadline passed" : `Due in ${Math.ceil(dpHoursLeft ?? 0)} hrs`}
+                            </p>
+                          )}
+                          {!booking.downPaymentPaid && isConfirmed && (
+                            <p style={{ fontSize: "0.7rem", color: "#92400E", marginTop: 2 }}>Awaiting payment from owner</p>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, marginLeft: 12 }}>
+                          {booking.downPaymentPaid && (
+                            <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: "0.72rem", fontWeight: 700, color: "#059669" }}>
+                              <CheckIcon /> Paid
+                            </span>
+                          )}
+                          <span style={{ fontSize: "0.9rem", fontWeight: 800, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E", fontFamily: "'Fraunces', serif" }}>
+                            {formatCurrency(downAmt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--fur-teal)", paddingTop: 12 }}>
+                      <div>
+                        <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--fur-teal-dark)" }}>Remaining Balance</p>
+                        <p style={{ fontSize: "0.7rem", color: "var(--fur-slate-light)", marginTop: 1 }}>
+                          {booking.downPaymentPaid ? "Collect on appointment day" : "Full amount still pending"}
+                        </p>
+                      </div>
+                      <span style={{ fontSize: "1.1rem", fontWeight: 900, color: "var(--fur-teal-dark)", fontFamily: "'Fraunces', serif" }}>
+                        {formatCurrency(remaining)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Confirm payment actions */}
+              {isPaymentSubmitted && (
+                <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "12px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                    <ClockIcon />
+                    <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1E40AF" }}>
+                      Owner marked down payment as paid — verify and confirm
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => onConfirmPayment(booking.id)}
+                      disabled={isConfirming}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 16px", background: "#059669", color: "white", border: "none", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: isConfirming ? "not-allowed" : "pointer", opacity: isConfirming ? 0.6 : 1, fontFamily: "inherit" }}>
+                      <CheckIcon /> {isConfirming ? "Confirming…" : "Confirm Payment Received"}
+                    </button>
+                    <button
+                      onClick={() => onOpenModal(booking, "reject")}
+                      disabled={isConfirming}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 16px", background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: isConfirming ? "not-allowed" : "pointer", opacity: isConfirming ? 0.6 : 1, fontFamily: "inherit" }}>
+                      <RejectIcon /> Not Received
+                    </button>
+                  </div>
+                  {hasPayError && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.75rem", fontWeight: 700, marginTop: 8, padding: "6px 10px", borderRadius: 6, background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5" }}>
+                      <AlertIcon /> Failed to confirm. Check your connection and try again.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Awaiting payment timer */}
+              {isAwaitingPayment && (
+                <div style={{
+                  display: "flex", alignItems: "flex-start", gap: 10,
+                  background: dpExpired ? "var(--fur-rose-light)" : "#FFF7ED",
+                  border: `1px solid ${dpExpired ? "#FCA5A5" : "#FED7AA"}`,
+                  borderRadius: 10, padding: "12px 14px",
+                }}>
+                  <span style={{ marginTop: 1, color: dpExpired ? "var(--fur-rose)" : "#D97706", flexShrink: 0 }}><ClockIcon /></span>
+                  <div>
+                    <p style={{ fontSize: "0.82rem", fontWeight: 700, color: dpExpired ? "var(--fur-rose)" : "#D97706" }}>
+                      {dpExpired ? "Payment deadline passed — booking will auto-decline" : `Payment due in ${Math.ceil(dpHoursLeft ?? 0)} hours`}
+                    </p>
+                    {!dpExpired && (
+                      <p style={{ fontSize: "0.72rem", color: "#92400E", marginTop: 3 }}>
+                        Owner has been notified to complete the down payment.
                       </p>
                     )}
                   </div>
                 </div>
-              ) : (
-                <div style={{ ...cell, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 16, color: "var(--fur-slate-light)" }}>★</span>
-                  <p style={{ fontSize: "0.8rem", color: "var(--fur-slate-light)" }}>No review submitted yet</p>
-                </div>
-              )
-            )}
+              )}
 
-            {/* Reschedule proposal */}
-            {hasRescheduleProposal && !ownerResponded && (
-              <div style={{ background: "#F5F3FF", border: "1px solid #C4B5FD", borderRadius: 10, padding: "10px 14px" }}>
-                <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#5B21B6", marginBottom: 3 }}>📅 Reschedule proposal sent</p>
-                <p style={{ fontSize: "0.78rem", color: "#6D28D9" }}>
-                  Proposed: {formatBookingDateTime(booking.rescheduleDate!, booking.rescheduleTime!)}
-                </p>
-                <p style={{ fontSize: "0.72rem", color: "#7C3AED", marginTop: 3 }}>Awaiting owner response</p>
-              </div>
-            )}
-
-            {/* Edit request */}
-            {hasPendingEdit && (
-              <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, padding: "10px 14px" }}>
-                <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "#92400E", marginBottom: 8 }}>✏️ Owner requested to edit this booking</p>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => onApproveEdit(booking.id)} style={{ padding: "6px 14px", background: "#059669", color: "white", border: "none", borderRadius: 8, fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Approve Edit</button>
-                  <button onClick={() => onRejectEdit(booking.id)} style={{ padding: "6px 14px", background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Reject Edit</button>
-                </div>
-              </div>
-            )}
-
-            {/* Cancel request */}
-            {hasPendingCancel && (
-              <div style={{ background: "var(--fur-rose-light)", border: "1px solid #FCA5A5", borderRadius: 10, padding: "10px 14px" }}>
-                <p style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--fur-rose)", marginBottom: 8 }}>✕ Owner requested to cancel this booking</p>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => onApproveCancel(booking.id)} style={{ padding: "6px 14px", background: "var(--fur-rose)", color: "white", border: "none", borderRadius: 8, fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Approve Cancel</button>
-                  <button onClick={() => onRejectCancel(booking.id)} style={{ padding: "6px 14px", background: "white", color: "var(--fur-slate-mid)", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Keep Booking</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ══ RIGHT COLUMN ══ */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-            {/* Payment Summary Card */}
-            {showPaySection && (
-              <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid var(--fur-teal)" }}>
-                <div style={{ background: "var(--fur-teal)", padding: "9px 14px" }}>
-                  <p style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "white" }}>💳 Payment Summary</p>
-                </div>
-                <div style={{ background: "var(--fur-teal-light)", padding: "14px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <span style={{ fontSize: "0.82rem", color: "var(--fur-slate)" }}>Total Service Fee</span>
-                    <span style={{ fontSize: "1rem", fontWeight: 900, color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
-                      {formatCurrency(booking.price)}
-                    </span>
-                  </div>
-                  <div style={{
-                    background: booking.downPaymentPaid ? "#D1FAE5" : isPaymentSubmitted ? "#DBEAFE" : "#FEF3C7",
-                    border: `1px solid ${booking.downPaymentPaid ? "#6EE7B7" : isPaymentSubmitted ? "#BFDBFE" : "#FCD34D"}`,
-                    borderRadius: 8, padding: "10px 12px", marginBottom: 12,
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <p style={{ fontSize: "0.8rem", fontWeight: 700, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E" }}>
-                          Down Payment (30%)
-                        </p>
-                        {booking.downPaymentPaid && booking.downPaymentPaidAt && (
-                          <p style={{ fontSize: "0.7rem", color: "#059669", marginTop: 2 }}>
-                            Paid · {new Date(booking.downPaymentPaidAt).toLocaleString()}
-                          </p>
-                        )}
-                        {!booking.downPaymentPaid && isPaymentSubmitted && (
-                          <p style={{ fontSize: "0.7rem", color: "#1D4ED8", marginTop: 2 }}>Owner marked as paid — verify below</p>
-                        )}
-                        {!booking.downPaymentPaid && isAwaitingPayment && (
-                          <p style={{ fontSize: "0.7rem", color: dpExpired ? "var(--fur-rose)" : "#D97706", marginTop: 2 }}>
-                            {dpExpired ? "Deadline passed" : `Due in ${Math.ceil(dpHoursLeft ?? 0)} hrs`}
-                          </p>
-                        )}
-                        {!booking.downPaymentPaid && isConfirmed && (
-                          <p style={{ fontSize: "0.7rem", color: "#92400E", marginTop: 2 }}>Awaiting payment from owner</p>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, marginLeft: 12 }}>
-                        {booking.downPaymentPaid && (
-                          <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: "0.72rem", fontWeight: 700, color: "#059669" }}>
-                            <CheckIcon /> Paid
-                          </span>
-                        )}
-                        <span style={{ fontSize: "0.9rem", fontWeight: 800, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E", fontFamily: "'Fraunces', serif" }}>
-                          {formatCurrency(downAmt)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--fur-teal)", paddingTop: 12 }}>
-                    <div>
-                      <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--fur-teal-dark)" }}>Remaining Balance</p>
-                      <p style={{ fontSize: "0.7rem", color: "var(--fur-slate-light)", marginTop: 1 }}>
-                        {booking.downPaymentPaid ? "Collect on appointment day" : "Full amount still pending"}
-                      </p>
-                    </div>
-                    <span style={{ fontSize: "1.1rem", fontWeight: 900, color: "var(--fur-teal-dark)", fontFamily: "'Fraunces', serif" }}>
-                      {formatCurrency(remaining)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Confirm payment actions */}
-            {isPaymentSubmitted && (
-              <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "12px 14px" }}>
-                <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1E40AF", marginBottom: 10 }}>
-                  🕐 Owner marked down payment as paid — verify and confirm
-                </p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => onConfirmPayment(booking.id)}
-                    disabled={isConfirming}
-                    style={{ padding: "7px 16px", background: "#059669", color: "white", border: "none", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: isConfirming ? "not-allowed" : "pointer", opacity: isConfirming ? 0.6 : 1, fontFamily: "inherit" }}>
-                    {isConfirming ? "Confirming…" : "✓ Confirm Payment Received"}
-                  </button>
-                  <button
-                    onClick={() => onOpenModal(booking, "reject")}
-                    disabled={isConfirming}
-                    style={{ padding: "7px 16px", background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: isConfirming ? "not-allowed" : "pointer", opacity: isConfirming ? 0.6 : 1, fontFamily: "inherit" }}>
-                    ✕ Not Received
-                  </button>
-                </div>
-                {hasPayError && (
-                  <p style={{ fontSize: "0.75rem", fontWeight: 700, marginTop: 8, padding: "6px 10px", borderRadius: 6, background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5" }}>
-                    ⚠️ Failed to confirm. Check your connection and try again.
-                  </p>
+              {/* ── Action Buttons — anchored to bottom of right column ── */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", paddingTop: 4, marginTop: "auto" }}>
+                {booking.status === "pending" && (<>
+                  <button onClick={() => onOpenModal(booking, "accept")} style={btnStyle("teal")}><AcceptIcon /> Accept</button>
+                  <button onClick={() => onOpenModal(booking, "reschedule")} style={btnStyle("purple")}><RescheduleIcon /> Reschedule</button>
+                  <button onClick={() => onOpenModal(booking, "reject")} style={btnStyle("rose")}><RejectIcon /> Reject</button>
+                </>)}
+                {isConfirmed && (<>
+                  <button onClick={() => onOpenModal(booking, "complete")} style={btnStyle("teal")}><CompleteIcon /> Complete</button>
+                  <button onClick={() => onOpenModal(booking, "reschedule")} style={btnStyle("purple")}><RescheduleIcon /> Reschedule</button>
+                  <button onClick={() => onOpenModal(booking, "reject")} style={btnStyle("rose")}><CancelIcon /> Cancel</button>
+                </>)}
+                {isAwaitingPayment && (
+                  <button onClick={() => onOpenModal(booking, "reject")} style={btnStyle("rose")}><DeclineIcon /> Decline Booking</button>
                 )}
+                {booking.status === "rescheduled" && (<>
+                  <button onClick={() => onOpenModal(booking, "reschedule")} style={btnStyle("purple")}><RescheduleIcon /> Change Proposal</button>
+                  <button onClick={() => onOpenModal(booking, "reject")} style={btnStyle("rose")}><CancelIcon /> Cancel</button>
+                </>)}
+                {(isCompleted || booking.status === "cancelled" || booking.status === "declined") && (
+                  <p style={{ fontSize: "0.82rem", fontStyle: "italic", color: "var(--fur-slate-light)" }}>No further actions</p>
+                )}
+                {booking.petId && (<>
+                  <div style={{ width: 1, height: 26, background: "var(--border)", margin: "0 2px", flexShrink: 0 }} />
+                  <button onClick={() => onOpenPetRecord(booking)} style={{ ...btnStyle("ghost"), background: "#EDE9FE", color: "#5B21B6", border: "1px solid #C4B5FD" }}>
+                    <PetIcon /> Pet Record
+                  </button>
+                </>)}
               </div>
-            )}
 
-            {/* Awaiting payment timer */}
-            {isAwaitingPayment && (
-              <div style={{
-                display: "flex", alignItems: "flex-start", gap: 10,
-                background: dpExpired ? "var(--fur-rose-light)" : "#FFF7ED",
-                border: `1px solid ${dpExpired ? "#FCA5A5" : "#FED7AA"}`,
-                borderRadius: 10, padding: "12px 14px",
-              }}>
-                <span style={{ marginTop: 1, color: dpExpired ? "var(--fur-rose)" : "#D97706", flexShrink: 0 }}><ClockIcon /></span>
-                <div>
-                  <p style={{ fontSize: "0.82rem", fontWeight: 700, color: dpExpired ? "var(--fur-rose)" : "#D97706" }}>
-                    {dpExpired ? "Payment deadline passed — booking will auto-decline" : `Payment due in ${Math.ceil(dpHoursLeft ?? 0)} hours`}
-                  </p>
-                  {!dpExpired && (
-                    <p style={{ fontSize: "0.72rem", color: "#92400E", marginTop: 3 }}>
-                      Owner has been notified to complete the down payment.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+            </div>{/* ── end right column ── */}
 
-            {/* ── Action Buttons ── */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 2 }}>
-              {booking.status === "pending" && (<>
-                <button onClick={() => onOpenModal(booking, "accept")} style={btnStyle("teal")}>✓ Accept</button>
-                <button onClick={() => onOpenModal(booking, "reschedule")} style={btnStyle("purple")}>📅 Reschedule</button>
-                <button onClick={() => onOpenModal(booking, "reject")} style={btnStyle("rose")}>✕ Reject</button>
-              </>)}
-              {isConfirmed && (<>
-                <button onClick={() => onOpenModal(booking, "complete")} style={btnStyle("teal")}>✓ Mark Complete</button>
-                <button onClick={() => onOpenModal(booking, "reschedule")} style={btnStyle("purple")}>📅 Reschedule</button>
-                <button onClick={() => onOpenModal(booking, "reject")} style={btnStyle("rose")}>✕ Cancel</button>
-              </>)}
-              {isAwaitingPayment && (
-                <button onClick={() => onOpenModal(booking, "reject")} style={btnStyle("rose")}>✕ Decline Booking</button>
-              )}
-              {booking.status === "rescheduled" && (<>
-                <button onClick={() => onOpenModal(booking, "reschedule")} style={btnStyle("purple")}>📅 Change Proposal</button>
-                <button onClick={() => onOpenModal(booking, "reject")} style={btnStyle("rose")}>✕ Cancel</button>
-              </>)}
-              {(isCompleted || booking.status === "cancelled" || booking.status === "declined") && (
-                <p style={{ fontSize: "0.78rem", fontStyle: "italic", color: "var(--fur-slate-light)" }}>No further actions</p>
-              )}
-              {booking.petId && (
-                <button
-                  onClick={() => onOpenPetRecord(booking)}
-                  style={{ ...btnStyle("ghost"), display: "flex", alignItems: "center", gap: 6, background: "#EDE9FE", color: "#5B21B6", border: "1px solid #C4B5FD" }}>
-                  <PetIcon /> View Pet Record
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+          </div>{/* ── end two-column grid ── */}
+
+        </div>{/* ── end outer flex column ── */}
       </td>
     </tr>
   );
@@ -671,17 +758,20 @@ const ManageBookingsPage: React.FC = () => {
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
             {awaitingPayment > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: "0.78rem", fontWeight: 600 }}>
-                💵 <span><strong>{awaitingPayment}</strong> booking{awaitingPayment > 1 ? "s" : ""} awaiting down payment verification</span>
+                <PaymentIcon />
+                <span><strong>{awaitingPayment}</strong> booking{awaitingPayment > 1 ? "s" : ""} awaiting down payment verification</span>
               </div>
             )}
             {pendingRequests > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, background: "#FFFBEB", border: "1px solid #FCD34D", color: "#92400E", fontSize: "0.78rem", fontWeight: 600 }}>
-                <BellIcon /> <span><strong>{pendingRequests}</strong> pending edit/cancel request{pendingRequests > 1 ? "s" : ""} from owner</span>
+                <BellIcon />
+                <span><strong>{pendingRequests}</strong> pending edit/cancel request{pendingRequests > 1 ? "s" : ""} from owner</span>
               </div>
             )}
             {pendingReschedules > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, background: "#F5F3FF", border: "1px solid #C4B5FD", color: "#5B21B6", fontSize: "0.78rem", fontWeight: 600 }}>
-                📅 <span><strong>{pendingReschedules}</strong> reschedule proposal{pendingReschedules > 1 ? "s" : ""} awaiting owner response</span>
+                <RescheduleIcon />
+                <span><strong>{pendingReschedules}</strong> reschedule proposal{pendingReschedules > 1 ? "s" : ""} awaiting owner response</span>
               </div>
             )}
           </div>
@@ -801,19 +891,19 @@ const ManageBookingsPage: React.FC = () => {
 
                   const flags: { label: string; bg: string; color: string }[] = [];
                   if (booking.editRequestStatus === "pending")
-                    flags.push({ label: "✏️ Edit Req", bg: "#FEF3C7", color: "#92400E" });
+                    flags.push({ label: "Edit Req", bg: "#FEF3C7", color: "#92400E" });
                   if (booking.cancelRequestStatus === "pending")
-                    flags.push({ label: "✕ Cancel Req", bg: "#FEE2E2", color: "#991B1B" });
+                    flags.push({ label: "Cancel Req", bg: "#FEE2E2", color: "#991B1B" });
                   if (isPaymentSubmitted)
-                    flags.push({ label: "🕐 Payment", bg: "#DBEAFE", color: "#1E40AF" });
+                    flags.push({ label: "Payment", bg: "#DBEAFE", color: "#1E40AF" });
                   if (isAwaitingPayment && !dpExpired)
-                    flags.push({ label: `⏳ ${Math.ceil(dpHoursLeft ?? 0)}h left`, bg: "#FEF3C7", color: "#92400E" });
+                    flags.push({ label: `${Math.ceil(dpHoursLeft ?? 0)}h left`, bg: "#FEF3C7", color: "#92400E" });
                   if (isAwaitingPayment && dpExpired)
-                    flags.push({ label: "⚠️ Overdue", bg: "#FEE2E2", color: "#991B1B" });
+                    flags.push({ label: "Overdue", bg: "#FEE2E2", color: "#991B1B" });
                   if (booking.status === "rescheduled" && booking.rescheduleStatus !== "confirmed" && booking.rescheduleStatus !== "declined")
-                    flags.push({ label: "⏳ Awaiting Owner", bg: "#EDE9FE", color: "#5B21B6" });
+                    flags.push({ label: "Awaiting Owner", bg: "#EDE9FE", color: "#5B21B6" });
                   if (booking.status === "completed" && typeof booking.rating === "number" && booking.rating > 0)
-                    flags.push({ label: `★ ${booking.rating.toFixed(1)}`, bg: "#FFFBEB", color: "#92400E" });
+                    flags.push({ label: `${booking.rating.toFixed(1)} stars`, bg: "#FFFBEB", color: "#92400E" });
 
                   const rowBg = isExpanded ? "var(--fur-teal-light)" : idx % 2 === 0 ? "white" : "#FAFAF9";
 
@@ -885,7 +975,7 @@ const ManageBookingsPage: React.FC = () => {
                           </p>
                           {booking.requiresDownPayment && (
                             <p style={{ fontSize: "0.68rem", color: booking.downPaymentPaid ? "#059669" : "var(--fur-slate-light)" }}>
-                              {booking.downPaymentPaid ? "✓ DP paid" : `DP: ${formatCurrency(booking.price * 0.3)}`}
+                              {booking.downPaymentPaid ? "DP paid" : `DP: ${formatCurrency(booking.price * 0.3)}`}
                             </p>
                           )}
                         </td>
@@ -919,6 +1009,7 @@ const ManageBookingsPage: React.FC = () => {
                       {isExpanded && (
                         <BookingDetailPanel
                           booking={booking}
+                          isLast={isLast}
                           onOpenModal={openModal}
                           onConfirmPayment={handleConfirmPayment}
                           isConfirming={confirmingPaymentId === booking.id}
