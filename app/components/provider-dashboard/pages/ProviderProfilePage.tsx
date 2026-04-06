@@ -8,19 +8,43 @@ import { supabase } from "@/app/lib/supabase";
 import ProviderLayout from "../components/ProviderLayout";
 import type { ProviderPolicy } from "../types";
 
+// ✅ FIX: localStorage key for persisting profile changes across refreshes
+const PROFILE_STORAGE_KEY = "provider_profile_data";
+
 const ProviderProfilePage: React.FC = () => {
   const { user, services, bookings, updateUser, policy, savePolicy } = useProviderContext();
   const stats = getProviderDashboardStats(bookings, services);
 
-  const [formData, setFormData] = useState({
-    name: user.name,
-    email: user.email,
-    phone: user.phone || "",
-    businessName: user.businessName,
-    businessAddress: user.businessAddress || "",
-    bio: user.bio || "",
-    contactLink: user.contactLink || "",
+  // ✅ FIX: Initialize formData from localStorage first, then fall back to context user
+  const [formData, setFormData] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return {
+            name: parsed.name ?? user.name,
+            email: parsed.email ?? user.email,
+            phone: parsed.phone ?? user.phone ?? "",
+            businessName: parsed.businessName ?? user.businessName,
+            businessAddress: parsed.businessAddress ?? user.businessAddress ?? "",
+            bio: parsed.bio ?? user.bio ?? "",
+            contactLink: parsed.contactLink ?? user.contactLink ?? "",
+          };
+        }
+      } catch {}
+    }
+    return {
+      name: user.name,
+      email: user.email,
+      phone: user.phone || "",
+      businessName: user.businessName,
+      businessAddress: user.businessAddress || "",
+      bio: user.bio || "",
+      contactLink: user.contactLink || "",
+    };
   });
+
   const [passwordData, setPasswordData] = useState({
     current: "",
     next: "",
@@ -39,10 +63,17 @@ const ProviderProfilePage: React.FC = () => {
     setTimeout(() => setSuccessMsg(""), 3000);
   };
 
+  // ✅ FIX: Save to localStorage AND context on every save
   const handleSaveProfile = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
       return alert("Name and email are required");
     }
+
+    // Persist to localStorage so it survives page refresh
+    try {
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(formData));
+    } catch {}
+
     updateUser({
       name: formData.name,
       email: formData.email,
@@ -52,6 +83,7 @@ const ProviderProfilePage: React.FC = () => {
       bio: formData.bio,
       contactLink: formData.contactLink,
     });
+
     if (formData.contactLink !== undefined) {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
@@ -148,11 +180,11 @@ const ProviderProfilePage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
             <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-900 shrink-0"
               style={{ background: "linear-gradient(135deg, #3B4F6B, #1A2332)", fontFamily: "'Fraunces', serif" }}>
-              {user.avatar || user.name.charAt(0)}
+              {user.avatar || formData.name.charAt(0)}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>{user.name}</h2>
+                <h2 className="text-xl font-900" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>{formData.name}</h2>
                 {user.isVerified && (
                   <span className="text-xs px-2 py-0.5 rounded-full font-700 flex items-center gap-1"
                     style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
@@ -163,8 +195,8 @@ const ProviderProfilePage: React.FC = () => {
                   </span>
                 )}
               </div>
-              <p className="text-sm mt-0.5" style={{ color: "var(--fur-slate-light)" }}>{user.businessName}</p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>{user.email}</p>
+              <p className="text-sm mt-0.5" style={{ color: "var(--fur-slate-light)" }}>{formData.businessName}</p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>{formData.email}</p>
             </div>
             <div className="flex sm:flex-col gap-2">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
@@ -354,7 +386,7 @@ const ProviderProfilePage: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Toggle — Require down payment */}
+                  {/* Toggle */}
                   <div className="flex items-center justify-between p-4 rounded-xl"
                     style={{ background: "var(--fur-cream)", border: "1px solid var(--border)" }}>
                     <div>
@@ -369,28 +401,15 @@ const ProviderProfilePage: React.FC = () => {
                       type="button"
                       onClick={() => setPolicyForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))}
                       className="relative shrink-0 ml-4 rounded-full transition-colors duration-200"
-                      style={{
-                        width: 48,
-                        height: 26,
-                        background: policyForm.depositRequired ? "var(--fur-teal)" : "var(--fur-mist)",
-                      }}
+                      style={{ width: 48, height: 26, background: policyForm.depositRequired ? "var(--fur-teal)" : "var(--fur-mist)" }}
                     >
-                      <span
-                        className="absolute rounded-full bg-white shadow-md transition-all duration-200"
-                        style={{
-                          width: 18,
-                          height: 18,
-                          top: 4,
-                          left: policyForm.depositRequired ? 26 : 4,
-                        }}
-                      />
+                      <span className="absolute rounded-full bg-white shadow-md transition-all duration-200"
+                        style={{ width: 18, height: 18, top: 4, left: policyForm.depositRequired ? 26 : 4 }} />
                     </button>
                   </div>
 
                   {policyForm.depositRequired && (
                     <div className="space-y-4">
-
-                      {/* Deposit % presets */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>How much is the deposit?</p>
@@ -402,11 +421,7 @@ const ProviderProfilePage: React.FC = () => {
                         <div className="grid grid-cols-4 gap-2">
                           {[25, 50, 75, 100].map((pct) => (
                             <button key={pct} type="button"
-                              onClick={() => setPolicyForm((prev) => ({
-                                ...prev,
-                                depositPercentage: pct,
-                                fullPaymentRequiredUpfront: pct === 100,
-                              }))}
+                              onClick={() => setPolicyForm((prev) => ({ ...prev, depositPercentage: pct, fullPaymentRequiredUpfront: pct === 100 }))}
                               className="py-2.5 rounded-xl text-sm font-700 border-2 transition-all"
                               style={policyForm.depositPercentage === pct
                                 ? { borderColor: "var(--fur-teal)", background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }
@@ -422,7 +437,6 @@ const ProviderProfilePage: React.FC = () => {
                         </p>
                       </div>
 
-                      {/* Refundable toggle */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between p-4 rounded-xl border"
                           style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}>
@@ -436,21 +450,10 @@ const ProviderProfilePage: React.FC = () => {
                             type="button"
                             onClick={() => setPolicyForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))}
                             className="relative shrink-0 ml-4 rounded-full transition-colors duration-200"
-                            style={{
-                              width: 48,
-                              height: 26,
-                              background: policyForm.depositRefundable ? "#059669" : "var(--fur-rose)",
-                            }}
+                            style={{ width: 48, height: 26, background: policyForm.depositRefundable ? "#059669" : "var(--fur-rose)" }}
                           >
-                            <span
-                              className="absolute rounded-full bg-white shadow-md transition-all duration-200"
-                              style={{
-                                width: 18,
-                                height: 18,
-                                top: 4,
-                                left: policyForm.depositRefundable ? 26 : 4,
-                              }}
-                            />
+                            <span className="absolute rounded-full bg-white shadow-md transition-all duration-200"
+                              style={{ width: 18, height: 18, top: 4, left: policyForm.depositRefundable ? 26 : 4 }} />
                           </button>
                         </div>
                         <p className="text-xs px-1 font-600"
@@ -472,7 +475,6 @@ const ProviderProfilePage: React.FC = () => {
                       Minimum advance notice required before a pet owner can cancel their booking.
                     </p>
                   </div>
-
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Notice required</p>
                     <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
@@ -480,7 +482,6 @@ const ProviderProfilePage: React.FC = () => {
                       {policyForm.cancellationHoursNotice === 0 ? "Anytime" : `${policyForm.cancellationHoursNotice} hrs`}
                     </span>
                   </div>
-
                   <div className="grid grid-cols-4 gap-2">
                     {[0, 12, 24, 48].map((hrs) => (
                       <button key={hrs} type="button"
@@ -493,27 +494,15 @@ const ProviderProfilePage: React.FC = () => {
                       </button>
                     ))}
                   </div>
-
                   <div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={72}
-                      step={1}
+                    <input type="range" min={0} max={72} step={1}
                       value={policyForm.cancellationHoursNotice}
                       onChange={(e) => setPolicyForm((prev) => ({ ...prev, cancellationHoursNotice: Number(e.target.value) }))}
-                      className="w-full"
-                      style={{ accentColor: "var(--fur-teal)" }}
-                      suppressHydrationWarning
-                    />
+                      className="w-full" style={{ accentColor: "var(--fur-teal)" }} suppressHydrationWarning />
                     <div className="flex justify-between text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>
-                      <span>Anytime</span>
-                      <span>24 hrs</span>
-                      <span>48 hrs</span>
-                      <span>72 hrs</span>
+                      <span>Anytime</span><span>24 hrs</span><span>48 hrs</span><span>72 hrs</span>
                     </div>
                   </div>
-
                   <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
                     {policyForm.cancellationHoursNotice === 0
                       ? "Pet owners can cancel at any time, even last minute."
@@ -540,84 +529,35 @@ const ProviderProfilePage: React.FC = () => {
                 </div>
 
                 {/* ── Live Preview ── */}
-                <div className="rounded-xl border p-5 space-y-2.5"
-                  style={{ background: "#F0F9FF", borderColor: "#BAE6FD" }}>
-                  <p className="text-xs font-900 uppercase tracking-widest" style={{ color: "#0369A1" }}>
-                    📋 What pet owners will see
-                  </p>
+                <div className="rounded-xl border p-5 space-y-2.5" style={{ background: "#F0F9FF", borderColor: "#BAE6FD" }}>
+                  <p className="text-xs font-900 uppercase tracking-widest" style={{ color: "#0369A1" }}>📋 What pet owners will see</p>
                   <ul className="space-y-2 text-sm" style={{ color: "#0C4A6E" }}>
-                    <li className="flex gap-2">
-                      <span className="shrink-0">💵</span>
-                      <span>Payment is <strong>cash only</strong> — paid directly to you.</span>
-                    </li>
+                    <li className="flex gap-2"><span className="shrink-0">💵</span><span>Payment is <strong>cash only</strong> — paid directly to you.</span></li>
                     {policyForm.depositRequired ? (
                       <>
-                        <li className="flex gap-2">
-                          <span className="shrink-0">💰</span>
-                          <span>A cash down payment of <strong>{depositAmountLabel}</strong> is required within 24 hours of booking — <strong>{policyForm.depositRefundable ? "refundable" : "non-refundable"}</strong> if cancelled.</span>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="shrink-0">⏳</span>
-                          <span>Booking stays <strong>Pending</strong> until the down payment is received.</span>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="shrink-0">❌</span>
-                          <span>Booking is <strong>automatically declined</strong> if no down payment within 24 hours.</span>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="shrink-0">✏️</span>
-                          <span>Owner can cancel or edit on their own while still <strong>Pending</strong> and within <strong>24 hours</strong> of booking.</span>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="shrink-0">🤝</span>
-                          <span>Once <strong>confirmed</strong>, edits or cancellations require your approval.</span>
-                        </li>
+                        <li className="flex gap-2"><span className="shrink-0">💰</span><span>A cash down payment of <strong>{depositAmountLabel}</strong> is required within 24 hours of booking — <strong>{policyForm.depositRefundable ? "refundable" : "non-refundable"}</strong> if cancelled.</span></li>
+                        <li className="flex gap-2"><span className="shrink-0">⏳</span><span>Booking stays <strong>Pending</strong> until the down payment is received.</span></li>
+                        <li className="flex gap-2"><span className="shrink-0">❌</span><span>Booking is <strong>automatically declined</strong> if no down payment within 24 hours.</span></li>
+                        <li className="flex gap-2"><span className="shrink-0">✏️</span><span>Owner can cancel or edit on their own while still <strong>Pending</strong> and within <strong>24 hours</strong> of booking.</span></li>
+                        <li className="flex gap-2"><span className="shrink-0">🤝</span><span>Once <strong>confirmed</strong>, edits or cancellations require your approval.</span></li>
                       </>
                     ) : (
                       <>
-                        <li className="flex gap-2">
-                          <span className="shrink-0">✅</span>
-                          <span>No down payment — pay the full amount in cash on the day of service.</span>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="shrink-0">⏳</span>
-                          <span>Booking stays <strong>Pending</strong> until you manually accept it.</span>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="shrink-0">✏️</span>
-                          <span>Owner can cancel or edit on their own while still <strong>Pending</strong> and within <strong>24 hours</strong> of booking.</span>
-                        </li>
-                        <li className="flex gap-2">
-                          <span className="shrink-0">🤝</span>
-                          <span>Once <strong>confirmed</strong>, edits or cancellations require your approval.</span>
-                        </li>
+                        <li className="flex gap-2"><span className="shrink-0">✅</span><span>No down payment — pay the full amount in cash on the day of service.</span></li>
+                        <li className="flex gap-2"><span className="shrink-0">⏳</span><span>Booking stays <strong>Pending</strong> until you manually accept it.</span></li>
+                        <li className="flex gap-2"><span className="shrink-0">✏️</span><span>Owner can cancel or edit on their own while still <strong>Pending</strong> and within <strong>24 hours</strong> of booking.</span></li>
+                        <li className="flex gap-2"><span className="shrink-0">🤝</span><span>Once <strong>confirmed</strong>, edits or cancellations require your approval.</span></li>
                       </>
                     )}
-                    <li className="flex gap-2">
-                      <span className="shrink-0">🗑️</span>
-                      <span>Bookings can only be deleted when <strong>Cancelled</strong> or <strong>Completed</strong>.</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="shrink-0">🔔</span>
-                      <span>
-                        {policyForm.cancellationHoursNotice === 0
-                          ? "Owner may cancel at any time."
-                          : `Cancellations must be made at least ${policyForm.cancellationHoursNotice} hours in advance.`}
-                      </span>
-                    </li>
-                    {policyForm.additionalNotes && (
-                      <li className="flex gap-2">
-                        <span className="shrink-0">📌</span>
-                        <span>{policyForm.additionalNotes}</span>
-                      </li>
-                    )}
+                    <li className="flex gap-2"><span className="shrink-0">🗑️</span><span>Bookings can only be deleted when <strong>Cancelled</strong> or <strong>Completed</strong>.</span></li>
+                    <li className="flex gap-2"><span className="shrink-0">🔔</span><span>{policyForm.cancellationHoursNotice === 0 ? "Owner may cancel at any time." : `Cancellations must be made at least ${policyForm.cancellationHoursNotice} hours in advance.`}</span></li>
+                    {policyForm.additionalNotes && <li className="flex gap-2"><span className="shrink-0">📌</span><span>{policyForm.additionalNotes}</span></li>}
                   </ul>
                 </div>
 
                 {/* Save */}
                 <div className="flex items-center gap-3 pt-1">
-                  <button onClick={handleSavePolicy} disabled={savingPolicy}
-                    className="btn-primary px-6 py-2.5 text-sm disabled:opacity-60">
+                  <button onClick={handleSavePolicy} disabled={savingPolicy} className="btn-primary px-6 py-2.5 text-sm disabled:opacity-60">
                     {savingPolicy ? "Saving..." : "Save Policies"}
                   </button>
                   {policySaved && (
@@ -637,33 +577,15 @@ const ProviderProfilePage: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Current Password</label>
-                  <input
-                    type="password"
-                    value={passwordData.current}
-                    onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })}
-                    className="fur-input"
-                    suppressHydrationWarning
-                  />
+                  <input type="password" value={passwordData.current} onChange={(e) => setPasswordData({ ...passwordData, current: e.target.value })} className="fur-input" suppressHydrationWarning />
                 </div>
                 <div>
                   <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>New Password</label>
-                  <input
-                    type="password"
-                    value={passwordData.next}
-                    onChange={(e) => setPasswordData({ ...passwordData, next: e.target.value })}
-                    className="fur-input"
-                    suppressHydrationWarning
-                  />
+                  <input type="password" value={passwordData.next} onChange={(e) => setPasswordData({ ...passwordData, next: e.target.value })} className="fur-input" suppressHydrationWarning />
                 </div>
                 <div>
                   <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Confirm New Password</label>
-                  <input
-                    type="password"
-                    value={passwordData.confirm}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
-                    className="fur-input"
-                    suppressHydrationWarning
-                  />
+                  <input type="password" value={passwordData.confirm} onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })} className="fur-input" suppressHydrationWarning />
                 </div>
                 <div className="rounded-xl p-3 border text-sm font-600"
                   style={{ background: "var(--fur-teal-light)", borderColor: "var(--fur-teal)", color: "var(--fur-teal-dark)" }}>

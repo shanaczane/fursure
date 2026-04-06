@@ -10,7 +10,6 @@ import ProviderLayout from "../components/ProviderLayout";
 
 const MyServicesPage: React.FC = () => {
   const router = useRouter();
-  // ✅ FIX: Added `bookings` from context to compute live booking counts
   const { services, bookings, deleteService, toggleServiceActive } = useProviderContext();
 
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -19,8 +18,6 @@ const MyServicesPage: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
 
-  // ✅ FIX: Compute live booking count per service from actual bookings data
-  // instead of relying on the static `service.totalBookings` field
   const bookingCountByService = useMemo(() => {
     const counts: Record<string, number> = {};
     bookings.forEach((b) => {
@@ -62,12 +59,12 @@ const MyServicesPage: React.FC = () => {
   const activeCount = services.filter(s => s.isActive).length;
 
   const categoryColors: Record<string, { bg: string; color: string }> = {
-    grooming: { bg: "var(--fur-amber-light)", color: "var(--fur-amber-dark)" },
-    veterinary: { bg: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" },
-    training: { bg: "#EDE9FE", color: "#5B21B6" },
-    boarding: { bg: "#E0E7FF", color: "#3730A3" },
-    walking: { bg: "#D1FAE5", color: "#065F46" },
-    daycare: { bg: "#FEF3C7", color: "#92400E" },
+    grooming:   { bg: "var(--fur-amber-light)", color: "var(--fur-amber-dark)" },
+    veterinary: { bg: "var(--fur-teal-light)",  color: "var(--fur-teal-dark)"  },
+    training:   { bg: "#EDE9FE",                color: "#5B21B6"               },
+    boarding:   { bg: "#E0E7FF",                color: "#3730A3"               },
+    walking:    { bg: "#D1FAE5",                color: "#065F46"               },
+    daycare:    { bg: "#FEF3C7",                color: "#92400E"               },
   };
 
   return (
@@ -169,14 +166,16 @@ const MyServicesPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {filtered.map((service) => {
               const colors = categoryColors[service.category] || { bg: "var(--fur-sand)", color: "var(--fur-brown)" };
-              // ✅ FIX: Use live count from bookings; fall back to static field if no bookings exist yet
               const liveBookingCount = bookingCountByService[service.id] ?? service.totalBookings;
               return (
                 <div
                   key={service.id}
                   className={`rounded-2xl overflow-hidden border-2 transition-all ${service.isActive ? "card-hover" : "opacity-60"}`}
-                  style={{ borderColor: service.isActive ? "var(--border)" : "transparent", background: "white",
-                    borderStyle: service.isActive ? "solid" : "dashed" }}
+                  style={{
+                    borderColor: service.isActive ? "var(--border)" : "transparent",
+                    background: "white",
+                    borderStyle: service.isActive ? "solid" : "dashed",
+                  }}
                 >
                   {/* Card header */}
                   <div className="h-28 flex items-center justify-center relative" style={{ background: colors.bg }}>
@@ -223,31 +222,64 @@ const MyServicesPage: React.FC = () => {
                         <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{service.priceUnit}</p>
                       </div>
                       <div className="text-right">
-                        {/* ✅ FIX: Show live booking count derived from actual bookings array */}
                         <p className="font-700 text-sm" style={{ color: "var(--fur-slate)" }}>{liveBookingCount}</p>
                         <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>bookings</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* ✅ FIX: Edit button — subtle teal hover, NOT full blue */}
                       <button
                         onClick={() => router.push(`/provider/services/${service.id}/edit`)}
-                        className="flex-1 py-2 rounded-xl text-sm font-700 transition-colors border"
-                        style={{ borderColor: "var(--fur-teal)", color: "var(--fur-teal)", background: "var(--fur-teal-light)" }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-teal)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "var(--fur-teal-light)")}
+                        className="flex-1 py-2 rounded-xl text-sm font-700 transition-all border"
+                        style={{
+                          borderColor: "var(--fur-teal)",
+                          color: "var(--fur-teal)",
+                          background: "var(--fur-teal-light)",
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = "#2563EB";
+                          e.currentTarget.style.borderColor = "#2563EB";
+                          e.currentTarget.style.color = "white";
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = "var(--fur-teal-light)";
+                          e.currentTarget.style.borderColor = "var(--fur-teal)";
+                          e.currentTarget.style.color = "var(--fur-teal)";
+                        }}
                       >
                         Edit
                       </button>
+
+                      {/* ✅ FIX: Deactivate/Activate — subtle hover */}
                       <button
                         onClick={() => handleToggle(service.id, service.name, service.isActive)}
-                        className="flex-1 py-2 rounded-xl text-sm font-700 transition-colors border"
+                        className="flex-1 py-2 rounded-xl text-sm font-700 transition-all border"
                         style={service.isActive
                           ? { borderColor: "var(--border)", color: "var(--fur-slate-mid)", background: "var(--fur-mist)" }
-                          : { borderColor: "#D1FAE5", color: "#065F46", background: "#D1FAE5" }}
+                          : { borderColor: "#A7F3D0", color: "#065F46", background: "#D1FAE5" }}
+                        onMouseEnter={e => {
+                          if (service.isActive) {
+                            e.currentTarget.style.background = "#E5E7EB";
+                            e.currentTarget.style.borderColor = "#9CA3AF";
+                          } else {
+                            e.currentTarget.style.background = "#A7F3D0";
+                            e.currentTarget.style.borderColor = "#6EE7B7";
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (service.isActive) {
+                            e.currentTarget.style.background = "var(--fur-mist)";
+                            e.currentTarget.style.borderColor = "var(--border)";
+                          } else {
+                            e.currentTarget.style.background = "#D1FAE5";
+                            e.currentTarget.style.borderColor = "#A7F3D0";
+                          }
+                        }}
                       >
                         {service.isActive ? "Deactivate" : "Activate"}
                       </button>
+
                       <button
                         onClick={() => setDeleteConfirmId(service.id)}
                         className="p-2 rounded-xl transition-colors"
