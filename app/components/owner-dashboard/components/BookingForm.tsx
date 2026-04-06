@@ -33,19 +33,85 @@ const TIME_SLOTS = [
   { value: "17:00", label: "5:00 PM" },
 ];
 
-function getFirstAvailableTime(dateStr: string): string {
-  const today = new Date().toISOString().split("T")[0];
-  if (dateStr !== today) return TIME_SLOTS[0].value;
-  const nowHour = new Date().getHours();
-  const available = TIME_SLOTS.find((s) => parseInt(s.value) > nowHour);
-  return available ? available.value : "";
+// Day-of-week index matching JS Date.getDay() (0 = Sun)
+const DAY_INDEX: Record<string, number> = {
+  sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+};
+
+function parseHour(h: string, meridiem: string): number {
+  let hour = parseInt(h);
+  const pm = meridiem.toLowerCase() === "pm";
+  if (pm && hour !== 12) hour += 12;
+  if (!pm && hour === 12) hour = 0;
+  return hour;
 }
 
-function getAvailableSlots(dateStr: string) {
+/**
+ * Given a service's availability strings (e.g. "Mon-Sat: 9AM-6PM")
+ * and a selected date, returns { startHour, endHour } for that day,
+ * or null if the provider is not available on that day.
+ */
+function getAvailabilityForDate(
+  availability: string[],
+  dateStr: string,
+): { startHour: number; endHour: number } | null {
+  if (!availability || availability.length === 0) return { startHour: 0, endHour: 24 };
+
+  // Use local date to avoid timezone shifts on date-only strings
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dayOfWeek = new Date(y, m - 1, d).getDay();
+
+  for (const slot of availability) {
+    // Matches "Mon-Sat: 9AM-6PM" or "Mon: 9AM-6PM"
+    const match = slot.match(
+      /^([a-z]+)(?:-([a-z]+))?\s*:\s*(\d+)(am|pm)-(\d+)(am|pm)/i,
+    );
+    if (!match) continue;
+
+    const [, d1, d2, h1, m1, h2, m2] = match;
+    const start = DAY_INDEX[d1.toLowerCase()];
+    const end   = d2 ? DAY_INDEX[d2.toLowerCase()] : start;
+    if (start === undefined || end === undefined) continue;
+
+    const inRange =
+      end >= start
+        ? dayOfWeek >= start && dayOfWeek <= end
+        : dayOfWeek >= start || dayOfWeek <= end; // wraps Sat→Sun
+
+    if (!inRange) continue;
+
+    return { startHour: parseHour(h1, m1), endHour: parseHour(h2, m2) };
+  }
+
+  return null; // provider not available this day
+}
+
+function getAvailableSlots(dateStr: string, availability?: string[]) {
   const today = new Date().toISOString().split("T")[0];
-  if (dateStr !== today) return TIME_SLOTS;
   const nowHour = new Date().getHours();
-  return TIME_SLOTS.filter((s) => parseInt(s.value) > nowHour);
+
+  // Filter by provider availability
+  let slots = TIME_SLOTS;
+  if (availability && availability.length > 0) {
+    const avail = getAvailabilityForDate(availability, dateStr);
+    if (!avail) return []; // not open this day
+    slots = slots.filter((s) => {
+      const h = parseInt(s.value);
+      return h >= avail.startHour && h < avail.endHour;
+    });
+  }
+
+  // Also remove past slots if today
+  if (dateStr === today) {
+    slots = slots.filter((s) => parseInt(s.value) > nowHour);
+  }
+
+  return slots;
+}
+
+function getFirstAvailableTime(dateStr: string, availability?: string[]): string {
+  const slots = getAvailableSlots(dateStr, availability);
+  return slots[0]?.value ?? "";
 }
 
 /* ─── Term row ───────────────────────────────────────────────────────────── */
@@ -96,17 +162,20 @@ const BookingForm: React.FC<BookingFormProps> = ({
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowStr = tomorrow.toISOString().split("T")[0];
       setSelectedDate(tomorrowStr);
-      setSelectedTime(getFirstAvailableTime(tomorrowStr));
+      setSelectedTime(getFirstAvailableTime(tomorrowStr, service?.availability));
     }
-  }, [isOpen, pets]);
+  }, [isOpen, pets, service]);
 
   const handleDateChange = (dateStr: string) => {
     setSelectedDate(dateStr);
-    setSelectedTime(getFirstAvailableTime(dateStr));
+    setSelectedTime(getFirstAvailableTime(dateStr, service?.availability));
   };
 
-  const availableSlots = getAvailableSlots(selectedDate);
-  const noSlotsLeft = selectedDate === todayStr && availableSlots.length === 0;
+  const availableSlots = getAvailableSlots(selectedDate, service?.availability ?? []);
+  const providerClosedThisDay =
+    (service?.availability ?? []).length > 0 &&
+    getAvailabilityForDate(service!.availability, selectedDate) === null;
+  const noSlotsLeft = !providerClosedThisDay && availableSlots.length === 0;
 
   const handleDetailsNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -266,6 +335,23 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     )}
                   </div>
 
+                  {/* Availability hint */}
+                  {service.availability && service.availability.length > 0 && (
+                    <div
+                      className="rounded-xl px-4 py-2.5 border flex flex-wrap gap-x-3 gap-y-1"
+                      style={{ background: "var(--fur-teal-light)", borderColor: "var(--fur-teal-light)" }}
+                    >
+                      <p className="text-xs font-700 w-full" style={{ color: "var(--fur-teal-dark)" }}>
+                        Provider availability
+                      </p>
+                      {service.availability.map((a, i) => (
+                        <span key={i} className="text-xs font-600" style={{ color: "var(--fur-teal-dark)" }}>
+                          {a}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Date */}
                   <div>
                     <label className="block text-sm font-700 mb-1.5" style={{ color: "var(--fur-slate)" }}>
@@ -287,9 +373,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     <label className="block text-sm font-700 mb-1.5" style={{ color: "var(--fur-slate)" }}>
                       Select Time <span style={{ color: "var(--fur-rose)" }}>*</span>
                     </label>
-                    {noSlotsLeft ? (
+                    {providerClosedThisDay ? (
+                      <div className="rounded-xl px-4 py-3 border text-sm" style={{ background: "#FEF2F2", borderColor: "#FECACA", color: "#991B1B" }}>
+                        The provider is not available on this day — please choose a different date.
+                      </div>
+                    ) : noSlotsLeft ? (
                       <div className="rounded-xl px-4 py-3 border text-sm" style={{ background: "#FFFBEB", borderColor: "#FDE68A", color: "#92400E" }}>
-                        No slots left for today — please pick a future date.
+                        No time slots left for today — please pick a future date.
                       </div>
                     ) : (
                       <select
@@ -337,7 +427,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                   <div className="flex gap-3 pt-1">
                     <button
                       type="submit"
-                      disabled={pets.length === 0 || noSlotsLeft || !selectedTime}
+                      disabled={pets.length === 0 || providerClosedThisDay || noSlotsLeft || !selectedTime}
                       className="flex-1 py-3 rounded-xl font-800 text-sm transition-colors"
                       style={{ background: "var(--fur-teal)", color: "white" }}
                     >
