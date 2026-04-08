@@ -4,8 +4,6 @@ import React, { useMemo, useState } from "react";
 import { useAdminContext } from "../context/AdminContext";
 import AdminLayout from "../components/AdminLayout";
 
-const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(amount);
 
 const MoneyIcon = ({ size = 20 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -46,13 +44,13 @@ const RevenueTab: React.FC = () => {
     return [...providers]
       .filter(p => p.isVerified)
       .sort((a, b) => {
-        if (sortBy === "revenue") return b.totalRevenue - a.totalRevenue;
+        if (sortBy === "revenue") return b.bookingCount - a.bookingCount;
         if (sortBy === "bookings") return b.bookingCount - a.bookingCount;
         return a.businessName.localeCompare(b.businessName);
       });
   }, [providers, sortBy]);
 
-  const maxRevenue = Math.max(...topProviders.map(p => p.totalRevenue), 1);
+  const maxRevenue = Math.max(...topProviders.map(p => p.bookingCount), 1);
 
   const completionRate = stats.totalBookings > 0
     ? Math.round((stats.completedBookings / stats.totalBookings) * 100)
@@ -88,27 +86,27 @@ const RevenueTab: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             {
-              label: "Total Platform Revenue",
-              value: formatCurrency(stats.totalRevenue),
-              sub: "From all completed bookings",
+              label: "Total Bookings",
+              value: stats.totalBookings,
+              sub: "All time across the platform",
               icon: <MoneyIcon />,
               bg: "#D1FAE5",
               color: "#065F46",
               accent: "#F0FDF4",
             },
             {
-              label: "This Month's Revenue",
-              value: formatCurrency(stats.monthlyRevenue),
-              sub: `${new Date().toLocaleString("default", { month: "long" })} ${new Date().getFullYear()}`,
+              label: "Completed Bookings",
+              value: stats.completedBookings,
+              sub: "Successfully finished",
               icon: <TrendIcon />,
               bg: "#DBEAFE",
               color: "#1E40AF",
               accent: "#EFF6FF",
             },
             {
-              label: "Avg. Revenue Per Booking",
-              value: stats.completedBookings > 0 ? formatCurrency(stats.totalRevenue / stats.completedBookings) : "₱0.00",
-              sub: `Based on ${stats.completedBookings} completed`,
+              label: "Active Services",
+              value: stats.activeServices,
+              sub: "Currently listed by providers",
               icon: <CalendarIcon />,
               bg: "#EDE9FE",
               color: "#5B21B6",
@@ -143,7 +141,7 @@ const RevenueTab: React.FC = () => {
               { label: "Total Bookings", value: stats.totalBookings, icon: <CalendarIcon />, color: "var(--fur-slate)" },
               { label: "Completed", value: stats.completedBookings, icon: <CheckIcon />, color: "#065F46", bg: "#D1FAE5" },
               { label: "Cancelled", value: stats.cancelledBookings, icon: <XIcon />, color: "#991B1B", bg: "#FEE2E2" },
-              { label: "Pending", value: stats.pendingBookings, icon: <CalendarIcon />, color: "#92400E", bg: "#FEF3C7" },
+              { label: "Pending", value: stats.totalBookings - stats.completedBookings - stats.cancelledBookings, icon: <CalendarIcon />, color: "#92400E", bg: "#FEF3C7" },
             ].map((stat) => (
               <div key={stat.label} className="p-6">
                 <p className="text-3xl font-900 mb-1" style={{ fontFamily: "'Fraunces', serif", color: stat.color }}>
@@ -204,7 +202,7 @@ const RevenueTab: React.FC = () => {
           ) : (
             <div className="divide-y" style={{ borderColor: "var(--border)" }}>
               {topProviders.map((provider, idx) => {
-                const pct = Math.round((provider.totalRevenue / maxRevenue) * 100);
+                const pct = Math.round((provider.bookingCount / maxRevenue) * 100);
                 return (
                   <div key={provider.id} className="px-6 py-4 flex items-center gap-4"
                     onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
@@ -221,7 +219,7 @@ const RevenueTab: React.FC = () => {
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-700 text-sm truncate" style={{ color: "var(--fur-slate)" }}>{provider.businessName}</p>
                         <p className="font-900 text-sm ml-4 shrink-0" style={{ fontFamily: "'Fraunces', serif", color: "#059669" }}>
-                          {formatCurrency(provider.totalRevenue)}
+                          {provider.bookingCount} bookings
                         </p>
                       </div>
                       <div className="flex items-center gap-3 mb-2">
