@@ -422,12 +422,12 @@ const PetsPage: React.FC = () => {
                     <PetAvatar name={pet.name} />
                     <div className="flex-1 min-w-0 pt-0.5">
                       <h3
-                        className="font-800 text-base truncate"
-                        style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}
+                        className="font-800 text-base leading-snug"
+                        style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)", wordBreak: "break-word" }}
                       >
                         {pet.name}
                       </h3>
-                      <p className="text-xs mt-0.5 capitalize truncate" style={{ color: "var(--fur-slate-light)" }}>
+                      <p className="text-xs mt-0.5 capitalize leading-snug" style={{ color: "var(--fur-slate-light)", wordBreak: "break-word" }}>
                         {pet.type} · {pet.breed}
                       </p>
                     </div>
@@ -488,7 +488,7 @@ const PetsPage: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs mb-0.5" style={{ color: "var(--fur-slate-light)" }}>Color / Coat</p>
-                      <p className="text-sm font-700 truncate" style={{ color: "var(--fur-slate)" }}>
+                      <p className="text-sm font-700" style={{ color: "var(--fur-slate)", wordBreak: "break-word" }}>
                         {pet.color || "—"}
                       </p>
                     </div>
