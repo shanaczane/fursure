@@ -114,19 +114,6 @@ const AdminSidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             );
           })}
 
-          <div className="pt-4 mt-4 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-            <p className="text-xs font-700 uppercase tracking-widest px-3 mb-3" style={{ color: "#4A6280" }}>
-              Other Panels
-            </p>
-            <Link href="/owner" className="sidebar-item" style={{ color: "#4A6280" }}>
-              <span className="w-5 flex items-center justify-center shrink-0">{Icons.owner}</span>
-              <span>Owner Dashboard</span>
-            </Link>
-            <Link href="/provider" className="sidebar-item" style={{ color: "#4A6280" }}>
-              <span className="w-5 flex items-center justify-center shrink-0">{Icons.provider}</span>
-              <span>Provider Dashboard</span>
-            </Link>
-          </div>
         </nav>
 
         {/* Bottom */}
