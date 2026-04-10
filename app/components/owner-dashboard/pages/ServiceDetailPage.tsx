@@ -305,6 +305,34 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                               <path d="M9 18l6-6-6-6"/>
                             </svg>
                           </button>
+
+                          {/* Social / Contact Link */}
+                          {providerContact.providerContactLink && (
+                            <a
+                              href={providerContact.providerContactLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-2 flex items-center gap-3 p-3.5 rounded-xl border transition-all hover:shadow-sm"
+                              style={{ borderColor: "var(--border)", background: "var(--fur-cream)", textDecoration: "none" }}
+                            >
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: "#E0E7FF" }}>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3730A3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                </svg>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold mb-0.5" style={{ color: "var(--fur-slate-mid)" }}>Social / Contact Link</p>
+                                <p className="text-sm font-bold truncate hover:underline" style={{ color: "#3730A3" }}>
+                                  {providerContact.providerContactLink.replace(/^https?:\/\//, "")}
+                                </p>
+                              </div>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3730A3" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M7 17L17 7M7 7h10v10"/>
+                              </svg>
+                            </a>
+                          )}
                         </div>
                       </div>
                     )}
