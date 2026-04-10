@@ -418,12 +418,15 @@ const ReviewsPanel: React.FC = () => {
 
 type ActiveTab = "logs" | "reviews";
 
+const LOGS_PER_PAGE = 10;
+
 const SystemActivityPage: React.FC = () => {
   const { activityLogs, isLoading, refreshData } = useAdminContext();
   const [activeTab, setActiveTab] = useState<ActiveTab>("logs");
   const [filterType, setFilterType] = useState<ActivityLog["type"] | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [logsPage, setLogsPage] = useState(1);
 
   const filtered = useMemo(() => {
     return activityLogs.filter((log) => {
@@ -435,6 +438,9 @@ const SystemActivityPage: React.FC = () => {
       return true;
     });
   }, [activityLogs, filterType, searchQuery]);
+
+  const logsTotalPages = Math.max(1, Math.ceil(filtered.length / LOGS_PER_PAGE));
+  const pagedLogs = filtered.slice((logsPage - 1) * LOGS_PER_PAGE, logsPage * LOGS_PER_PAGE);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -503,7 +509,7 @@ const SystemActivityPage: React.FC = () => {
                     <input
                       type="text"
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => { setSearchQuery(e.target.value); setLogsPage(1); }}
                       placeholder="Search activity..."
                       className="fur-input text-sm"
                       style={{ paddingLeft: "2.5rem" }}
@@ -514,7 +520,7 @@ const SystemActivityPage: React.FC = () => {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => setFilterType("all")}
+                      onClick={() => { setFilterType("all"); setLogsPage(1); }}
                       className="px-3 py-1.5 rounded-full text-xs font-700 border-2 transition-all"
                       style={filterType === "all"
                         ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
@@ -526,7 +532,7 @@ const SystemActivityPage: React.FC = () => {
                       return (
                         <button
                           key={type}
-                          onClick={() => setFilterType(type)}
+                          onClick={() => { setFilterType(type); setLogsPage(1); }}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-700 border-2 transition-all"
                           style={filterType === type
                             ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
@@ -557,41 +563,81 @@ const SystemActivityPage: React.FC = () => {
                   <p className="font-700" style={{ color: "var(--fur-slate)" }}>No activity found</p>
                 </div>
               ) : (
-                <div className="divide-y" style={{ borderColor: "var(--border)" }}>
-                  {filtered.map((log) => {
-                    const cfg = typeConfig[log.type];
-                    return (
-                      <div key={log.id} className="px-6 py-4 flex items-start gap-4 transition-colors"
-                        onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                          style={{ background: cfg.bg, color: cfg.color }}>
-                          {cfg.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="text-xs font-700 px-2 py-0.5 rounded-full"
-                              style={{ background: cfg.bg, color: cfg.color }}>
-                              {cfg.label}
-                            </span>
-                            <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
-                              {getRelativeTime(log.createdAt)}
-                            </span>
+                <>
+                  <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                    {pagedLogs.map((log) => {
+                      const cfg = typeConfig[log.type];
+                      return (
+                        <div key={log.id} className="px-6 py-4 flex items-start gap-4 transition-colors"
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
+                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                            style={{ background: cfg.bg, color: cfg.color }}>
+                            {cfg.icon}
                           </div>
-                          <p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{log.description}</p>
-                          {log.userName && (
-                            <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--fur-slate-light)" }}>
-                              <PersonIcon size={11} /> {log.userName}
-                            </p>
-                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className="text-xs font-700 px-2 py-0.5 rounded-full"
+                                style={{ background: cfg.bg, color: cfg.color }}>
+                                {cfg.label}
+                              </span>
+                              <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                                {getRelativeTime(log.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-sm font-600" style={{ color: "var(--fur-slate)" }}>{log.description}</p>
+                            {log.userName && (
+                              <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--fur-slate-light)" }}>
+                                <PersonIcon size={11} /> {log.userName}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-xs shrink-0" style={{ color: "var(--fur-slate-light)" }}>
+                            {formatDate(log.createdAt)}
+                          </div>
                         </div>
-                        <div className="text-xs shrink-0" style={{ color: "var(--fur-slate-light)" }}>
-                          {formatDate(log.createdAt)}
-                        </div>
+                      );
+                    })}
+                  </div>
+                  {logsTotalPages > 1 && (
+                    <div className="px-6 py-3 border-t flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
+                      <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                        Showing {(logsPage - 1) * LOGS_PER_PAGE + 1}–{Math.min(logsPage * LOGS_PER_PAGE, filtered.length)} of {filtered.length}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setLogsPage(p => Math.max(1, p - 1))} disabled={logsPage === 1}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40"
+                          style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}>
+                          <ChevronLeftIcon />
+                        </button>
+                        {Array.from({ length: logsTotalPages }, (_, i) => i + 1)
+                          .filter(p => p === 1 || p === logsTotalPages || Math.abs(p - logsPage) <= 1)
+                          .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                            if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push("...");
+                            acc.push(p);
+                            return acc;
+                          }, [])
+                          .map((item, idx) => item === "..." ? (
+                            <span key={`e-${idx}`} className="w-7 h-7 flex items-center justify-center text-xs"
+                              style={{ color: "var(--fur-slate-light)" }}>…</span>
+                          ) : (
+                            <button key={item} onClick={() => setLogsPage(item as number)}
+                              className="w-7 h-7 rounded-lg text-xs font-700 border transition-all"
+                              style={logsPage === item
+                                ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
+                                : { borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}>
+                              {item}
+                            </button>
+                          ))}
+                        <button onClick={() => setLogsPage(p => Math.min(logsTotalPages, p + 1))} disabled={logsPage === logsTotalPages}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40"
+                          style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)" }}>
+                          <ChevronRightIcon />
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
