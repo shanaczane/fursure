@@ -193,8 +193,28 @@ const PetsPage: React.FC = () => {
   };
 
   const handleSavePet = async () => {
-    if (!formData.name || !formData.breed) {
+    if (!formData.name.trim() || !formData.breed.trim()) {
       setFormError("Please fill in all required fields (Name and Breed).");
+      return;
+    }
+    if (formData.name.trim().length > 30) {
+      setFormError("Pet name must be 30 characters or less.");
+      return;
+    }
+    if (formData.breed.trim().length > 50) {
+      setFormError("Breed must be 50 characters or less.");
+      return;
+    }
+    if (formData.color && formData.color.trim().length > 40) {
+      setFormError("Color / Coat must be 40 characters or less.");
+      return;
+    }
+    if (formData.weight && formData.weight.trim().length > 20) {
+      setFormError("Weight must be 20 characters or less.");
+      return;
+    }
+    if (formData.age < 0 || formData.age > 100) {
+      setFormError("Age must be between 0 and 100 years.");
       return;
     }
     setFormError(null);
@@ -579,8 +599,8 @@ const PetsPage: React.FC = () => {
               {formError && <div className="mb-4"><ErrorBanner message={formError} onClose={() => setFormError(null)} /></div>}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Pet Name *</label>
-                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Max" />
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Pet Name * <span className="normal-case font-500" style={{ color: "var(--fur-slate-light)" }}>({formData.name.length}/30)</span></label>
+                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} maxLength={30} className={inputClass} style={inputStyle} placeholder="e.g., Max" />
                 </div>
                 <div>
                   <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Type *</label>
@@ -593,12 +613,12 @@ const PetsPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Breed *</label>
-                  <input type="text" value={formData.breed} onChange={e => setFormData({ ...formData, breed: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Golden Retriever" />
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Breed * <span className="normal-case font-500" style={{ color: "var(--fur-slate-light)" }}>({formData.breed.length}/50)</span></label>
+                  <input type="text" value={formData.breed} onChange={e => setFormData({ ...formData, breed: e.target.value })} maxLength={50} className={inputClass} style={inputStyle} placeholder="e.g., Golden Retriever" />
                 </div>
                 <div>
                   <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Age (years) *</label>
-                  <input type="number" min="0" value={formData.age} onChange={e => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })} className={inputClass} style={inputStyle} />
+                  <input type="number" min="0" max="100" value={formData.age} onChange={e => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })} className={inputClass} style={inputStyle} />
                 </div>
                 <div>
                   <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Gender</label>
@@ -610,11 +630,11 @@ const PetsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Weight</label>
-                  <input type="text" value={formData.weight} onChange={e => setFormData({ ...formData, weight: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., 5 kg" />
+                  <input type="text" value={formData.weight} onChange={e => setFormData({ ...formData, weight: e.target.value })} maxLength={20} className={inputClass} style={inputStyle} placeholder="e.g., 5 kg" />
                 </div>
                 <div>
-                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Color / Coat</label>
-                  <input type="text" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} className={inputClass} style={inputStyle} placeholder="e.g., Golden, White" />
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Color / Coat <span className="normal-case font-500" style={{ color: "var(--fur-slate-light)" }}>({formData.color.length}/40)</span></label>
+                  <input type="text" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} maxLength={40} className={inputClass} style={inputStyle} placeholder="e.g., Golden, White" />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Medical Notes</label>
