@@ -44,6 +44,26 @@ export interface ProviderRecord {
   credentialsUrl?: string;
 }
 
+export interface RawBookingRecord {
+  id?: string;
+  owner_id?: string;
+  provider_id?: string | number;
+  owner_name?: string;
+  service_name?: string;
+  provider_name?: string;
+  status?: string;
+  created_at?: string;
+  rating?: number;
+  review_comment?: string;
+  review_date?: string;
+  // camelCase aliases
+  ownerName?: string;
+  serviceName?: string;
+  providerName?: string;
+  reviewComment?: string;
+  createdAt?: string;
+}
+
 export interface ActivityLog {
   id: string;
   type:
@@ -76,7 +96,7 @@ interface AdminContextType {
   admin: AdminUser;
   users: UserRecord[];
   providers: ProviderRecord[];
-  bookings: Record<string, unknown>[];
+  bookings: RawBookingRecord[];
   activityLogs: ActivityLog[];
   stats: SystemStats;
   isLoading: boolean;
@@ -118,7 +138,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   });
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [providers, setProviders] = useState<ProviderRecord[]>([]);
-  const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
+  const [bookings, setBookings] = useState<RawBookingRecord[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [stats, setStats] = useState<SystemStats>(EMPTY_STATS);
   const [isLoading, setIsLoading] = useState(true);
