@@ -28,7 +28,7 @@ export async function GET() {
       // Include price for revenue calculations
       adminSupabase
         .from("bookings")
-        .select("id, owner_id, provider_id, service_id, service_name, provider_name, owner_name, owner_email, status, price, created_at, date, time, pet_name")
+        .select("id, owner_id, provider_id, service_id, service_name, provider_name, owner_name, owner_email, status, price, created_at, date, time, pet_name, rating, review_comment, review_date")
         .order("created_at", { ascending: false }),
     ]);
 

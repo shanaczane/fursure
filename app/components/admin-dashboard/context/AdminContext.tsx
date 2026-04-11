@@ -76,6 +76,7 @@ interface AdminContextType {
   admin: AdminUser;
   users: UserRecord[];
   providers: ProviderRecord[];
+  bookings: Record<string, unknown>[];
   activityLogs: ActivityLog[];
   stats: SystemStats;
   isLoading: boolean;
@@ -117,6 +118,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   });
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [providers, setProviders] = useState<ProviderRecord[]>([]);
+  const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [stats, setStats] = useState<SystemStats>(EMPTY_STATS);
   const [isLoading, setIsLoading] = useState(true);
@@ -217,6 +219,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
 
       setUsers(mappedUsers);
       setProviders(mappedProviders);
+      setBookings(bookingsData);
       setActivityLogs(logs);
 
       const completedBookings = bookingsData.filter(
@@ -326,6 +329,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         admin,
         users,
         providers,
+        bookings,
         activityLogs,
         stats,
         isLoading,

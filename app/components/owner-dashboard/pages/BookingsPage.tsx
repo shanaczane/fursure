@@ -401,20 +401,30 @@ const BookingsPage: React.FC = () => {
   const handleSubmitReview = async (bookingId: string, rating: number, comment: string) => {
     const booking = bookings.find((b) => b.id === bookingId);
 
-    // 1. Write rating + comment + date to the bookings row
-    //    so the provider sees it in Manage Bookings & Dashboard.
+    // 1. Write rating + comment + date to the bookings row in Supabase.
     try {
       await submitBookingReview(bookingId, rating, comment);
     } catch (err) {
       console.error("submitBookingReview failed:", err);
+      showSuccess(
+        "Submission Failed",
+        "We couldn't save your review. Please try again."
+      );
+      return; // stop — don't mark as reviewed or close the form
     }
 
-    // 2. Also update the per-service aggregate rating (existing behaviour).
+    // 2. Update local booking state so rating is reflected immediately.
+    await updateBooking(bookingId, {
+      rating,
+      review: comment,
+    });
+
+    // 3. Also update the per-service aggregate rating.
     if (booking?.serviceId) {
       submitServiceReview(booking.serviceId, rating).catch(console.error);
     }
 
-    // 3. Mark locally as reviewed so the "Leave Review" button disappears.
+    // 4. Mark locally as reviewed so the "Leave Review" button disappears.
     setReviewedBookingIds((prev) => {
       const next = new Set(prev).add(bookingId);
       try {

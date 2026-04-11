@@ -116,9 +116,7 @@ const StarRow: React.FC<{ rating: number; size?: number }> = ({ rating, size = 1
 const ROWS_PER_PAGE = 10;
 
 const ReviewsPanel: React.FC = () => {
-  const ctx = useAdminContext() as any;
-  const bookings: any[] = ctx.bookings ?? [];
-  const isLoading: boolean = ctx.isLoading ?? false;
+  const { bookings, isLoading } = useAdminContext();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [ratingFilter, setRatingFilter] = useState<"all" | "5" | "4" | "3" | "2" | "1">("all");
