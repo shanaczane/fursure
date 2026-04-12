@@ -211,6 +211,8 @@ export const fetchUserBookings = async (userId: string): Promise<Booking[]> => {
     rescheduleDate: row.reschedule_date ?? undefined,
     rescheduleTime: row.reschedule_time ?? undefined,
     rescheduleStatus: row.reschedule_status ?? undefined,
+    rating: row.rating ?? undefined,
+    review: row.review_comment ?? undefined,
   }));
 };
 
@@ -364,6 +366,9 @@ export const updateBookingRecord = async (
   if (updates.rescheduleDate !== undefined) payload.reschedule_date = updates.rescheduleDate ?? null;
   if (updates.rescheduleTime !== undefined) payload.reschedule_time = updates.rescheduleTime ?? null;
   if (updates.rescheduleStatus !== undefined) payload.reschedule_status = updates.rescheduleStatus ?? null;
+  if (updates.rating !== undefined) payload.rating = updates.rating;
+  if (updates.review !== undefined) payload.review_comment = updates.review;
+  if (Object.keys(payload).length === 0) return; // nothing to update
   const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
   if (error) throw new Error(error.message);
 };
