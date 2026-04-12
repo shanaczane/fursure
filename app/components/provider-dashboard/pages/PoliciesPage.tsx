@@ -213,7 +213,7 @@ const PoliciesPage: React.FC = () => {
                 >
                   {form.depositRefundable
                     ? "✅ Refundable — if the owner cancels, you will return the down payment in cash."
-                    : "❌ Non-refundable — if the owner cancels, you keep the down payment."}
+                    : "❌ Non-refundable— if the owner cancels, you keep the down payment."}
                 </div>
               </div>
             </>
