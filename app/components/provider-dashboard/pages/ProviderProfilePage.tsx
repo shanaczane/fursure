@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useProviderContext } from "../context/ProviderAppContext";
 import { getProviderDashboardStats, formatCurrency } from "../utils/providerUtils";
 import { upsertProviderContactLink } from "@/app/lib/api";
@@ -14,6 +14,19 @@ const PROFILE_STORAGE_KEY = "provider_profile_data";
 const ProviderProfilePage: React.FC = () => {
   const { user, services, bookings, updateUser, policy, savePolicy } = useProviderContext();
   const stats = getProviderDashboardStats(bookings, services);
+
+  // ✅ FIX: Compute live rating from actual completed bookings (same as Dashboard)
+  const { liveRating, liveReviewCount } = useMemo(() => {
+    const reviewed = bookings.filter(
+      (b) => b.status === "completed" && typeof b.rating === "number" && b.rating > 0
+    );
+    const count = reviewed.length;
+    const avg =
+      count > 0
+        ? Math.round((reviewed.reduce((sum, b) => sum + (b.rating ?? 0), 0) / count) * 10) / 10
+        : 0;
+    return { liveRating: avg, liveReviewCount: count };
+  }, [bookings]);
 
   // ✅ FIX: Initialize formData from localStorage first, then fall back to context user
   const [formData, setFormData] = useState(() => {
@@ -160,7 +173,7 @@ const ProviderProfilePage: React.FC = () => {
       <div className="space-y-5 max-w-4xl">
         {/* Header */}
         <div>
-          <h1 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, color: "var(--fur-slate)" }}>Profile</h1>
+          <h1 style={{ fontSize: "1.65rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 3 }}>Profile</h1>          
           <p className="text-gray-500 text-sm">Manage your account and business settings</p>
         </div>
 
@@ -199,13 +212,16 @@ const ProviderProfilePage: React.FC = () => {
               <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>{formData.email}</p>
             </div>
             <div className="flex sm:flex-col gap-2">
+              {/* ✅ FIX: Use liveRating / liveReviewCount instead of user.rating / user.totalReviews */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
                 style={{ background: "#FFFBEB", borderColor: "#FCD34D" }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
-                <span className="text-sm font-700" style={{ color: "#92400E" }}>{user.rating}</span>
-                <span className="text-xs" style={{ color: "#B45309" }}>({user.totalReviews})</span>
+                <span className="text-sm font-700" style={{ color: "#92400E" }}>
+                  {liveRating > 0 ? liveRating.toFixed(1) : "—"}
+                </span>
+                <span className="text-xs" style={{ color: "#B45309" }}>({liveReviewCount})</span>
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
                 style={{ background: "#D1FAE5", borderColor: "#6EE7B7" }}>

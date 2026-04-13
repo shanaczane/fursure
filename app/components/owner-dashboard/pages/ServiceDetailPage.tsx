@@ -39,6 +39,156 @@ const CalendarIcon = () => (
   </svg>
 );
 
+// ─── Availability parser ───────────────────────────────────────────────────────
+// Parses strings like "Mon, Tue, Wed: 9:00 AM – 6:00 PM"
+// into structured { days, open, close } objects for display.
+
+const ALL_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+interface ParsedSlot {
+  days: string[];
+  open: string;
+  close: string;
+}
+
+function parseAvailabilitySlots(availability: string[]): ParsedSlot[] {
+  return availability
+    .map((a) => {
+      // Normalize all dash variants (en-dash U+2013, em-dash U+2014, hyphen) to a plain pipe
+      // so we can split reliably without regex unicode issues
+      const normalized = a
+        .replace(/\u2013|\u2014/g, "|") // en-dash / em-dash → pipe
+        .replace(/\s*-\s*/g, "|");       // hyphen with optional spaces → pipe
+
+      // Format: "Mon, Tue, Wed: 9:00 AM | 6:00 PM"
+      const colonIdx = normalized.indexOf(":");
+      if (colonIdx === -1) return null;
+
+      const daysPart = normalized.slice(0, colonIdx).trim();
+      const timePart = normalized.slice(colonIdx + 1).trim();
+      const pipeIdx = timePart.indexOf("|");
+      if (pipeIdx === -1) return null;
+
+      const open = timePart.slice(0, pipeIdx).trim();
+      const close = timePart.slice(pipeIdx + 1).trim();
+
+      const days = daysPart
+        .split(",")
+        .map((d) => d.trim())
+        .filter((d) => ALL_DAYS.includes(d));
+
+      return { days, open, close };
+    })
+    .filter(Boolean) as ParsedSlot[];
+}
+
+// Groups consecutive days: ["Mon","Tue","Wed"] → "Mon – Wed"
+function formatDayRange(days: string[]): string {
+  if (!days.length) return "";
+  const sorted = [...days].sort((a, b) => ALL_DAYS.indexOf(a) - ALL_DAYS.indexOf(b));
+  const ranges: string[] = [];
+  let rangeStart = sorted[0];
+  let prev = sorted[0];
+
+  for (let i = 1; i <= sorted.length; i++) {
+    const curr = sorted[i];
+    const prevIdx = ALL_DAYS.indexOf(prev);
+    const currIdx = curr ? ALL_DAYS.indexOf(curr) : -1;
+
+    if (currIdx === prevIdx + 1) {
+      prev = curr;
+    } else {
+      ranges.push(rangeStart === prev ? rangeStart : `${rangeStart} – ${prev}`);
+      rangeStart = curr;
+      prev = curr;
+    }
+  }
+
+  return ranges.join(", ");
+}
+
+// ─── AvailabilityDisplay ───────────────────────────────────────────────────────
+
+const DAY_COLORS: Record<string, { bg: string; color: string }> = {
+  Sun: { bg: "#FEF3C7", color: "#92400E" },
+  Mon: { bg: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" },
+  Tue: { bg: "#EDE9FE", color: "#5B21B6" },
+  Wed: { bg: "#E0E7FF", color: "#3730A3" },
+  Thu: { bg: "#D1FAE5", color: "#065F46" },
+  Fri: { bg: "#FCE7F3", color: "#9D174D" },
+  Sat: { bg: "#FEF3C7", color: "#92400E" },
+};
+
+const AvailabilityDisplay: React.FC<{ availability: string[] }> = ({ availability }) => {
+  const slots = parseAvailabilitySlots(availability);
+
+  if (!slots.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-center"
+        style={{ color: "var(--fur-slate-light)" }}>
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
+          style={{ background: "var(--fur-mist)" }}>
+          <ClockIcon />
+        </div>
+        <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>No schedule set</p>
+        <p className="text-xs mt-1">This provider hasn't added availability yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {slots.map((slot, i) => (
+        <div key={i} className="rounded-xl border overflow-hidden"
+          style={{ borderColor: "var(--border)", background: "white" }}>
+
+          {/* Time header */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b"
+            style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal)" }}>
+              <ClockIcon />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-800" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
+                {slot.open}
+              </span>
+              <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>to</span>
+              <span className="text-sm font-800" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
+                {slot.close}
+              </span>
+            </div>
+            <span className="ml-auto text-xs font-600 px-2 py-1 rounded-full"
+              style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+              {formatDayRange(slot.days)}
+            </span>
+          </div>
+
+          {/* Day chips */}
+          <div className="flex flex-wrap gap-2 px-4 py-3">
+            {ALL_DAYS.map((day) => {
+              const active = slot.days.includes(day);
+              const dc = DAY_COLORS[day];
+              return (
+                <span key={day}
+                  className="text-xs font-700 px-2.5 py-1 rounded-lg border"
+                  style={active
+                    ? { background: dc.bg, color: dc.color, borderColor: "transparent" }
+                    : { background: "transparent", color: "var(--fur-mist-dark, #CBD5E0)", borderColor: "var(--border)", opacity: 0.45 }
+                  }>
+                  {day}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
   const router = useRouter();
   const { user, services, pets, bookings, addBooking } = useAppContext();
@@ -191,8 +341,6 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                     <h1 className="text-2xl md:text-3xl font-black mb-1" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
                       {service.name}
                     </h1>
-
-                    {/* Clickable provider name */}
                     <button
                       onClick={handleProviderClick}
                       className="flex items-center gap-1.5 group"
@@ -201,10 +349,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
                       </svg>
-                      <span
-                        className="text-sm font-bold transition-all group-hover:underline"
-                        style={{ color: "var(--fur-teal)" }}
-                      >
+                      <span className="text-sm font-bold transition-all group-hover:underline" style={{ color: "var(--fur-teal)" }}>
                         {service.provider}
                       </span>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
@@ -276,11 +421,11 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                   </div>
 
                   <div className="p-6">
+                    {/* ── About ── */}
                     {activeTab === "about" && (
                       <div className="space-y-4">
                         <p className="text-sm leading-relaxed" style={{ color: "var(--fur-slate-mid)" }}>{service.description}</p>
 
-                        {/* Provider card inside About tab */}
                         <div className="mt-4 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
                           <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--fur-slate-mid)" }}>
                             About the Provider
@@ -306,7 +451,6 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                             </svg>
                           </button>
 
-                          {/* Social / Contact Link */}
                           {providerContact.providerContactLink && (
                             <a
                               href={providerContact.providerContactLink}
@@ -337,6 +481,7 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                       </div>
                     )}
 
+                    {/* ── Features ── */}
                     {activeTab === "features" && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {service.features.map((feature, i) => (
@@ -353,19 +498,9 @@ const ServiceDetailPage: React.FC<ServiceDetailPageProps> = ({ serviceId }) => {
                       </div>
                     )}
 
+                    {/* ── Availability ── */}
                     {activeTab === "availability" && (
-                      <div className="space-y-3">
-                        {service.availability.map((slot, i) => (
-                          <div key={i} className="flex items-center gap-3 p-4 rounded-xl border"
-                            style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}>
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                              style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal)" }}>
-                              <ClockIcon />
-                            </div>
-                            <span className="text-sm font-semibold" style={{ color: "var(--fur-slate)" }}>{slot}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <AvailabilityDisplay availability={service.availability} />
                     )}
                   </div>
                 </div>
