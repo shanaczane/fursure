@@ -71,12 +71,12 @@ const MyServicesPage: React.FC = () => {
     <ProviderLayout>
       <div className="space-y-6" style={{ fontFamily: "'Nunito', sans-serif" }}>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 16, marginBottom: 0, borderBottom: "1px solid var(--border)" }}>
           <div>
-            <h1 className="text-2xl md:text-3xl mb-1" style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, color: "var(--fur-slate)" }}>
+            <h1 style={{ fontSize: "1.65rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 3 }}>
               My Services
             </h1>
-            <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
+            <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>
               {activeCount} active · {services.length} total services listed
             </p>
           </div>
@@ -228,7 +228,6 @@ const MyServicesPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {/* ✅ FIX: Edit button — subtle teal hover, NOT full blue */}
                       <button
                         onClick={() => router.push(`/provider/services/${service.id}/edit`)}
                         className="flex-1 py-2 rounded-xl text-sm font-700 transition-all border"
@@ -251,7 +250,6 @@ const MyServicesPage: React.FC = () => {
                         Edit
                       </button>
 
-                      {/* ✅ FIX: Deactivate/Activate — subtle hover */}
                       <button
                         onClick={() => handleToggle(service.id, service.name, service.isActive)}
                         className="flex-1 py-2 rounded-xl text-sm font-700 transition-all border"
