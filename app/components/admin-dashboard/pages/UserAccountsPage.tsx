@@ -57,6 +57,7 @@ const UserAccountsPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
 
   const filtered = useMemo(() => {
     let result = users.filter((u) => {
@@ -84,6 +85,7 @@ const UserAccountsPage: React.FC = () => {
   const handleFilterChange = (role: typeof filterRole) => {
     setFilterRole(role);
     setCurrentPage(1);
+    setConfirmClearAll(false);
   };
 
   const handleSearch = (q: string) => {
@@ -235,19 +237,40 @@ const UserAccountsPage: React.FC = () => {
 
           {/* Active filter indicator */}
           {(searchQuery || filterRole !== "all") && (
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-xs font-600" style={{ color: "var(--fur-slate-light)" }}>
-                <FilterIcon /> Showing {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <span className="flex items-center gap-1.5 text-xs font-600" style={{ color: "var(--fur-slate-light)" }}>
+                <FilterIcon />
+                Showing {filtered.length} result{filtered.length !== 1 ? "s" : ""}
                 {searchQuery && ` for "${searchQuery}"`}
                 {filterRole !== "all" && ` · ${filterRole}`}
               </span>
-              <button
-                onClick={() => { handleSearch(""); handleFilterChange("all"); }}
-                className="text-xs font-700 px-2 py-0.5 rounded-full transition-all"
-                style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)" }}
-              >
-                Clear all
-              </button>
+              {confirmClearAll ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="text-xs font-600" style={{ color: "var(--fur-slate-mid)" }}>Are you sure?</span>
+                  <button
+                    onClick={() => { handleSearch(""); handleFilterChange("all"); setConfirmClearAll(false); }}
+                    className="text-xs font-700 px-2.5 py-0.5 rounded-full transition-all"
+                    style={{ background: "var(--fur-rose)", color: "white" }}
+                  >
+                    Yes, clear
+                  </button>
+                  <button
+                    onClick={() => setConfirmClearAll(false)}
+                    className="text-xs font-700 px-2.5 py-0.5 rounded-full border transition-all"
+                    style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)", background: "white" }}
+                  >
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setConfirmClearAll(true)}
+                  className="text-xs font-700 px-2.5 py-0.5 rounded-full transition-all"
+                  style={{ background: "var(--fur-rose-light)", color: "var(--fur-rose)" }}
+                >
+                  Clear all
+                </button>
+              )}
             </div>
           )}
         </div>
