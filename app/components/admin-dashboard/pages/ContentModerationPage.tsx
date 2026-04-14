@@ -72,7 +72,7 @@ const ContentModerationPage: React.FC = () => {
   const noBookingProviders = useMemo(() =>
     providers.filter((p) => p.bookingCount === 0 && p.serviceCount > 0), [providers]);
   const unverifiedProviders = useMemo(() =>
-    providers.filter((p) => !p.isVerified), [providers]);
+    providers.filter((p) => !p.isVerified && !p.isRejected), [providers]);
   const powerUsers = useMemo(() =>
     users.filter((u) => (u.bookingCount ?? 0) >= 3).sort((a, b) => (b.bookingCount ?? 0) - (a.bookingCount ?? 0)),
     [users]);
