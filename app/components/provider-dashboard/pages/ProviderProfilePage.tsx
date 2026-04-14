@@ -3,19 +3,17 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useProviderContext } from "../context/ProviderAppContext";
 import { getProviderDashboardStats, formatCurrency } from "../utils/providerUtils";
-import { upsertProviderContactLink } from "@/app/lib/api";
+import { upsertProviderProfileData } from "@/app/lib/api";
 import { supabase } from "@/app/lib/supabase";
 import ProviderLayout from "../components/ProviderLayout";
 import type { ProviderPolicy } from "../types";
 
-// ✅ FIX: Per-user localStorage key — prevents stale data from a previously logged-in provider
 const getStorageKey = (userId: string) => `provider_profile_data_${userId}`;
 
 const ProviderProfilePage: React.FC = () => {
   const { user, services, bookings, updateUser, policy, savePolicy } = useProviderContext();
   const stats = getProviderDashboardStats(bookings, services);
 
-  // ✅ Compute live rating from actual completed bookings (same as Dashboard)
   const { liveRating, liveReviewCount } = useMemo(() => {
     const reviewed = bookings.filter(
       (b) => b.status === "completed" && typeof b.rating === "number" && b.rating > 0
@@ -28,74 +26,68 @@ const ProviderProfilePage: React.FC = () => {
     return { liveRating: avg, liveReviewCount: count };
   }, [bookings]);
 
-  // ✅ FIX: Initialize formData from per-user localStorage key, falling back to context user
-  const [formData, setFormData] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem(getStorageKey(user.id));
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          return {
-            name: parsed.name ?? user.name,
-            email: parsed.email ?? user.email,
-            phone: parsed.phone ?? user.phone ?? "",
-            businessName: parsed.businessName ?? user.businessName,
-            businessAddress: parsed.businessAddress ?? user.businessAddress ?? "",
-            bio: parsed.bio ?? user.bio ?? "",
-            contactLink: parsed.contactLink ?? user.contactLink ?? "",
-          };
-        }
-      } catch {}
-    }
-    return {
-      name: user.name,
-      email: user.email,
-      phone: user.phone || "",
-      businessName: user.businessName,
-      businessAddress: user.businessAddress || "",
-      bio: user.bio || "",
-      contactLink: user.contactLink || "",
-    };
+  const [formData, setFormData] = useState({
+    name: user.name,
+    email: user.email,
+    phone: user.phone || "",
+    businessName: user.businessName || "",
+    businessAddress: user.businessAddress || "",
+    bio: user.bio || "",
+    contactLink: user.contactLink || "",
   });
 
-  // ✅ FIX: Re-sync formData whenever the logged-in user changes (e.g. after switching accounts)
+  // ✅ Fetch fresh data from Supabase on mount — reads email from providers first, falls back to users
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem(getStorageKey(user.id));
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setFormData({
-            name: parsed.name ?? user.name,
-            email: parsed.email ?? user.email,
-            phone: parsed.phone ?? user.phone ?? "",
-            businessName: parsed.businessName ?? user.businessName,
-            businessAddress: parsed.businessAddress ?? user.businessAddress ?? "",
-            bio: parsed.bio ?? user.bio ?? "",
-            contactLink: parsed.contactLink ?? user.contactLink ?? "",
-          });
-          return;
-        }
-      } catch {}
-    }
-    // No saved data for this user — use fresh values from context
-    setFormData({
-      name: user.name,
-      email: user.email,
-      phone: user.phone || "",
-      businessName: user.businessName,
-      businessAddress: user.businessAddress || "",
-      bio: user.bio || "",
-      contactLink: user.contactLink || "",
-    });
-  }, [user.id]); // ← only re-runs when the logged-in user actually changes
+    const fetchProviderData = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
 
-  const [passwordData, setPasswordData] = useState({
-    current: "",
-    next: "",
-    confirm: "",
-  });
+      const [{ data: userRow }, { data: provRow }] = await Promise.all([
+        supabase
+          .from("users")
+          .select("name, email, phone, avatar")
+          .eq("id", authUser.id)
+          .maybeSingle(),
+        supabase
+          .from("providers")
+          .select("bio, business_name, business_address, contact_link, phone, email")
+          .eq("user_id", authUser.id)
+          .maybeSingle(),
+      ]);
+
+      // ✅ Email: prefer providers.email, fall back to users.email then auth email
+      const resolvedEmail =
+        provRow?.email && provRow.email.trim() !== ""
+          ? provRow.email
+          : userRow?.email && userRow.email.trim() !== ""
+          ? userRow.email
+          : authUser.email ?? "";
+
+      // Check localStorage for any unsaved local changes
+      let localData: Record<string, string> | null = null;
+      try {
+        const saved = localStorage.getItem(getStorageKey(authUser.id));
+        if (saved) localData = JSON.parse(saved);
+      } catch {}
+
+      setFormData({
+        name: localData?.name ?? userRow?.name ?? user.name ?? "",
+        email: localData?.email ?? resolvedEmail,
+        phone: localData?.phone ?? provRow?.phone ?? userRow?.phone ?? user.phone ?? "",
+        businessName: localData?.businessName ?? provRow?.business_name ?? user.businessName ?? "",
+        businessAddress: localData?.businessAddress ?? provRow?.business_address ?? user.businessAddress ?? "",
+        bio: localData?.bio ?? provRow?.bio ?? user.bio ?? "",
+        contactLink: localData?.contactLink ?? provRow?.contact_link ?? user.contactLink ?? "",
+      });
+    };
+
+    fetchProviderData();
+  }, [user.id]);
+
+  const [passwordData, setPasswordData] = useState({ current: "", next: "", confirm: "" });
   const [successMsg, setSuccessMsg] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"profile" | "business" | "security" | "policies">("profile");
   const [policyForm, setPolicyForm] = useState<ProviderPolicy>(policy);
   const [savingPolicy, setSavingPolicy] = useState(false);
@@ -105,37 +97,52 @@ const ProviderProfilePage: React.FC = () => {
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
+    setSaveError(null);
     setTimeout(() => setSuccessMsg(""), 3000);
   };
 
-  // ✅ FIX: Save to per-user localStorage AND context on every save
   const handleSaveProfile = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
       return alert("Name and email are required");
     }
-
-    // Persist to per-user localStorage so it survives page refresh
+    setIsSaving(true);
+    setSaveError(null);
     try {
-      localStorage.setItem(getStorageKey(user.id), JSON.stringify(formData));
-    } catch {}
-
-    updateUser({
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      businessName: formData.businessName,
-      businessAddress: formData.businessAddress,
-      bio: formData.bio,
-      contactLink: formData.contactLink,
-    });
-
-    if (formData.contactLink !== undefined) {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        upsertProviderContactLink(authUser.id, formData.contactLink).catch(console.error);
-      }
+      if (!authUser) throw new Error("Not authenticated");
+
+      // ✅ Save all fields including email to providers table
+      await upsertProviderProfileData(authUser.id, {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        businessName: formData.businessName,
+        businessAddress: formData.businessAddress,
+        bio: formData.bio,
+        contactLink: formData.contactLink,
+      });
+
+      try {
+        localStorage.setItem(getStorageKey(authUser.id), JSON.stringify(formData));
+      } catch {}
+
+      updateUser({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        businessName: formData.businessName,
+        businessAddress: formData.businessAddress,
+        bio: formData.bio,
+        contactLink: formData.contactLink,
+      });
+
+      showSuccess("Profile updated successfully!");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to save profile.";
+      setSaveError(msg);
+    } finally {
+      setIsSaving(false);
     }
-    showSuccess("Profile updated successfully!");
   };
 
   const handleChangePassword = () => {
@@ -203,13 +210,11 @@ const ProviderProfilePage: React.FC = () => {
   return (
     <ProviderLayout>
       <div className="space-y-5 max-w-4xl">
-        {/* Header */}
         <div>
-          <h1 style={{ fontSize: "1.65rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 3 }}>Profile</h1>          
+          <h1 style={{ fontSize: "1.65rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 3 }}>Profile</h1>
           <p className="text-gray-500 text-sm">Manage your account and business settings</p>
         </div>
 
-        {/* Success Toast */}
         {successMsg && (
           <div className="flex items-center gap-3 p-4 rounded-xl border"
             style={{ background: "#D1FAE5", borderColor: "#6EE7B7", color: "#065F46" }}>
@@ -217,6 +222,16 @@ const ProviderProfilePage: React.FC = () => {
               <polyline points="20 6 9 17 4 12" />
             </svg>
             <span className="font-700 text-sm">{successMsg}</span>
+          </div>
+        )}
+
+        {saveError && (
+          <div className="flex items-center gap-3 p-4 rounded-xl border"
+            style={{ background: "#FEE2E2", borderColor: "#FCA5A5", color: "#991B1B" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span className="font-700 text-sm">{saveError}</span>
           </div>
         )}
 
@@ -244,7 +259,6 @@ const ProviderProfilePage: React.FC = () => {
               <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>{formData.email}</p>
             </div>
             <div className="flex sm:flex-col gap-2">
-              {/* ✅ Use liveRating / liveReviewCount instead of user.rating / user.totalReviews */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
                 style={{ background: "#FFFBEB", borderColor: "#FCD34D" }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -300,122 +314,69 @@ const ProviderProfilePage: React.FC = () => {
 
           <div className="p-6">
 
-            {/* ── Personal Info Tab ── */}
             {activeTab === "profile" && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Full Name</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="fur-input"
-                      suppressHydrationWarning
-                    />
+                    <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="fur-input" suppressHydrationWarning />
                   </div>
                   <div>
                     <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Email Address</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="fur-input"
-                      suppressHydrationWarning
-                    />
+                    <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="fur-input" suppressHydrationWarning />
                   </div>
                   <div>
                     <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Phone Number</label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="fur-input"
-                      suppressHydrationWarning
-                    />
+                    <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="fur-input" suppressHydrationWarning />
                   </div>
                   <div>
                     <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Role</label>
-                    <input
-                      type="text"
-                      defaultValue="Service Provider"
-                      disabled
-                      className="fur-input opacity-50 cursor-not-allowed"
-                      suppressHydrationWarning
-                    />
+                    <input type="text" defaultValue="Service Provider" disabled className="fur-input opacity-50 cursor-not-allowed" suppressHydrationWarning />
                   </div>
                 </div>
                 <div className="flex justify-end pt-2">
-                  <button onClick={handleSaveProfile} className="btn-primary px-6 py-2.5 text-sm">Save Changes</button>
+                  <button onClick={handleSaveProfile} disabled={isSaving} className="btn-primary px-6 py-2.5 text-sm disabled:opacity-60">
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* ── Business Tab ── */}
             {activeTab === "business" && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Business Name</label>
-                  <input
-                    type="text"
-                    value={formData.businessName}
-                    onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                    className="fur-input"
-                    suppressHydrationWarning
-                  />
+                  <input type="text" value={formData.businessName} onChange={(e) => setFormData({ ...formData, businessName: e.target.value })} className="fur-input" suppressHydrationWarning />
                 </div>
                 <div>
                   <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Business Address</label>
-                  <input
-                    type="text"
-                    value={formData.businessAddress}
-                    onChange={(e) => setFormData({ ...formData, businessAddress: e.target.value })}
-                    placeholder="123 Main St, City, State ZIP"
-                    className="fur-input"
-                    suppressHydrationWarning
-                  />
+                  <input type="text" value={formData.businessAddress} onChange={(e) => setFormData({ ...formData, businessAddress: e.target.value })} placeholder="123 Main St, City, State ZIP" className="fur-input" suppressHydrationWarning />
                 </div>
                 <div>
                   <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Bio / About</label>
-                  <textarea
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    rows={4}
-                    placeholder="Tell pet owners about your experience and approach..."
-                    className="fur-input resize-none"
-                    suppressHydrationWarning
-                  />
+                  <textarea value={formData.bio} onChange={(e) => setFormData({ ...formData, bio: e.target.value })} rows={4} placeholder="Tell pet owners about your experience and approach..." className="fur-input resize-none" suppressHydrationWarning />
                   <p className="text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>{formData.bio.length}/500 characters</p>
                 </div>
                 <div>
                   <label className="block text-xs font-700 uppercase tracking-wide mb-1.5" style={{ color: "var(--fur-slate-mid)" }}>Contact / Social Link</label>
-                  <input
-                    type="url"
-                    value={formData.contactLink}
-                    onChange={(e) => setFormData({ ...formData, contactLink: e.target.value })}
-                    placeholder="https://facebook.com/yourpage"
-                    className="fur-input"
-                    suppressHydrationWarning
-                  />
-                  <p className="text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>Pet owners will see this link after their booking is confirmed.</p>
+                  <input type="url" value={formData.contactLink} onChange={(e) => setFormData({ ...formData, contactLink: e.target.value })} placeholder="https://facebook.com/yourpage" className="fur-input" suppressHydrationWarning />
+                  <p className="text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>Pet owners will see this on your public profile.</p>
                 </div>
                 <div className="flex justify-end pt-2">
-                  <button onClick={handleSaveProfile} className="btn-primary px-6 py-2.5 text-sm">Save Changes</button>
+                  <button onClick={handleSaveProfile} disabled={isSaving} className="btn-primary px-6 py-2.5 text-sm disabled:opacity-60">
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* ── Policies Tab ── */}
             {activeTab === "policies" && (
               <div className="space-y-5">
-
                 <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
                   These rules are shown to pet owners before they confirm a booking. Set them clearly so there are no surprises.
                 </p>
 
-                {/* Cash-only notice */}
-                <div className="flex gap-3 p-4 rounded-xl border"
-                  style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}>
+                <div className="flex gap-3 p-4 rounded-xl border" style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}>
                   <span className="text-lg shrink-0">💵</span>
                   <div>
                     <p className="text-sm font-700" style={{ color: "#92400E" }}>Cash Payments Only</p>
@@ -425,32 +386,23 @@ const ProviderProfilePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* ── Down Payment ── */}
                 <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)" }}>
                   <div>
                     <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>💰 Down Payment</p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
-                      Require pet owners to pay a portion of the fee in cash within <strong>24 hours</strong> of booking to confirm their slot. If not paid in time, the booking is <strong>automatically declined</strong> — no action needed from you.
+                      Require pet owners to pay a portion of the fee in cash within <strong>24 hours</strong> of booking to confirm their slot.
                     </p>
                   </div>
-
-                  {/* Toggle */}
-                  <div className="flex items-center justify-between p-4 rounded-xl"
-                    style={{ background: "var(--fur-cream)", border: "1px solid var(--border)" }}>
+                  <div className="flex items-center justify-between p-4 rounded-xl" style={{ background: "var(--fur-cream)", border: "1px solid var(--border)" }}>
                     <div>
                       <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Require a down payment?</p>
                       <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
-                        {policyForm.depositRequired
-                          ? "On — pet owners must pay a deposit within 24 hrs to confirm."
-                          : "Off — you manually accept each booking, no deposit needed."}
+                        {policyForm.depositRequired ? "On — pet owners must pay a deposit within 24 hrs to confirm." : "Off — you manually accept each booking, no deposit needed."}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setPolicyForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))}
+                    <button type="button" onClick={() => setPolicyForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))}
                       className="relative shrink-0 ml-4 rounded-full transition-colors duration-200"
-                      style={{ width: 48, height: 26, background: policyForm.depositRequired ? "var(--fur-teal)" : "var(--fur-mist)" }}
-                    >
+                      style={{ width: 48, height: 26, background: policyForm.depositRequired ? "var(--fur-teal)" : "var(--fur-mist)" }}>
                       <span className="absolute rounded-full bg-white shadow-md transition-all duration-200"
                         style={{ width: 18, height: 18, top: 4, left: policyForm.depositRequired ? 26 : 4 }} />
                     </button>
@@ -461,8 +413,7 @@ const ProviderProfilePage: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>How much is the deposit?</p>
-                          <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
-                            style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+                          <span className="text-sm font-900 px-2.5 py-1 rounded-lg" style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
                             {policyForm.depositPercentage === 100 ? "Full payment" : `${policyForm.depositPercentage}%`}
                           </span>
                         </div>
@@ -478,55 +429,36 @@ const ProviderProfilePage: React.FC = () => {
                             </button>
                           ))}
                         </div>
-                        <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
-                          {policyForm.depositPercentage === 100
-                            ? "Pet owner must pay the full amount in cash within 24 hours of booking."
-                            : `Pet owner pays ${policyForm.depositPercentage}% of the total fee in cash within 24 hours of booking.`}
-                        </p>
                       </div>
-
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between p-4 rounded-xl border"
-                          style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}>
+                        <div className="flex items-center justify-between p-4 rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}>
                           <div>
                             <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Refundable if cancelled?</p>
-                            <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
-                              Will you return the deposit if the owner cancels?
-                            </p>
+                            <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>Will you return the deposit if the owner cancels?</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setPolicyForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))}
+                          <button type="button" onClick={() => setPolicyForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))}
                             className="relative shrink-0 ml-4 rounded-full transition-colors duration-200"
-                            style={{ width: 48, height: 26, background: policyForm.depositRefundable ? "#059669" : "var(--fur-rose)" }}
-                          >
+                            style={{ width: 48, height: 26, background: policyForm.depositRefundable ? "#059669" : "var(--fur-rose)" }}>
                             <span className="absolute rounded-full bg-white shadow-md transition-all duration-200"
                               style={{ width: 18, height: 18, top: 4, left: policyForm.depositRefundable ? 26 : 4 }} />
                           </button>
                         </div>
-                        <p className="text-xs px-1 font-600"
-                          style={{ color: policyForm.depositRefundable ? "#059669" : "#DC2626" }}>
-                          {policyForm.depositRefundable
-                            ? "✅ Refundable — you return the deposit if the owner cancels."
-                            : "❌ Non-refundable — you keep the deposit if the owner cancels."}
+                        <p className="text-xs px-1 font-600" style={{ color: policyForm.depositRefundable ? "#059669" : "#DC2626" }}>
+                          {policyForm.depositRefundable ? "✅ Refundable — you return the deposit if the owner cancels." : "❌ Non-refundable — you keep the deposit if the owner cancels."}
                         </p>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* ── Cancellation Notice ── */}
                 <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: "var(--border)" }}>
                   <div>
                     <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>⏰ Cancellation Notice</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
-                      Minimum advance notice required before a pet owner can cancel their booking.
-                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>Minimum advance notice required before a pet owner can cancel their booking.</p>
                   </div>
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Notice required</p>
-                    <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
-                      style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+                    <span className="text-sm font-900 px-2.5 py-1 rounded-lg" style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
                       {policyForm.cancellationHoursNotice === 0 ? "Anytime" : `${policyForm.cancellationHoursNotice} hrs`}
                     </span>
                   </div>
@@ -552,31 +484,21 @@ const ProviderProfilePage: React.FC = () => {
                     </div>
                   </div>
                   <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
-                    {policyForm.cancellationHoursNotice === 0
-                      ? "Pet owners can cancel at any time, even last minute."
-                      : `Pet owners must notify you at least ${policyForm.cancellationHoursNotice} hours before the service to cancel.`}
+                    {policyForm.cancellationHoursNotice === 0 ? "Pet owners can cancel at any time, even last minute." : `Pet owners must notify you at least ${policyForm.cancellationHoursNotice} hours before the service to cancel.`}
                   </p>
                 </div>
 
-                {/* ── Additional Notes ── */}
                 <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: "var(--border)" }}>
                   <div>
                     <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>📝 Additional Notes</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
-                      Extra reminders or instructions shown to pet owners on the booking form.
-                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>Extra reminders or instructions shown to pet owners on the booking form.</p>
                   </div>
-                  <textarea
-                    value={policyForm.additionalNotes ?? ""}
-                    rows={3}
+                  <textarea value={policyForm.additionalNotes ?? ""} rows={3}
                     onChange={(e) => setPolicyForm((prev) => ({ ...prev, additionalNotes: e.target.value }))}
                     placeholder="e.g., Please bring vaccination records. Prepare the exact cash amount."
-                    className="fur-input resize-none"
-                    suppressHydrationWarning
-                  />
+                    className="fur-input resize-none" suppressHydrationWarning />
                 </div>
 
-                {/* ── Live Preview ── */}
                 <div className="rounded-xl border p-5 space-y-2.5" style={{ background: "#F0F9FF", borderColor: "#BAE6FD" }}>
                   <p className="text-xs font-900 uppercase tracking-widest" style={{ color: "#0369A1" }}>📋 What pet owners will see</p>
                   <ul className="space-y-2 text-sm" style={{ color: "#0C4A6E" }}>
@@ -603,7 +525,6 @@ const ProviderProfilePage: React.FC = () => {
                   </ul>
                 </div>
 
-                {/* Save */}
                 <div className="flex items-center gap-3 pt-1">
                   <button onClick={handleSavePolicy} disabled={savingPolicy} className="btn-primary px-6 py-2.5 text-sm disabled:opacity-60">
                     {savingPolicy ? "Saving..." : "Save Policies"}
@@ -620,7 +541,6 @@ const ProviderProfilePage: React.FC = () => {
               </div>
             )}
 
-            {/* ── Security Tab ── */}
             {activeTab === "security" && (
               <div className="space-y-4">
                 <div>

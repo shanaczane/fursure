@@ -226,7 +226,6 @@ export const insertBooking = async (
     .eq("id", userId)
     .maybeSingle();
 
-  // Prefer explicit petId; fall back to name lookup for backwards-compat
   let petRow: { id: string; type: string; breed: string } | null = null;
   if (booking.petId) {
     const { data } = await supabase
@@ -722,7 +721,7 @@ export interface PublicProviderProfile {
   bio: string;
   email: string;
   phone?: string;
-  address?: string;        // ✅ NEW: business address
+  address?: string;
   contactLink?: string;
   rating: number;
   totalReviews: number;
@@ -753,7 +752,9 @@ export const fetchPublicProviderProfile = async (
   const [{ data: provRow }, { data: userRow }] = await Promise.all([
     supabase
       .from("providers")
-      .select("id, name, rating, reviews, response_time, is_verified, contact_link")
+      .select(
+        "id, name, email, rating, reviews, is_verified, contact_link, bio, business_name, business_address, phone",
+      )
       .eq("user_id", providerUserId)
       .maybeSingle(),
     supabase
@@ -772,21 +773,36 @@ export const fetchPublicProviderProfile = async (
     .eq("is_active", true)
     .order("created_at", { ascending: true });
 
-  const { data: bioRow } = await supabase
-    .from("providers")
-    .select("bio, business_name, business_address")
-    .eq("id", provRow.id)
-    .maybeSingle();
+  const resolvedContactLink =
+    provRow.contact_link && provRow.contact_link.trim() !== ""
+      ? provRow.contact_link
+      : null;
+
+  // Phone: prefer providers.phone, fall back to users.phone
+  const resolvedPhone =
+    provRow.phone && provRow.phone.trim() !== ""
+      ? provRow.phone
+      : userRow?.phone && userRow.phone.trim() !== ""
+      ? userRow.phone
+      : undefined;
+
+  // ✅ Email: prefer providers.email (now exists), fall back to users.email
+  const resolvedEmail =
+    provRow.email && provRow.email.trim() !== ""
+      ? provRow.email
+      : userRow?.email && userRow.email.trim() !== ""
+      ? userRow.email
+      : "";
 
   return {
     userId: providerUserId,
     name: provRow.name ?? userRow?.name ?? "Unknown Provider",
-    businessName: bioRow?.business_name ?? provRow.name ?? "",
-    bio: bioRow?.bio ?? "",
-    email: userRow?.email ?? "",
-    phone: userRow?.phone ?? undefined,
-    address: bioRow?.business_address ?? undefined,  // ✅ NEW
-    contactLink: provRow.contact_link ?? undefined,
+    businessName: provRow.business_name ?? provRow.name ?? "",
+    bio: provRow.bio ?? "",
+    email: resolvedEmail,
+    phone: resolvedPhone,
+    address: provRow.business_address ?? undefined,
+    contactLink: resolvedContactLink ?? undefined,
     rating: provRow.rating ?? 0,
     totalReviews: provRow.reviews ?? 0,
     isVerified: provRow.is_verified ?? false,
@@ -807,6 +823,50 @@ export const fetchPublicProviderProfile = async (
       reviews: row.reviews ?? 0,
     })),
   };
+};
+
+// ─── Provider Profile (save bio/business info to providers table) ─────────────
+
+export const upsertProviderProfileData = async (
+  userId: string,
+  data: {
+    name: string;
+    email: string;
+    phone?: string;
+    businessName?: string;
+    businessAddress?: string;
+    bio?: string;
+    contactLink?: string;
+  },
+): Promise<void> => {
+  // 1. Update the users table (name, phone) — email is managed by Supabase Auth
+  const usersPayload: Record<string, unknown> = {
+    name: data.name,
+  };
+  if (data.phone !== undefined) usersPayload.phone = data.phone || null;
+
+  const { error: usersError } = await supabase
+    .from("users")
+    .update(usersPayload)
+    .eq("id", userId);
+  if (usersError) throw new Error(usersError.message);
+
+  // 2. Update the providers table — now includes email column
+  const providersPayload: Record<string, unknown> = {};
+  if (data.email !== undefined) providersPayload.email = data.email || null;
+  if (data.businessName !== undefined) providersPayload.business_name = data.businessName || null;
+  if (data.businessAddress !== undefined) providersPayload.business_address = data.businessAddress || null;
+  if (data.bio !== undefined) providersPayload.bio = data.bio || null;
+  if (data.contactLink !== undefined) providersPayload.contact_link = data.contactLink || null;
+  if (data.phone !== undefined) providersPayload.phone = data.phone || null;
+
+  if (Object.keys(providersPayload).length > 0) {
+    const { error: provError } = await supabase
+      .from("providers")
+      .update(providersPayload)
+      .eq("user_id", userId);
+    if (provError) throw new Error(provError.message);
+  }
 };
 
 // ─── Provider Policy ──────────────────────────────────────────────────────────
@@ -868,11 +928,11 @@ export const upsertProviderPolicy = async (
 export const fetchProviderContactInfo = async (userId: string) => {
   const [{ data: userRow }, { data: provRow }] = await Promise.all([
     supabase.from("users").select("email, phone").eq("id", userId).maybeSingle(),
-    supabase.from("providers").select("contact_link").eq("user_id", userId).maybeSingle(),
+    supabase.from("providers").select("contact_link, email, phone").eq("user_id", userId).maybeSingle(),
   ]);
   return {
-    providerPhone: userRow?.phone ?? undefined,
-    providerEmail: userRow?.email ?? undefined,
+    providerPhone: provRow?.phone ?? userRow?.phone ?? undefined,
+    providerEmail: provRow?.email ?? userRow?.email ?? undefined,
     providerContactLink: provRow?.contact_link ?? undefined,
   };
 };
