@@ -8,14 +8,14 @@ import { supabase } from "@/app/lib/supabase";
 import ProviderLayout from "../components/ProviderLayout";
 import type { ProviderPolicy } from "../types";
 
-// ✅ FIX: localStorage key for persisting profile changes across refreshes
-const PROFILE_STORAGE_KEY = "provider_profile_data";
+// ✅ FIX: Per-user localStorage key — prevents stale data from a previously logged-in provider
+const getStorageKey = (userId: string) => `provider_profile_data_${userId}`;
 
 const ProviderProfilePage: React.FC = () => {
   const { user, services, bookings, updateUser, policy, savePolicy } = useProviderContext();
   const stats = getProviderDashboardStats(bookings, services);
 
-  // ✅ FIX: Compute live rating from actual completed bookings (same as Dashboard)
+  // ✅ Compute live rating from actual completed bookings (same as Dashboard)
   const { liveRating, liveReviewCount } = useMemo(() => {
     const reviewed = bookings.filter(
       (b) => b.status === "completed" && typeof b.rating === "number" && b.rating > 0
@@ -28,11 +28,11 @@ const ProviderProfilePage: React.FC = () => {
     return { liveRating: avg, liveReviewCount: count };
   }, [bookings]);
 
-  // ✅ FIX: Initialize formData from localStorage first, then fall back to context user
+  // ✅ FIX: Initialize formData from per-user localStorage key, falling back to context user
   const [formData, setFormData] = useState(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
+        const saved = localStorage.getItem(getStorageKey(user.id));
         if (saved) {
           const parsed = JSON.parse(saved);
           return {
@@ -58,6 +58,38 @@ const ProviderProfilePage: React.FC = () => {
     };
   });
 
+  // ✅ FIX: Re-sync formData whenever the logged-in user changes (e.g. after switching accounts)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(getStorageKey(user.id));
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setFormData({
+            name: parsed.name ?? user.name,
+            email: parsed.email ?? user.email,
+            phone: parsed.phone ?? user.phone ?? "",
+            businessName: parsed.businessName ?? user.businessName,
+            businessAddress: parsed.businessAddress ?? user.businessAddress ?? "",
+            bio: parsed.bio ?? user.bio ?? "",
+            contactLink: parsed.contactLink ?? user.contactLink ?? "",
+          });
+          return;
+        }
+      } catch {}
+    }
+    // No saved data for this user — use fresh values from context
+    setFormData({
+      name: user.name,
+      email: user.email,
+      phone: user.phone || "",
+      businessName: user.businessName,
+      businessAddress: user.businessAddress || "",
+      bio: user.bio || "",
+      contactLink: user.contactLink || "",
+    });
+  }, [user.id]); // ← only re-runs when the logged-in user actually changes
+
   const [passwordData, setPasswordData] = useState({
     current: "",
     next: "",
@@ -76,15 +108,15 @@ const ProviderProfilePage: React.FC = () => {
     setTimeout(() => setSuccessMsg(""), 3000);
   };
 
-  // ✅ FIX: Save to localStorage AND context on every save
+  // ✅ FIX: Save to per-user localStorage AND context on every save
   const handleSaveProfile = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
       return alert("Name and email are required");
     }
 
-    // Persist to localStorage so it survives page refresh
+    // Persist to per-user localStorage so it survives page refresh
     try {
-      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(formData));
+      localStorage.setItem(getStorageKey(user.id), JSON.stringify(formData));
     } catch {}
 
     updateUser({
@@ -212,7 +244,7 @@ const ProviderProfilePage: React.FC = () => {
               <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>{formData.email}</p>
             </div>
             <div className="flex sm:flex-col gap-2">
-              {/* ✅ FIX: Use liveRating / liveReviewCount instead of user.rating / user.totalReviews */}
+              {/* ✅ Use liveRating / liveReviewCount instead of user.rating / user.totalReviews */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
                 style={{ background: "#FFFBEB", borderColor: "#FCD34D" }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

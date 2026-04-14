@@ -368,7 +368,7 @@ export const updateBookingRecord = async (
   if (updates.rescheduleStatus !== undefined) payload.reschedule_status = updates.rescheduleStatus ?? null;
   if (updates.rating !== undefined) payload.rating = updates.rating;
   if (updates.review !== undefined) payload.review_comment = updates.review;
-  if (Object.keys(payload).length === 0) return; // nothing to update
+  if (Object.keys(payload).length === 0) return;
   const { error } = await supabase.from("bookings").update(payload).eq("id", bookingId);
   if (error) throw new Error(error.message);
 };
@@ -601,7 +601,6 @@ export const deleteMedicalHistoryRecord = async (id: string): Promise<void> => {
 // ─── Vaccination Reminders (all pets for an owner) ────────────────────────────
 
 export const fetchAllOwnerVaccinations = async (userId: string): Promise<VaccinationReminder[]> => {
-  // Get all pet IDs for this owner
   const { data: pets } = await supabase
     .from("pets")
     .select("id, name")
@@ -635,7 +634,7 @@ export const fetchAllOwnerVaccinations = async (userId: string): Promise<Vaccina
         daysUntilDue,
       } as VaccinationReminder;
     })
-    .filter((r) => r.daysUntilDue <= 30) // only show within 30 days or overdue
+    .filter((r) => r.daysUntilDue <= 30)
     .sort((a, b) => a.daysUntilDue - b.daysUntilDue);
 };
 
@@ -647,7 +646,6 @@ export const providerInsertVaccination = async (
   providerName: string,
   record: { name: string; dateGiven: string; nextDueDate?: string; notes?: string },
 ): Promise<Vaccination> => {
-  // Look up owner_id from pet
   const { data: pet } = await supabase.from("pets").select("owner_id").eq("id", petId).maybeSingle();
   const { data, error } = await supabase
     .from("pet_vaccinations")
@@ -724,6 +722,7 @@ export interface PublicProviderProfile {
   bio: string;
   email: string;
   phone?: string;
+  address?: string;        // ✅ NEW: business address
   contactLink?: string;
   rating: number;
   totalReviews: number;
@@ -786,6 +785,7 @@ export const fetchPublicProviderProfile = async (
     bio: bioRow?.bio ?? "",
     email: userRow?.email ?? "",
     phone: userRow?.phone ?? undefined,
+    address: bioRow?.business_address ?? undefined,  // ✅ NEW
     contactLink: provRow.contact_link ?? undefined,
     rating: provRow.rating ?? 0,
     totalReviews: provRow.reviews ?? 0,
@@ -1058,11 +1058,9 @@ export const fetchProviderOwnBookings = async (userId: string) => {
     editCancelGracePeriodHours: row.edit_cancel_grace_period_hours ?? 24,
     editRequestStatus: row.edit_request_status ?? "none",
     cancelRequestStatus: row.cancel_request_status ?? "none",
-    // ─── Review fields ────────────────────────────────────────────────────
     rating: row.rating ?? undefined,
     reviewComment: row.review_comment ?? undefined,
     reviewDate: row.review_date ?? undefined,
-    // ─────────────────────────────────────────────────────────────────────
   }));
 };
 
@@ -1101,8 +1099,6 @@ export const submitServiceReview = async (
   if (error) throw new Error(error.message);
 };
 
-// Writes rating + comment + date to the bookings row so the provider
-// can see the review in their Manage Bookings and Dashboard pages.
 export const submitBookingReview = async (
   bookingId: string,
   rating: number,
@@ -1122,7 +1118,6 @@ export const submitBookingReview = async (
 // ─── Services ─────────────────────────────────────────────────────────────────
 
 export const fetchServices = async (): Promise<Service[]> => {
-  // Step 1: fetch ONLY verified providers — owners never see unverified provider services
   const { data: providerRows, error: providerError } = await supabase
     .from("providers")
     .select("id, name, rating, reviews, response_time, user_id")
@@ -1133,7 +1128,6 @@ export const fetchServices = async (): Promise<Service[]> => {
 
   const providerIds = providerRows.map((p) => p.id);
 
-  /// Step 2: fetch active services ONLY for verified providers
   const { data, error } = await supabase
     .from("services")
     .select("*")
@@ -1153,10 +1147,8 @@ export const fetchServices = async (): Promise<Service[]> => {
       provider: prov.name ?? "",
       providerUserId: prov.user_id ?? undefined,
       category: row.category,
-      // ─── Per-service rating — reads from services table, not providers ───
       rating: row.rating ?? 0,
       reviews: row.reviews ?? 0,
-      // ─────────────────────────────────────────────────────────────────────
       price: row.price,
       priceUnit: row.price_unit,
       location: row.location ?? "",
