@@ -35,8 +35,10 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
   onLeaveReview,
   reviewedBookingIds,
 }) => {
-  const [showAll, setShowAll] = useState(false);
-  const displayBookings = showAll ? bookings : bookings.slice(0, 8);
+  const ROWS_PER_PAGE = 5;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(bookings.length / ROWS_PER_PAGE));
+  const displayBookings = bookings.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
   const hasReviewed = (booking: Booking) => reviewedBookingIds?.has(booking.id) ?? false;
 
   if (bookings.length === 0) {
@@ -256,14 +258,51 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
         </table>
       </div>
 
-      {/* Show more */}
-      {bookings.length > 8 && (
-        <div className="px-6 py-3 border-t text-center" style={{ borderColor: "var(--border)" }}>
-          <button onClick={() => setShowAll(!showAll)}
-            className="text-sm font-700 transition-colors"
-            style={{ color: "var(--fur-teal)", background: "none", border: "none", cursor: "pointer" }}>
-            {showAll ? "Show less" : `Show all ${bookings.length} bookings`}
-          </button>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="px-6 py-3 border-t flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
+          <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+            Showing {(currentPage - 1) * ROWS_PER_PAGE + 1}–{Math.min(currentPage * ROWS_PER_PAGE, bookings.length)} of {bookings.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40"
+              style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)", background: "white" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push("...");
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((item, idx) => item === "..." ? (
+                <span key={`e-${idx}`} className="w-7 h-7 flex items-center justify-center text-xs"
+                  style={{ color: "var(--fur-slate-light)" }}>…</span>
+              ) : (
+                <button key={item} onClick={() => setCurrentPage(item as number)}
+                  className="w-7 h-7 rounded-lg text-xs font-700 border transition-all"
+                  style={currentPage === item
+                    ? { background: "var(--fur-teal)", color: "white", borderColor: "var(--fur-teal)" }
+                    : { background: "white", color: "var(--fur-slate-mid)", borderColor: "var(--border)" }}>
+                  {item}
+                </button>
+              ))}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="w-7 h-7 rounded-lg flex items-center justify-center border transition-all disabled:opacity-40"
+              style={{ borderColor: "var(--border)", color: "var(--fur-slate-mid)", background: "white" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
     </div>
