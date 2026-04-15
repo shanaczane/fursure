@@ -136,8 +136,8 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
                   </td>
 
                   {/* Actions */}
-                  <td style={{ padding: "0.9rem 1.25rem", minWidth: "160px" }}>
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <td style={{ padding: "0.9rem 1.25rem", minWidth: "230px" }}>
+                    <div className="flex items-center gap-2 flex-nowrap">
                       {booking.status === "pending" && (
                         <>
                           {onEdit && (
@@ -184,7 +184,7 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
                         <>
                           {onBookAgain && (
                             <button onClick={() => onBookAgain(booking)}
-                              className="text-xs font-700 px-3 py-1.5 rounded-lg transition-colors"
+                              className="text-xs font-700 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                               style={{ background: "#DBEAFE", color: "#1E40AF" }}
                               onMouseEnter={e => (e.currentTarget.style.background = "#BFDBFE")}
                               onMouseLeave={e => (e.currentTarget.style.background = "#DBEAFE")}>
@@ -225,7 +225,7 @@ const BookingHistory: React.FC<BookingHistoryProps> = ({
                         <>
                           {onBookAgain && (
                             <button onClick={() => onBookAgain(booking)}
-                              className="text-xs font-700 px-3 py-1.5 rounded-lg transition-colors"
+                              className="text-xs font-700 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                               style={{ background: "#DBEAFE", color: "#1E40AF" }}
                               onMouseEnter={e => (e.currentTarget.style.background = "#BFDBFE")}
                               onMouseLeave={e => (e.currentTarget.style.background = "#DBEAFE")}>
