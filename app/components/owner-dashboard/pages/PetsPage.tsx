@@ -112,6 +112,7 @@ const PetsPage: React.FC = () => {
 
   // ── Error state (replaces alert()) ──────────────────────────────────────────
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof emptyForm, string>>>({});
   const [vaccinationError, setVaccinationError] = useState<string | null>(null);
 
   const [confirmDialog, setConfirmDialog] = useState({
@@ -163,6 +164,7 @@ const PetsPage: React.FC = () => {
   const handleStartAdd = () => {
     setFormData(emptyForm);
     setFormError(null);
+    setFieldErrors({});
     setIsAddingPet(true);
     setEditingPet(null);
     setSelectedPet(null);
@@ -180,6 +182,7 @@ const PetsPage: React.FC = () => {
       medicalNotes: pet.medicalNotes ?? "",
     });
     setFormError(null);
+    setFieldErrors({});
     setEditingPet(pet);
     setIsAddingPet(false);
     setSelectedPet(null);
@@ -190,33 +193,76 @@ const PetsPage: React.FC = () => {
     setIsAddingPet(false);
     setFormData(emptyForm);
     setFormError(null);
+    setFieldErrors({});
   };
 
   const handleSavePet = async () => {
-    if (!formData.name.trim() || !formData.breed.trim()) {
-      setFormError("Please fill in all required fields (Name and Breed).");
+    const errors: Partial<Record<keyof typeof emptyForm, string>> = {};
+
+    // Name
+    const nameVal = formData.name.trim();
+    if (!nameVal) {
+      errors.name = "Pet name is required.";
+    } else if (nameVal.length < 2) {
+      errors.name = "Name must be at least 2 characters.";
+    } else if (nameVal.length > 30) {
+      errors.name = "Name must be 30 characters or less.";
+    } else if (!/^[a-zA-Z0-9\s\-'.]+$/.test(nameVal)) {
+      errors.name = "Only letters, numbers, spaces, hyphens, and apostrophes are allowed.";
+    }
+
+    // Breed
+    const breedVal = formData.breed.trim();
+    if (!breedVal) {
+      errors.breed = "Breed is required.";
+    } else if (breedVal.length < 2) {
+      errors.breed = "Breed must be at least 2 characters.";
+    } else if (breedVal.length > 50) {
+      errors.breed = "Breed must be 50 characters or less.";
+    } else if (!/^[a-zA-Z\s\-]+$/.test(breedVal)) {
+      errors.breed = "Breed can only contain letters, spaces, and hyphens.";
+    }
+
+    // Age
+    if (isNaN(formData.age) || formData.age === null) {
+      errors.age = "Age is required.";
+    } else if (!Number.isInteger(formData.age)) {
+      errors.age = "Age must be a whole number.";
+    } else if (formData.age < 0 || formData.age > 100) {
+      errors.age = "Age must be between 0 and 100.";
+    }
+
+    // Weight (optional but must be a valid format if provided)
+    const weightVal = formData.weight.trim();
+    if (weightVal) {
+      if (weightVal.length > 20) {
+        errors.weight = "Weight must be 20 characters or less.";
+      } else if (!/^\d+(\.\d+)?\s*(kg|lbs?|g|pounds?|kilograms?)?$/i.test(weightVal)) {
+        errors.weight = "Enter a valid weight (e.g., 5 kg, 10 lbs, or just a number).";
+      }
+    }
+
+    // Color (optional)
+    const colorVal = formData.color.trim();
+    if (colorVal) {
+      if (colorVal.length > 40) {
+        errors.color = "Color must be 40 characters or less.";
+      } else if (!/^[a-zA-Z\s,/\-&]+$/.test(colorVal)) {
+        errors.color = "Color can only contain letters, spaces, commas, and hyphens.";
+      }
+    }
+
+    // Medical notes (optional, max 500)
+    if (formData.medicalNotes && formData.medicalNotes.length > 500) {
+      errors.medicalNotes = "Medical notes must be 500 characters or less.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setFormError("Please fix the errors below before saving.");
       return;
     }
-    if (formData.name.trim().length > 30) {
-      setFormError("Pet name must be 30 characters or less.");
-      return;
-    }
-    if (formData.breed.trim().length > 50) {
-      setFormError("Breed must be 50 characters or less.");
-      return;
-    }
-    if (formData.color && formData.color.trim().length > 40) {
-      setFormError("Color / Coat must be 40 characters or less.");
-      return;
-    }
-    if (formData.weight && formData.weight.trim().length > 20) {
-      setFormError("Weight must be 20 characters or less.");
-      return;
-    }
-    if (formData.age < 0 || formData.age > 100) {
-      setFormError("Age must be between 0 and 100 years.");
-      return;
-    }
+    setFieldErrors({});
     setFormError(null);
     try {
       if (editingPet) {
@@ -367,6 +413,12 @@ const PetsPage: React.FC = () => {
   const inputClass =
     "w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-offset-0";
   const inputStyle = { borderColor: "var(--border)", color: "var(--fur-slate)" };
+  const errStyle = (field: keyof typeof emptyForm) =>
+    fieldErrors[field] ? { borderColor: "#EF4444", color: "var(--fur-slate)" } : inputStyle;
+  const FieldError = ({ field }: { field: keyof typeof emptyForm }) =>
+    fieldErrors[field] ? (
+      <p className="text-xs mt-1" style={{ color: "#EF4444" }}>{fieldErrors[field]}</p>
+    ) : null;
 
   return (
     <div
@@ -599,8 +651,11 @@ const PetsPage: React.FC = () => {
               {formError && <div className="mb-4"><ErrorBanner message={formError} onClose={() => setFormError(null)} /></div>}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Pet Name * <span className="normal-case font-500" style={{ color: "var(--fur-slate-light)" }}>({formData.name.length}/30)</span></label>
-                  <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} maxLength={30} className={inputClass} style={inputStyle} placeholder="e.g., Max" />
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>
+                    Pet Name * <span className="normal-case font-500" style={{ color: "var(--fur-slate-light)" }}>({formData.name.length}/30)</span>
+                  </label>
+                  <input type="text" value={formData.name} onChange={e => { setFormData({ ...formData, name: e.target.value }); setFieldErrors(p => ({ ...p, name: undefined })); }} maxLength={30} className={inputClass} style={errStyle("name")} placeholder="e.g., Max" />
+                  <FieldError field="name" />
                 </div>
                 <div>
                   <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Type *</label>
@@ -613,12 +668,16 @@ const PetsPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Breed * <span className="normal-case font-500" style={{ color: "var(--fur-slate-light)" }}>({formData.breed.length}/50)</span></label>
-                  <input type="text" value={formData.breed} onChange={e => setFormData({ ...formData, breed: e.target.value })} maxLength={50} className={inputClass} style={inputStyle} placeholder="e.g., Golden Retriever" />
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>
+                    Breed * <span className="normal-case font-500" style={{ color: "var(--fur-slate-light)" }}>({formData.breed.length}/50)</span>
+                  </label>
+                  <input type="text" value={formData.breed} onChange={e => { setFormData({ ...formData, breed: e.target.value }); setFieldErrors(p => ({ ...p, breed: undefined })); }} maxLength={50} className={inputClass} style={errStyle("breed")} placeholder="e.g., Golden Retriever" />
+                  <FieldError field="breed" />
                 </div>
                 <div>
                   <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Age (years) *</label>
-                  <input type="number" min="0" max="100" value={formData.age} onChange={e => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })} className={inputClass} style={inputStyle} />
+                  <input type="number" min="0" max="100" step="1" value={formData.age} onChange={e => { setFormData({ ...formData, age: parseInt(e.target.value) || 0 }); setFieldErrors(p => ({ ...p, age: undefined })); }} className={inputClass} style={errStyle("age")} />
+                  <FieldError field="age" />
                 </div>
                 <div>
                   <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Gender</label>
@@ -630,15 +689,22 @@ const PetsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Weight</label>
-                  <input type="text" value={formData.weight} onChange={e => setFormData({ ...formData, weight: e.target.value })} maxLength={20} className={inputClass} style={inputStyle} placeholder="e.g., 5 kg" />
+                  <input type="text" value={formData.weight} onChange={e => { setFormData({ ...formData, weight: e.target.value }); setFieldErrors(p => ({ ...p, weight: undefined })); }} maxLength={20} className={inputClass} style={errStyle("weight")} placeholder="e.g., 5 kg, 10 lbs" />
+                  <FieldError field="weight" />
                 </div>
                 <div>
-                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Color / Coat <span className="normal-case font-500" style={{ color: "var(--fur-slate-light)" }}>({formData.color.length}/40)</span></label>
-                  <input type="text" value={formData.color} onChange={e => setFormData({ ...formData, color: e.target.value })} maxLength={40} className={inputClass} style={inputStyle} placeholder="e.g., Golden, White" />
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>
+                    Color / Coat <span className="normal-case font-500" style={{ color: "var(--fur-slate-light)" }}>({formData.color.length}/40)</span>
+                  </label>
+                  <input type="text" value={formData.color} onChange={e => { setFormData({ ...formData, color: e.target.value }); setFieldErrors(p => ({ ...p, color: undefined })); }} maxLength={40} className={inputClass} style={errStyle("color")} placeholder="e.g., Golden, White" />
+                  <FieldError field="color" />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>Medical Notes</label>
-                  <textarea value={formData.medicalNotes} onChange={e => setFormData({ ...formData, medicalNotes: e.target.value })} rows={3} className={inputClass} style={inputStyle} placeholder="Allergies, conditions, special care instructions..." />
+                  <label className="block text-xs font-700 mb-1.5 uppercase tracking-wide" style={{ color: "var(--fur-slate-mid)" }}>
+                    Medical Notes <span className="normal-case font-500" style={{ color: formData.medicalNotes.length > 500 ? "#EF4444" : "var(--fur-slate-light)" }}>({formData.medicalNotes.length}/500)</span>
+                  </label>
+                  <textarea value={formData.medicalNotes} onChange={e => { setFormData({ ...formData, medicalNotes: e.target.value }); setFieldErrors(p => ({ ...p, medicalNotes: undefined })); }} rows={3} className={inputClass} style={errStyle("medicalNotes")} placeholder="Allergies, conditions, special care instructions..." />
+                  <FieldError field="medicalNotes" />
                 </div>
               </div>
             </div>
