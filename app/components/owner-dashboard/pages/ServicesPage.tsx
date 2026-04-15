@@ -135,27 +135,35 @@ const ServicesPage: React.FC = () => {
                     </button>
                   ))}
                 </div>
-                <select
-                  value={filters.sortBy}
-                  onChange={(e) => handleFilterChange({ sortBy: e.target.value as "rating" | "price_asc" | "price_desc" | "distance" })}
-                  style={{
-                    border: "1.5px solid var(--border)",
-                    borderRadius: "0.75rem",
-                    padding: "0.4rem 0.75rem",
-                    fontSize: "0.8rem",
-                    fontFamily: "'Nunito', sans-serif",
-                    fontWeight: 700,
-                    color: "var(--fur-slate)",
-                    background: "white",
-                    outline: "none",
-                    cursor: "pointer",
-                    flexShrink: 0,
-                  }}>
-                  <option value="rating">Highest Rated</option>
-                  <option value="price_asc">Lowest Price</option>
-                  <option value="price_desc">Highest Price</option>
-                  <option value="distance">Nearest</option>
-                </select>
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <select
+                    value={filters.sortBy}
+                    onChange={(e) => handleFilterChange({ sortBy: e.target.value as "rating" | "price_asc" | "price_desc" | "distance" })}
+                    style={{
+                      border: "1.5px solid var(--border)",
+                      borderRadius: "0.75rem",
+                      padding: "0.4rem 2rem 0.4rem 0.75rem",
+                      fontSize: "0.8rem",
+                      fontFamily: "'Nunito', sans-serif",
+                      fontWeight: 700,
+                      color: "var(--fur-slate)",
+                      background: "white",
+                      outline: "none",
+                      cursor: "pointer",
+                      appearance: "none",
+                      WebkitAppearance: "none",
+                    }}>
+                    <option value="rating">Highest Rated</option>
+                    <option value="price_asc">Lowest Price</option>
+                    <option value="price_desc">Highest Price</option>
+                    <option value="distance">Nearest</option>
+                  </select>
+                  <span style={{ position: "absolute", right: "0.6rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--fur-slate-light)" }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </span>
+                </div>
               </div>
 
               {/* Active filters bar */}
