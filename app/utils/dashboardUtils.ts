@@ -176,10 +176,10 @@ export function getRecommendedServices(
 
   // Categories the user has previously completed bookings in
   const completedBookings = bookings.filter((b) => b.status === "completed");
-  const pastCategorySet = new Set<string>(
+  const pastCategorySet = new Set<ServiceCategory>(
     completedBookings
       .map((b) => services.find((s) => s.id === b.serviceId)?.category)
-      .filter((c): c is string => Boolean(c)),
+      .filter((c): c is ServiceCategory => c !== undefined),
   );
 
   // Service IDs the user has ever booked
