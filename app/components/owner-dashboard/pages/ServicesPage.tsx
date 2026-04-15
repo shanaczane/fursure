@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAppContext } from "@/app/contexts/AppContext";
 import { useDashboard } from "@/app/hooks/useDashboard";
 import { type Service, type ServiceCategory } from "@/app/types";
+import { getRecommendedServices } from "@/app/utils/dashboardUtils";
 import Sidebar from "../components/Sidebar";
 import TopNavbar from "../components/TopNavbar";
 
@@ -36,6 +37,11 @@ const ServicesPage: React.FC = () => {
       (b.status === "pending" || b.status === "confirmed") &&
       new Date(b.date + "T00:00:00") >= new Date(new Date().setHours(0, 0, 0, 0)),
   ).length;
+
+  const recommendations = useMemo(
+    () => getRecommendedServices(services, pets, bookings, 3),
+    [services, pets, bookings],
+  );
 
   const handleServiceClick = (service: Service) => {
     router.push(`/owner/services/${service.id}`);
@@ -81,6 +87,74 @@ const ServicesPage: React.FC = () => {
                 Browse and book trusted pet care services near you
               </p>
             </div>
+
+            {/* Recommended for You */}
+            {recommendations.length > 0 && (
+              <div className="rounded-2xl border p-5" style={{ background: "white", borderColor: "var(--border)" }}>
+                {/* Section header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "var(--fur-teal-light)" }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--fur-teal-dark)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-900 text-sm leading-tight" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
+                      Recommended for You
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                      Based on your pets &amp; booking history
+                    </p>
+                  </div>
+                </div>
+
+                {/* Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {recommendations.map(({ service, reason }) => {
+                    const colors = categoryColors[service.category] || { bg: "var(--fur-sand)", accent: "var(--fur-brown)" };
+                    return (
+                      <div
+                        key={service.id}
+                        onClick={() => handleServiceClick(service)}
+                        className="rounded-xl p-4 cursor-pointer transition-all"
+                        style={{ background: colors.bg }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.filter = "brightness(0.96)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.filter = "none"; (e.currentTarget as HTMLDivElement).style.transform = "none"; }}
+                      >
+                        {/* Reason tag */}
+                        <span className="inline-block text-xs font-700 px-2.5 py-1 rounded-full mb-3"
+                          style={{ background: "rgba(255,255,255,0.75)", color: colors.accent }}>
+                          {reason}
+                        </span>
+                        <p className="font-800 text-sm mb-0.5 truncate" style={{ color: "var(--fur-slate)" }}>
+                          {service.name}
+                        </p>
+                        <p className="text-xs truncate mb-3" style={{ color: "var(--fur-slate-light)" }}>
+                          {service.provider}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                            <span className="text-xs font-700" style={{ color: "var(--fur-slate)" }}>
+                              {service.reviews > 0 ? service.rating.toFixed(1) : "—"}
+                            </span>
+                            <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                              ({service.reviews})
+                            </span>
+                          </div>
+                          <span className="text-sm font-900" style={{ fontFamily: "'Fraunces', serif", color: colors.accent }}>
+                            ₱{service.price}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Search & Filter */}
             <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
@@ -138,7 +212,7 @@ const ServicesPage: React.FC = () => {
                 <div style={{ position: "relative", flexShrink: 0 }}>
                   <select
                     value={filters.sortBy}
-                    onChange={(e) => handleFilterChange({ sortBy: e.target.value as "rating" | "price_asc" | "price_desc" | "distance" })}
+                    onChange={(e) => handleFilterChange({ sortBy: e.target.value as "rating" | "price_asc" | "price_desc" })}
                     style={{
                       border: "1.5px solid var(--border)",
                       borderRadius: "0.75rem",
@@ -156,7 +230,6 @@ const ServicesPage: React.FC = () => {
                     <option value="rating">Highest Rated</option>
                     <option value="price_asc">Lowest Price</option>
                     <option value="price_desc">Highest Price</option>
-                    <option value="distance">Nearest</option>
                   </select>
                   <span style={{ position: "absolute", right: "0.6rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--fur-slate-light)" }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -1,9 +1,11 @@
 import {
   type Service,
   type Booking,
+  type Pet,
   type ServiceFilters,
   type BookingStatus,
   type SortOption,
+  type ServiceCategory,
 } from "@/app/types";
 
 export const filterServices = (
@@ -147,6 +149,95 @@ export const formatRelativeDate = (date: string): string => {
 
 export const formatPrice = (price: number, unit: string): string =>
   `₱${price} ${unit}`;
+
+// ─── Recommendation engine ────────────────────────────────────────────────────
+
+const PET_CATEGORY_AFFINITY: Record<Pet["type"], ServiceCategory[]> = {
+  dog:    ["grooming", "walking", "training", "boarding", "daycare", "veterinary"],
+  cat:    ["grooming", "veterinary", "boarding"],
+  bird:   ["veterinary"],
+  rabbit: ["veterinary", "grooming"],
+  other:  ["veterinary"],
+};
+
+export interface RecommendedService {
+  service: Service;
+  reason: string;
+  score: number;
+}
+
+export function getRecommendedServices(
+  services: Service[],
+  pets: Pet[],
+  bookings: Booking[],
+  limit = 3,
+): RecommendedService[] {
+  const petTypes = [...new Set(pets.map((p) => p.type))];
+
+  // Categories the user has previously completed bookings in
+  const completedBookings = bookings.filter((b) => b.status === "completed");
+  const pastCategorySet = new Set<string>(
+    completedBookings
+      .map((b) => services.find((s) => s.id === b.serviceId)?.category)
+      .filter((c): c is string => Boolean(c)),
+  );
+
+  // Service IDs the user has ever booked
+  const everBookedIds = new Set(bookings.map((b) => b.serviceId));
+
+  // Service IDs with an active booking right now (exclude from recommendations)
+  const activeStatuses: BookingStatus[] = [
+    "pending", "confirmed", "awaiting_downpayment", "payment_submitted", "rescheduled",
+  ];
+  const activeServiceIds = new Set(
+    bookings.filter((b) => activeStatuses.includes(b.status)).map((b) => b.serviceId),
+  );
+
+  const scored: RecommendedService[] = services
+    .filter((s) => !activeServiceIds.has(s.id))
+    .map((service) => {
+      let score = 0;
+      let reason = "";
+
+      // Pet type match
+      const matchingPets = pets.filter((p) =>
+        PET_CATEGORY_AFFINITY[p.type]?.includes(service.category),
+      );
+      if (matchingPets.length > 0) {
+        score += 3;
+        const names = matchingPets.slice(0, 2).map((p) => p.name).join(" & ");
+        reason = `Great for ${names}`;
+      }
+
+      // Past booking category match
+      if (pastCategorySet.has(service.category)) {
+        score += 2;
+        if (!reason) reason = "Based on your booking history";
+      }
+
+      // Rating bonus
+      if (service.rating >= 4.5) {
+        score += 2;
+        if (!reason) reason = "Highly rated";
+      } else if (service.rating >= 4.0) {
+        score += 1;
+        if (!reason) reason = "Top rated";
+      }
+
+      // Never booked before = slight novelty boost
+      if (!everBookedIds.has(service.id)) {
+        score += 1;
+        if (!reason) reason = "New for you";
+      }
+
+      return { service, score, reason: reason || "Popular service" };
+    })
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  return scored;
+}
 
 export const calculateBookingStats = (bookings: Booking[]) => ({
   total: bookings.length,
