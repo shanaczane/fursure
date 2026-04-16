@@ -36,7 +36,6 @@ const ProviderProfilePage: React.FC = () => {
     contactLink: user.contactLink || "",
   });
 
-  // ✅ Fetch fresh data from Supabase on mount — reads email from providers first, falls back to users
   useEffect(() => {
     const fetchProviderData = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -55,7 +54,6 @@ const ProviderProfilePage: React.FC = () => {
           .maybeSingle(),
       ]);
 
-      // ✅ Email: prefer providers.email, fall back to users.email then auth email
       const resolvedEmail =
         provRow?.email && provRow.email.trim() !== ""
           ? provRow.email
@@ -63,7 +61,6 @@ const ProviderProfilePage: React.FC = () => {
           ? userRow.email
           : authUser.email ?? "";
 
-      // Check localStorage for any unsaved local changes
       let localData: Record<string, string> | null = null;
       try {
         const saved = localStorage.getItem(getStorageKey(authUser.id));
@@ -93,6 +90,9 @@ const ProviderProfilePage: React.FC = () => {
   const [savingPolicy, setSavingPolicy] = useState(false);
   const [policySaved, setPolicySaved] = useState(false);
 
+  // Deposit deadline: stored as a custom string set by provider
+  const depositDeadlineText: string = (policyForm as any).depositDeadlineText ?? "";
+
   useEffect(() => { setPolicyForm(policy); }, [policy]);
 
   const showSuccess = (msg: string) => {
@@ -111,7 +111,6 @@ const ProviderProfilePage: React.FC = () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) throw new Error("Not authenticated");
 
-      // ✅ Save all fields including email to providers table
       await upsertProviderProfileData(authUser.id, {
         name: formData.name,
         email: formData.email,
@@ -171,11 +170,6 @@ const ProviderProfilePage: React.FC = () => {
       setSavingPolicy(false);
     }
   };
-
-  const isFullUpfront = policyForm.depositPercentage === 100;
-  const depositAmountLabel = isFullUpfront
-    ? "the full service amount"
-    : `${policyForm.depositPercentage}% of the total fee`;
 
   const TAB_ICONS = {
     profile: (
@@ -370,37 +364,53 @@ const ProviderProfilePage: React.FC = () => {
               </div>
             )}
 
+            {/* ─────────────────────────────────────────────────────── */}
+            {/* POLICIES TAB — simplified                               */}
+            {/* ─────────────────────────────────────────────────────── */}
             {activeTab === "policies" && (
               <div className="space-y-5">
                 <p className="text-sm" style={{ color: "var(--fur-slate-light)" }}>
-                  These rules are shown to pet owners before they confirm a booking. Set them clearly so there are no surprises.
+                  These are shown to pet owners before they confirm a booking.
                 </p>
 
+                {/* Cash-only notice */}
                 <div className="flex gap-3 p-4 rounded-xl border" style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}>
-                  <span className="text-lg shrink-0">💵</span>
+                  <span style={{ fontSize: 16 }}>💵</span>
                   <div>
                     <p className="text-sm font-700" style={{ color: "#92400E" }}>Cash Payments Only</p>
                     <p className="text-xs mt-0.5" style={{ color: "#B45309" }}>
-                      All transactions on FurSure are cash-based. Pet owners pay you directly in cash — no online or card payments are used.
+                      All payments are handled in cash. Pet owners pay you directly — no cards or online transfers.
                     </p>
                   </div>
                 </div>
 
+                {/* ── Down Payment ── */}
                 <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)" }}>
                   <div>
-                    <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>💰 Down Payment</p>
+                    <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
+                      💰 Down Payment
+                    </p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
-                      Require pet owners to pay a portion of the fee in cash within <strong>24 hours</strong> of booking to confirm their slot.
+                      A down payment is a partial amount pet owners pay upfront to secure their booking slot.
                     </p>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-xl" style={{ background: "var(--fur-cream)", border: "1px solid var(--border)" }}>
+
+                  {/* Require deposit toggle */}
+                  <div className="flex items-center justify-between p-4 rounded-xl"
+                    style={{ background: "var(--fur-cream)", border: "1px solid var(--border)" }}>
                     <div>
-                      <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Require a down payment?</p>
+                      <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>
+                        Ask for a down payment?
+                      </p>
                       <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
-                        {policyForm.depositRequired ? "On — pet owners must pay a deposit within 24 hrs to confirm." : "Off — you manually accept each booking, no deposit needed."}
+                        {policyForm.depositRequired
+                          ? "Yes — pet owners pay a deposit before their booking is confirmed."
+                          : "No — pet owners pay the full amount on the day of service."}
                       </p>
                     </div>
-                    <button type="button" onClick={() => setPolicyForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))}
+                    <button
+                      type="button"
+                      onClick={() => setPolicyForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))}
                       className="relative shrink-0 ml-4 rounded-full transition-colors duration-200"
                       style={{ width: 48, height: 26, background: policyForm.depositRequired ? "var(--fur-teal)" : "var(--fur-mist)" }}>
                       <span className="absolute rounded-full bg-white shadow-md transition-all duration-200"
@@ -409,12 +419,18 @@ const ProviderProfilePage: React.FC = () => {
                   </div>
 
                   {policyForm.depositRequired && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
+                    <div className="space-y-5">
+
+                      {/* How much */}
+                      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>How much is the deposit?</p>
-                          <span className="text-sm font-900 px-2.5 py-1 rounded-lg" style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
-                            {policyForm.depositPercentage === 100 ? "Full payment" : `${policyForm.depositPercentage}%`}
+                          <div>
+                            <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>How much is the down payment?</p>
+                            <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>Choose what percentage of the total price pet owners pay upfront.</p>
+                          </div>
+                          <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
+                            style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+                            {policyForm.depositPercentage === 100 ? "Full amount" : `${policyForm.depositPercentage}%`}
                           </span>
                         </div>
                         <div className="grid grid-cols-4 gap-2">
@@ -429,102 +445,126 @@ const ProviderProfilePage: React.FC = () => {
                             </button>
                           ))}
                         </div>
+                        <div className="p-3 rounded-lg text-xs" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>
+                          {policyForm.depositPercentage === 100
+                            ? "Pet owners pay 100% upfront. No remaining balance on the day."
+                            : `Pet owners pay ${policyForm.depositPercentage}% now to secure the booking. The remaining ${100 - policyForm.depositPercentage}% is paid on the day of service.`}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between p-4 rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}>
-                          <div>
-                            <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Refundable if cancelled?</p>
-                            <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>Will you return the deposit if the owner cancels?</p>
-                          </div>
-                          <button type="button" onClick={() => setPolicyForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))}
+
+                      {/* Payment deadline — slider */}
+                      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
+                        <div>
+                          <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>
+                            How long does the pet owner have to pay the deposit?
+                          </p>
+                          <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
+                            Slide to set a deadline. After this time, the booking slot may be released.
+                          </p>
+                        </div>
+
+                        {/* Slider */}
+                        {(() => {
+                          const STEPS = [1, 2, 3, 6, 12, 24, 48, 72];
+                          const currentHours: number = (policyForm as any).depositDeadlineHours ?? 24;
+                          const stepIndex = Math.max(0, STEPS.indexOf(currentHours) === -1 ? 5 : STEPS.indexOf(currentHours));
+
+                          const label = currentHours === 1
+                            ? "Within 1 hour"
+                            : currentHours <= 12
+                            ? `Within ${currentHours} hours`
+                            : currentHours === 24
+                            ? "Within 24 hours (1 day)"
+                            : currentHours === 48
+                            ? "Within 48 hours (2 days)"
+                            : "Within 72 hours (3 days)";
+
+                          return (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>1 hour</span>
+                                <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
+                                  style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+                                  {label}
+                                </span>
+                                <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>3 days</span>
+                              </div>
+                              <input
+                                type="range"
+                                min={0}
+                                max={STEPS.length - 1}
+                                step={1}
+                                value={stepIndex}
+                                onChange={(e) => {
+                                  const hrs = STEPS[parseInt(e.target.value)];
+                                  setPolicyForm((prev) => ({ ...prev, depositDeadlineHours: hrs } as any));
+                                }}
+                                className="w-full"
+                                suppressHydrationWarning
+                              />
+                              <div className="p-3 rounded-lg text-xs" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>
+                                Pet owners will see: <span className="font-700">"{label} of booking confirmation"</span>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Refundable toggle */}
+                      <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
+                        <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Is the down payment refundable?</p>
+                        <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                          If a pet owner cancels their booking, will you return the deposit?
+                        </p>
+                        <div className="flex items-center justify-between p-3 rounded-xl"
+                          style={{ background: "var(--fur-cream)", border: "1px solid var(--border)" }}>
+                          <p className="text-sm font-700" style={{ color: policyForm.depositRefundable ? "#059669" : "#DC2626" }}>
+                            {policyForm.depositRefundable ? "Yes — refundable" : "No — non-refundable"}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setPolicyForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))}
                             className="relative shrink-0 ml-4 rounded-full transition-colors duration-200"
                             style={{ width: 48, height: 26, background: policyForm.depositRefundable ? "#059669" : "var(--fur-rose)" }}>
                             <span className="absolute rounded-full bg-white shadow-md transition-all duration-200"
                               style={{ width: 18, height: 18, top: 4, left: policyForm.depositRefundable ? 26 : 4 }} />
                           </button>
                         </div>
-                        <p className="text-xs px-1 font-600" style={{ color: policyForm.depositRefundable ? "#059669" : "#DC2626" }}>
-                          {policyForm.depositRefundable ? "✅ Refundable — you return the deposit if the owner cancels." : "❌ Non-refundable — you keep the deposit if the owner cancels."}
-                        </p>
+                        <div className="p-3 rounded-lg text-xs" style={{
+                          background: policyForm.depositRefundable ? "#D1FAE5" : "#FEE2E2",
+                          color: policyForm.depositRefundable ? "#065F46" : "#991B1B"
+                        }}>
+                          {policyForm.depositRefundable
+                            ? "Pet owners will see: \"Down payment is refundable if you cancel.\""
+                            : "Pet owners will see: \"Down payment is non-refundable if you cancel.\""}
+                        </div>
                       </div>
+
                     </div>
                   )}
                 </div>
 
+                {/* ── Additional Notes ── */}
                 <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: "var(--border)" }}>
                   <div>
-                    <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>⏰ Cancellation Notice</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>Minimum advance notice required before a pet owner can cancel their booking.</p>
+                    <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
+                      📝 Additional Notes
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
+                      Anything else pet owners should know before booking. This is shown directly on your booking page.
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Notice required</p>
-                    <span className="text-sm font-900 px-2.5 py-1 rounded-lg" style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
-                      {policyForm.cancellationHoursNotice === 0 ? "Anytime" : `${policyForm.cancellationHoursNotice} hrs`}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[0, 12, 24, 48].map((hrs) => (
-                      <button key={hrs} type="button"
-                        onClick={() => setPolicyForm((prev) => ({ ...prev, cancellationHoursNotice: hrs }))}
-                        className="py-2.5 rounded-xl text-sm font-700 border-2 transition-all"
-                        style={policyForm.cancellationHoursNotice === hrs
-                          ? { borderColor: "var(--fur-teal)", background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }
-                          : { borderColor: "var(--border)", background: "white", color: "var(--fur-slate-mid)" }}>
-                        {hrs === 0 ? "Anytime" : `${hrs}h`}
-                      </button>
-                    ))}
-                  </div>
-                  <div>
-                    <input type="range" min={0} max={72} step={1}
-                      value={policyForm.cancellationHoursNotice}
-                      onChange={(e) => setPolicyForm((prev) => ({ ...prev, cancellationHoursNotice: Number(e.target.value) }))}
-                      className="w-full" style={{ accentColor: "var(--fur-teal)" }} suppressHydrationWarning />
-                    <div className="flex justify-between text-xs mt-1" style={{ color: "var(--fur-slate-light)" }}>
-                      <span>Anytime</span><span>24 hrs</span><span>48 hrs</span><span>72 hrs</span>
-                    </div>
-                  </div>
-                  <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
-                    {policyForm.cancellationHoursNotice === 0 ? "Pet owners can cancel at any time, even last minute." : `Pet owners must notify you at least ${policyForm.cancellationHoursNotice} hours before the service to cancel.`}
-                  </p>
-                </div>
-
-                <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: "var(--border)" }}>
-                  <div>
-                    <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>📝 Additional Notes</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>Extra reminders or instructions shown to pet owners on the booking form.</p>
-                  </div>
-                  <textarea value={policyForm.additionalNotes ?? ""} rows={3}
+                  <textarea
+                    value={policyForm.additionalNotes ?? ""}
+                    rows={3}
                     onChange={(e) => setPolicyForm((prev) => ({ ...prev, additionalNotes: e.target.value }))}
-                    placeholder="e.g., Please bring vaccination records. Prepare the exact cash amount."
-                    className="fur-input resize-none" suppressHydrationWarning />
+                    placeholder="e.g. Please bring vaccination records. Prepare the exact cash amount."
+                    className="fur-input resize-none"
+                    suppressHydrationWarning
+                  />
                 </div>
 
-                <div className="rounded-xl border p-5 space-y-2.5" style={{ background: "#F0F9FF", borderColor: "#BAE6FD" }}>
-                  <p className="text-xs font-900 uppercase tracking-widest" style={{ color: "#0369A1" }}>📋 What pet owners will see</p>
-                  <ul className="space-y-2 text-sm" style={{ color: "#0C4A6E" }}>
-                    <li className="flex gap-2"><span className="shrink-0">💵</span><span>Payment is <strong>cash only</strong> — paid directly to you.</span></li>
-                    {policyForm.depositRequired ? (
-                      <>
-                        <li className="flex gap-2"><span className="shrink-0">💰</span><span>A cash down payment of <strong>{depositAmountLabel}</strong> is required within 24 hours of booking — <strong>{policyForm.depositRefundable ? "refundable" : "non-refundable"}</strong> if cancelled.</span></li>
-                        <li className="flex gap-2"><span className="shrink-0">⏳</span><span>Booking stays <strong>Pending</strong> until the down payment is received.</span></li>
-                        <li className="flex gap-2"><span className="shrink-0">❌</span><span>Booking is <strong>automatically declined</strong> if no down payment within 24 hours.</span></li>
-                        <li className="flex gap-2"><span className="shrink-0">✏️</span><span>Owner can cancel or edit on their own while still <strong>Pending</strong> and within <strong>24 hours</strong> of booking.</span></li>
-                        <li className="flex gap-2"><span className="shrink-0">🤝</span><span>Once <strong>confirmed</strong>, edits or cancellations require your approval.</span></li>
-                      </>
-                    ) : (
-                      <>
-                        <li className="flex gap-2"><span className="shrink-0">✅</span><span>No down payment — pay the full amount in cash on the day of service.</span></li>
-                        <li className="flex gap-2"><span className="shrink-0">⏳</span><span>Booking stays <strong>Pending</strong> until you manually accept it.</span></li>
-                        <li className="flex gap-2"><span className="shrink-0">✏️</span><span>Owner can cancel or edit on their own while still <strong>Pending</strong> and within <strong>24 hours</strong> of booking.</span></li>
-                        <li className="flex gap-2"><span className="shrink-0">🤝</span><span>Once <strong>confirmed</strong>, edits or cancellations require your approval.</span></li>
-                      </>
-                    )}
-                    <li className="flex gap-2"><span className="shrink-0">🗑️</span><span>Bookings can only be deleted when <strong>Cancelled</strong> or <strong>Completed</strong>.</span></li>
-                    <li className="flex gap-2"><span className="shrink-0">🔔</span><span>{policyForm.cancellationHoursNotice === 0 ? "Owner may cancel at any time." : `Cancellations must be made at least ${policyForm.cancellationHoursNotice} hours in advance.`}</span></li>
-                    {policyForm.additionalNotes && <li className="flex gap-2"><span className="shrink-0">📌</span><span>{policyForm.additionalNotes}</span></li>}
-                  </ul>
-                </div>
-
+                {/* Save */}
                 <div className="flex items-center gap-3 pt-1">
                   <button onClick={handleSavePolicy} disabled={savingPolicy} className="btn-primary px-6 py-2.5 text-sm disabled:opacity-60">
                     {savingPolicy ? "Saving..." : "Save Policies"}
@@ -540,6 +580,7 @@ const ProviderProfilePage: React.FC = () => {
                 </div>
               </div>
             )}
+            {/* ─────────────────────────────────────────────────────── */}
 
             {activeTab === "security" && (
               <div className="space-y-4">

@@ -38,18 +38,37 @@ const DAY_INDEX: Record<string, number> = {
   sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
 };
 
-function parseHour(h: string, meridiem: string): number {
-  let hour = parseInt(h);
-  const pm = meridiem.toLowerCase() === "pm";
-  if (pm && hour !== 12) hour += 12;
-  if (!pm && hour === 12) hour = 0;
+/**
+ * Parse a time string into an hour (0-23).
+ * Handles all formats produced by AvailabilitySchedule:
+ *   "9AM"  "9:00 AM"  "9:00AM"  "12:00 PM"  "17:00"
+ * Returns -1 if unparseable.
+ */
+function parseTimeToHour(timeStr: string): number {
+  if (!timeStr) return -1;
+  const s = timeStr.trim().toLowerCase().replace(/\s+/g, "");
+
+  // e.g. "9am" | "9:00am" | "12:00pm" | "17:00" | "9"
+  const match = s.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
+  if (!match) return -1;
+
+  let hour = parseInt(match[1]);
+  const meridiem = match[3];
+
+  if (meridiem === "pm" && hour !== 12) hour += 12;
+  if (meridiem === "am" && hour === 12) hour = 0;
+  // No meridiem -> treat as 24h value as-is
+
   return hour;
 }
 
 /**
- * Given a service's availability strings (e.g. "Mon-Sat: 9AM-6PM")
- * and a selected date, returns { startHour, endHour } for that day,
- * or null if the provider is not available on that day.
+ * Given a service's availability strings and a selected date, returns
+ * { startHour, endHour } for that day, or null if the provider is closed.
+ *
+ * Handles BOTH formats:
+ *   Legacy  : "Mon-Sat: 9AM-6PM"
+ *   Current : "Mon, Tue, Wed, Thu, Fri, Sat: 9:00 AM – 6:00 PM"
  */
 function getAvailabilityForDate(
   availability: string[],
@@ -57,30 +76,70 @@ function getAvailabilityForDate(
 ): { startHour: number; endHour: number } | null {
   if (!availability || availability.length === 0) return { startHour: 0, endHour: 24 };
 
-  // Use local date to avoid timezone shifts on date-only strings
   const [y, m, d] = dateStr.split("-").map(Number);
-  const dayOfWeek = new Date(y, m - 1, d).getDay();
+  const dayOfWeek = new Date(y, m - 1, d).getDay(); // 0 = Sun
 
   for (const slot of availability) {
-    // Matches "Mon-Sat: 9AM-6PM" or "Mon: 9AM-6PM"
-    const match = slot.match(
-      /^([a-z]+)(?:-([a-z]+))?\s*:\s*(\d+)(am|pm)-(\d+)(am|pm)/i,
-    );
-    if (!match) continue;
+    // Split on the FIRST colon to separate "days part" from "time part".
+    // e.g. "Mon, Tue, Wed: 9:00 AM – 6:00 PM"
+    //       ^^^^^^^^^^^^ days      ^^^^^^^^^^^^ times
+    const colonIdx = slot.indexOf(":");
+    if (colonIdx === -1) continue;
 
-    const [, d1, d2, h1, m1, h2, m2] = match;
-    const start = DAY_INDEX[d1.toLowerCase()];
-    const end   = d2 ? DAY_INDEX[d2.toLowerCase()] : start;
-    if (start === undefined || end === undefined) continue;
+    const daysPart = slot.slice(0, colonIdx).trim();
+    const timePart = slot.slice(colonIdx + 1).trim();
 
-    const inRange =
-      end >= start
-        ? dayOfWeek >= start && dayOfWeek <= end
-        : dayOfWeek >= start || dayOfWeek <= end; // wraps Sat→Sun
+    // ── Parse the time range ─────────────────────────────────────────────
+    // Accept hyphen "-" and en/em dash "–" / "—" as the range separator.
+    const timeSepMatch = timePart.match(/^(.+?)\s*[-\u2013\u2014]\s*(.+)$/);
+    if (!timeSepMatch) continue;
 
-    if (!inRange) continue;
+    const startHour = parseTimeToHour(timeSepMatch[1].trim());
+    const endHour   = parseTimeToHour(timeSepMatch[2].trim());
+    if (startHour === -1 || endHour === -1) continue;
 
-    return { startHour: parseHour(h1, m1), endHour: parseHour(h2, m2) };
+    // ── Parse the days part ──────────────────────────────────────────────
+    // Possible formats:
+    //   "Mon-Sat"           (hyphenated range)
+    //   "Mon, Tue, Wed"     (comma-separated list)
+    //   "Mon"               (single day)
+    //
+    // Strategy: split on commas and/or spaces, then check each token for a
+    // hyphenated range (e.g. "Mon-Sat") or a plain 3-letter day abbreviation.
+
+    const activeDays = new Set<number>();
+    const tokens = daysPart.split(/[\s,]+/).map((t) => t.toLowerCase());
+
+    for (const token of tokens) {
+      if (!token) continue;
+
+      // Hyphenated range like "mon-sat"
+      const rangeMatch = token.match(/^([a-z]{3})-([a-z]{3})$/);
+      if (rangeMatch) {
+        const from = DAY_INDEX[rangeMatch[1]];
+        const to   = DAY_INDEX[rangeMatch[2]];
+        if (from === undefined || to === undefined) continue;
+
+        if (to >= from) {
+          for (let di = from; di <= to; di++) activeDays.add(di);
+        } else {
+          // Wraps around week end (e.g. Sat-Mon)
+          for (let di = from; di <= 6; di++) activeDays.add(di);
+          for (let di = 0; di <= to; di++) activeDays.add(di);
+        }
+        continue;
+      }
+
+      // Single 3-letter day abbreviation
+      const abbrev = token.slice(0, 3);
+      if (DAY_INDEX[abbrev] !== undefined) {
+        activeDays.add(DAY_INDEX[abbrev]);
+      }
+    }
+
+    if (activeDays.has(dayOfWeek)) {
+      return { startHour, endHour };
+    }
   }
 
   return null; // provider not available this day
@@ -90,18 +149,17 @@ function getAvailableSlots(dateStr: string, availability?: string[]) {
   const today = new Date().toISOString().split("T")[0];
   const nowHour = new Date().getHours();
 
-  // Filter by provider availability
   let slots = TIME_SLOTS;
+
   if (availability && availability.length > 0) {
     const avail = getAvailabilityForDate(availability, dateStr);
-    if (!avail) return []; // not open this day
+    if (!avail) return [];
     slots = slots.filter((s) => {
       const h = parseInt(s.value);
       return h >= avail.startHour && h < avail.endHour;
     });
   }
 
-  // Also remove past slots if today
   if (dateStr === today) {
     slots = slots.filter((s) => parseInt(s.value) > nowHour);
   }
@@ -118,7 +176,7 @@ function getFirstAvailableTime(dateStr: string, availability?: string[]): string
 interface TermRowProps {
   label: string;
   value: React.ReactNode;
-  accent?: string; // border-left color
+  accent?: string;
 }
 const TermRow: React.FC<TermRowProps> = ({ label, value, accent = "#E5E7EB" }) => (
   <div
@@ -228,16 +286,16 @@ const BookingForm: React.FC<BookingFormProps> = ({
         onClick={onClose}
       />
       <div className="flex min-h-full items-center justify-center p-4">
+        {/* ↓ wider: was max-w-md (28rem), now max-w-xl (36rem) */}
         <div
-          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col"
-          style={{ maxHeight: "90vh" }}
+          className="relative bg-white rounded-2xl shadow-2xl w-full flex flex-col"
+          style={{ maxWidth: "580px", maxHeight: "90vh" }}
         >
           {/* ── Modal header: step bar + close ── */}
           <div
-            className="flex items-center gap-2 px-5 py-4 border-b shrink-0"
+            className="flex items-center gap-2 px-6 py-4 border-b shrink-0"
             style={{ borderColor: "var(--border)", background: "var(--fur-cream)", borderRadius: "1rem 1rem 0 0" }}
           >
-            {/* Step indicators */}
             {policy ? (
               <>
                 {(["details", "policy"] as const).map((s, i) => {
@@ -273,10 +331,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
               </p>
             )}
 
-            {/* Spacer pushes X to the far right */}
             <div className="flex-1" />
 
-            {/* Close button */}
             <button
               onClick={onClose}
               className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors"
@@ -291,7 +347,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           </div>
 
           {/* ── Scrollable body ── */}
-          <div className="overflow-y-auto flex-1 px-5 py-5">
+          <div className="overflow-y-auto flex-1 px-6 py-5">
 
             {/* ── Step 1: Details ── */}
             {step === "details" && (
@@ -352,48 +408,49 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     </div>
                   )}
 
-                  {/* Date */}
-                  <div>
-                    <label className="block text-sm font-700 mb-1.5" style={{ color: "var(--fur-slate)" }}>
-                      Select Date <span style={{ color: "var(--fur-rose)" }}>*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => handleDateChange(e.target.value)}
-                      min={todayStr}
-                      className="w-full px-4 py-3 rounded-xl text-sm border"
-                      style={{ borderColor: "var(--border)", color: "var(--fur-slate)", background: "white" }}
-                      required
-                    />
-                  </div>
-
-                  {/* Time */}
-                  <div>
-                    <label className="block text-sm font-700 mb-1.5" style={{ color: "var(--fur-slate)" }}>
-                      Select Time <span style={{ color: "var(--fur-rose)" }}>*</span>
-                    </label>
-                    {providerClosedThisDay ? (
-                      <div className="rounded-xl px-4 py-3 border text-sm" style={{ background: "#FEF2F2", borderColor: "#FECACA", color: "#991B1B" }}>
-                        The provider is not available on this day — please choose a different date.
-                      </div>
-                    ) : noSlotsLeft ? (
-                      <div className="rounded-xl px-4 py-3 border text-sm" style={{ background: "#FFFBEB", borderColor: "#FDE68A", color: "#92400E" }}>
-                        No time slots left for today — please pick a future date.
-                      </div>
-                    ) : (
-                      <select
-                        value={selectedTime}
-                        onChange={(e) => setSelectedTime(e.target.value)}
+                  {/* Date + Time — side by side on the wider modal */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-700 mb-1.5" style={{ color: "var(--fur-slate)" }}>
+                        Select Date <span style={{ color: "var(--fur-rose)" }}>*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => handleDateChange(e.target.value)}
+                        min={todayStr}
                         className="w-full px-4 py-3 rounded-xl text-sm border"
-                        style={{ borderColor: "var(--border)", color: "var(--fur-slate)", background: "white", fontFamily: "'Nunito', sans-serif" }}
+                        style={{ borderColor: "var(--border)", color: "var(--fur-slate)", background: "white" }}
                         required
-                      >
-                        {availableSlots.map((slot) => (
-                          <option key={slot.value} value={slot.value}>{slot.label}</option>
-                        ))}
-                      </select>
-                    )}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-700 mb-1.5" style={{ color: "var(--fur-slate)" }}>
+                        Select Time <span style={{ color: "var(--fur-rose)" }}>*</span>
+                      </label>
+                      {providerClosedThisDay ? (
+                        <div className="rounded-xl px-4 py-3 border text-sm" style={{ background: "#FEF2F2", borderColor: "#FECACA", color: "#991B1B" }}>
+                          Not available on this day — choose another date.
+                        </div>
+                      ) : noSlotsLeft ? (
+                        <div className="rounded-xl px-4 py-3 border text-sm" style={{ background: "#FFFBEB", borderColor: "#FDE68A", color: "#92400E" }}>
+                          No slots left — pick a future date.
+                        </div>
+                      ) : (
+                        <select
+                          value={selectedTime}
+                          onChange={(e) => setSelectedTime(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl text-sm border"
+                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", background: "white", fontFamily: "'Nunito', sans-serif" }}
+                          required
+                        >
+                          {availableSlots.map((slot) => (
+                            <option key={slot.value} value={slot.value}>{slot.label}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
                   </div>
 
                   {/* Notes */}
@@ -472,10 +529,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                   </p>
                 </div>
 
-                {/* ── Terms — max 4 rows ── */}
                 <div className="space-y-2.5 mb-5">
-
-                  {/* 1. Payment method */}
                   <TermRow
                     label="Payment"
                     accent="var(--fur-teal)"
@@ -494,7 +548,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     }
                   />
 
-                  {/* 2. Booking flow */}
                   <TermRow
                     label="Booking flow"
                     accent="#F59E0B"
@@ -513,7 +566,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     }
                   />
 
-                  {/* 3. Cancellation */}
                   <TermRow
                     label="Cancellation"
                     accent="#A78BFA"
@@ -532,7 +584,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     }
                   />
 
-                  {/* 4. Provider notes — only if present */}
                   {additionalNotes && (
                     <TermRow
                       label="Provider note"
@@ -542,7 +593,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
                   )}
                 </div>
 
-                {/* Agree checkbox */}
                 <label
                   className="flex items-start gap-3 cursor-pointer mb-4 select-none rounded-xl px-4 py-3 border"
                   style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}
