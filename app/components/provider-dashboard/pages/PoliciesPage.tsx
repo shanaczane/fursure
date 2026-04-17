@@ -7,24 +7,26 @@ import type { ProviderPolicy } from "../types";
 
 const PoliciesPage: React.FC = () => {
   const { policy, savePolicy } = useProviderContext();
-  const [form, setForm] = useState<ProviderPolicy>(policy);
+  const [policyForm, setPolicyForm] = useState<ProviderPolicy>(policy);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Sync form when policy loads from Supabase
   useEffect(() => {
-    setForm(policy);
+    setPolicyForm(policy);
   }, [policy]);
 
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
-      await savePolicy(form);
+      await savePolicy(policyForm);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      alert("Failed to save policies. Please try again.");
+      setSaveError("Failed to save policies. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -32,372 +34,289 @@ const PoliciesPage: React.FC = () => {
 
   return (
     <ProviderLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
-
-        {/* Header */}
+      <div className="space-y-5 max-w-4xl">
         <div>
-          <h1
-            className="text-2xl md:text-3xl mb-1"
-            style={{ fontFamily: "'Fraunces', serif", fontWeight: 900, color: "var(--fur-slate)" }}
-          >
-            My Policies
-          </h1>
-          <p className="text-gray-600 text-sm">
-            Set your booking and payment rules. These will be clearly shown to pet owners before
-            they confirm a booking.
-          </p>
+          <h1 style={{ fontSize: "1.65rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 3 }}>Policies</h1>
+          <p className="text-gray-500 text-sm">These are shown to pet owners before they confirm a booking.</p>
         </div>
 
-        {/* Payment Method — Cash Only Notice */}
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-5 flex gap-3">
-          <span className="text-2xl">💵</span>
-          <div>
-            <p className="text-sm font-bold text-amber-900">Cash Payment Only</p>
-            <p className="text-sm text-amber-800 mt-0.5">
-              All transactions on this platform are <strong>cash-based</strong>. Pet owners pay you
-              directly — in person or via cash on the day of service (or as arranged). No online
-              payment processing is used.
-            </p>
+        {saved && (
+          <div className="flex items-center gap-3 p-4 rounded-xl border"
+            style={{ background: "#D1FAE5", borderColor: "#6EE7B7", color: "#065F46" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span className="font-700 text-sm">Policies saved successfully!</span>
           </div>
-        </div>
+        )}
 
-        {/* Down Payment / Deposit Policy */}
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-5">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">💰 Down Payment Requirement</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              A down payment is a partial cash payment made before the service date to confirm a
-              booking. If you require one, the pet owner must pay it within{" "}
-              <strong>24 hours</strong> of booking — or their booking will be{" "}
-              <strong className="text-red-600">automatically declined</strong>.
-            </p>
+        {saveError && (
+          <div className="flex items-center gap-3 p-4 rounded-xl border"
+            style={{ background: "#FEE2E2", borderColor: "#FCA5A5", color: "#991B1B" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span className="font-700 text-sm">{saveError}</span>
           </div>
+        )}
 
-          {/* Require deposit toggle */}
-          <div className="flex items-center justify-between border border-gray-100 rounded-lg p-4 bg-gray-50">
-            <div>
-              <p className="text-sm font-semibold text-gray-800">Require a down payment?</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Pet owners must pay a cash deposit to secure their booking.
-              </p>
+        <div className="rounded-2xl border overflow-hidden" style={{ background: "white", borderColor: "var(--border)" }}>
+          <div className="p-6 space-y-5">
+
+            {/* Cash-only notice */}
+            <div className="flex gap-3 p-4 rounded-xl border" style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}>
+              <span style={{ fontSize: 16 }}>💵</span>
+              <div>
+                <p className="text-sm font-700" style={{ color: "#92400E" }}>Cash Payments Only</p>
+                <p className="text-xs mt-0.5" style={{ color: "#B45309" }}>
+                  All payments are handled in cash. Pet owners pay you directly — no cards or online transfers.
+                </p>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))
-              }
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                form.depositRequired ? "bg-blue-600" : "bg-gray-200"
-              }`}
-            >
-              <span
-                className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                  form.depositRequired ? "translate-x-7" : "translate-x-1"
-                }`}
-              />
-            </button>
-          </div>
 
-          {form.depositRequired && (
-            <>
-              {/* 24-hour rule info box */}
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-                <span className="text-lg mt-0.5">⏰</span>
+            {/* ── Down Payment ── */}
+            <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)" }}>
+              <div>
+                <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
+                  💰 Down Payment
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
+                  A down payment is a partial amount pet owners pay upfront to secure their booking slot.
+                </p>
+              </div>
+
+              {/* Require deposit toggle */}
+              <div className="flex items-center justify-between p-4 rounded-xl"
+                style={{ background: "var(--fur-cream)", border: "1px solid var(--border)" }}>
                 <div>
-                  <p className="text-sm font-bold text-red-800">24-Hour Payment Rule</p>
-                  <p className="text-sm text-red-700 mt-0.5">
-                    Once a booking is made, the pet owner has exactly{" "}
-                    <strong>24 hours</strong> to hand over the down payment in cash. If they miss
-                    this window, the booking is <strong>automatically declined</strong> — no action
-                    needed from you.
+                  <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>
+                    Ask for a down payment?
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
+                    {policyForm.depositRequired
+                      ? "Yes — pet owners pay a deposit before their booking is confirmed."
+                      : "No — pet owners pay the full amount on the day of service."}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setPolicyForm((prev) => ({ ...prev, depositRequired: !prev.depositRequired }))}
+                  className="relative shrink-0 ml-4 rounded-full transition-colors duration-200"
+                  style={{ width: 48, height: 26, background: policyForm.depositRequired ? "var(--fur-teal)" : "var(--fur-mist)" }}>
+                  <span className="absolute rounded-full bg-white shadow-md transition-all duration-200"
+                    style={{ width: 18, height: 18, top: 4, left: policyForm.depositRequired ? 26 : 4 }} />
+                </button>
               </div>
 
-              {/* Deposit amount */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">How much is the down payment?</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Set it as a percentage of the total service fee.
-                    </p>
-                  </div>
-                  <span className="text-xl font-black text-blue-600">{form.depositPercentage}%</span>
-                </div>
+              {policyForm.depositRequired && (
+                <div className="space-y-5">
 
+                  {/* How much */}
+                  <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>How much is the down payment?</p>
+                        <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>Choose what percentage of the total price pet owners pay upfront.</p>
+                      </div>
+                      <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
+                        style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+                        {policyForm.depositPercentage === 100 ? "Full amount" : `${policyForm.depositPercentage}%`}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[25, 50, 75, 100].map((pct) => (
+                        <button key={pct} type="button"
+                          onClick={() => setPolicyForm((prev) => ({ ...prev, depositPercentage: pct, fullPaymentRequiredUpfront: pct === 100 }))}
+                          className="py-2.5 rounded-xl text-sm font-700 border-2 transition-all"
+                          style={policyForm.depositPercentage === pct
+                            ? { borderColor: "var(--fur-teal)", background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }
+                            : { borderColor: "var(--border)", background: "white", color: "var(--fur-slate-mid)" }}>
+                          {pct === 100 ? "Full" : `${pct}%`}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="p-3 rounded-lg text-xs" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>
+                      {policyForm.depositPercentage === 100
+                        ? "Pet owners pay 100% upfront. No remaining balance on the day."
+                        : `Pet owners pay ${policyForm.depositPercentage}% now to secure the booking. The remaining ${100 - policyForm.depositPercentage}% is paid on the day of service.`}
+                    </div>
+                  </div>
+
+                  {/* Payment deadline — slider */}
+                  <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
+                    <div>
+                      <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>
+                        How long does the pet owner have to pay the deposit?
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
+                        Slide to set a deadline. After this time, the booking slot may be released.
+                      </p>
+                    </div>
+
+                    {(() => {
+                      const STEPS = [1, 2, 3, 6, 12, 24, 48, 72];
+                      const currentHours: number = (policyForm as any).depositDeadlineHours ?? 24;
+                      const stepIndex = Math.max(0, STEPS.indexOf(currentHours) === -1 ? 5 : STEPS.indexOf(currentHours));
+
+                      const label = currentHours === 1
+                        ? "Within 1 hour"
+                        : currentHours <= 12
+                        ? `Within ${currentHours} hours`
+                        : currentHours === 24
+                        ? "Within 24 hours (1 day)"
+                        : currentHours === 48
+                        ? "Within 48 hours (2 days)"
+                        : "Within 72 hours (3 days)";
+
+                      return (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>1 hour</span>
+                            <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
+                              style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+                              {label}
+                            </span>
+                            <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>3 days</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={STEPS.length - 1}
+                            step={1}
+                            value={stepIndex}
+                            onChange={(e) => {
+                              const hrs = STEPS[parseInt(e.target.value)];
+                              setPolicyForm((prev) => ({ ...prev, depositDeadlineHours: hrs } as any));
+                            }}
+                            className="w-full"
+                            suppressHydrationWarning
+                          />
+                          <div className="p-3 rounded-lg text-xs" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>
+                            Pet owners will see: <span className="font-700">"{label} of booking confirmation"</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Refundable toggle */}
+                  <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
+                    <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Is the down payment refundable?</p>
+                    <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>
+                      If a pet owner cancels their booking, will you return the deposit?
+                    </p>
+                    <div className="flex items-center justify-between p-3 rounded-xl"
+                      style={{ background: "var(--fur-cream)", border: "1px solid var(--border)" }}>
+                      <p className="text-sm font-700" style={{ color: policyForm.depositRefundable ? "#059669" : "#DC2626" }}>
+                        {policyForm.depositRefundable ? "Yes — refundable" : "No — non-refundable"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setPolicyForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))}
+                        className="relative shrink-0 ml-4 rounded-full transition-colors duration-200"
+                        style={{ width: 48, height: 26, background: policyForm.depositRefundable ? "#059669" : "var(--fur-rose)" }}>
+                        <span className="absolute rounded-full bg-white shadow-md transition-all duration-200"
+                          style={{ width: 18, height: 18, top: 4, left: policyForm.depositRefundable ? 26 : 4 }} />
+                      </button>
+                    </div>
+                    <div className="p-3 rounded-lg text-xs" style={{
+                      background: policyForm.depositRefundable ? "#D1FAE5" : "#FEE2E2",
+                      color: policyForm.depositRefundable ? "#065F46" : "#991B1B"
+                    }}>
+                      {policyForm.depositRefundable
+                        ? "Pet owners will see: \"Down payment is refundable if you cancel.\""
+                        : "Pet owners will see: \"Down payment is non-refundable if you cancel.\""}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+
+            {/* ── Cancellation Policy ── */}
+            <div className="rounded-xl border p-5 space-y-4" style={{ borderColor: "var(--border)" }}>
+              <div>
+                <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
+                  ⏰ Cancellation Policy
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
+                  How much advance notice do you need before a pet owner can cancel their booking?
+                </p>
+              </div>
+
+              <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)" }}>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>Minimum notice to cancel:</p>
+                  <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
+                    style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+                    {policyForm.cancellationHoursNotice === 0
+                      ? "Anytime"
+                      : `${policyForm.cancellationHoursNotice} hours`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>Anytime</span>
+                  <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>72 hours</span>
+                </div>
                 <input
                   type="range"
-                  min={10}
-                  max={100}
-                  step={5}
-                  value={form.depositPercentage}
+                  min={0}
+                  max={72}
+                  step={1}
+                  value={policyForm.cancellationHoursNotice}
                   onChange={(e) =>
-                    setForm((prev) => ({
+                    setPolicyForm((prev) => ({
                       ...prev,
-                      depositPercentage: Number(e.target.value),
-                      fullPaymentRequiredUpfront: Number(e.target.value) === 100,
+                      cancellationHoursNotice: Number(e.target.value),
                     }))
                   }
-                  className="w-full accent-blue-600"
+                  className="w-full"
+                  suppressHydrationWarning
                 />
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>10% (small deposit)</span>
-                  <span>50%</span>
-                  <span>100% (full upfront)</span>
-                </div>
-
-                {/* Quick presets */}
-                <div className="flex gap-2 flex-wrap">
-                  {[25, 50, 75, 100].map((pct) => (
-                    <button
-                      key={pct}
-                      type="button"
-                      onClick={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          depositPercentage: pct,
-                          fullPaymentRequiredUpfront: pct === 100,
-                        }))
-                      }
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                        form.depositPercentage === pct
-                          ? "bg-blue-500 text-white border-blue-500"
-                          : "bg-white text-blue-700 border-blue-200 hover:bg-blue-50"
-                      }`}
-                    >
-                      {pct === 100 ? "Full payment" : `${pct}%`}
-                    </button>
-                  ))}
-                </div>
-
-                {form.fullPaymentRequiredUpfront && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-                    💡 You've set <strong>100% upfront</strong> — the pet owner must pay the full
-                    service amount in cash within 24 hours of booking.
-                  </div>
-                )}
-              </div>
-
-              {/* Refundable */}
-              <div className="border-t pt-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">Is the down payment refundable?</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      If the owner cancels, will you return the cash deposit?
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((prev) => ({ ...prev, depositRefundable: !prev.depositRefundable }))
-                    }
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
-                      form.depositRefundable ? "bg-green-500" : "bg-red-400"
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                        form.depositRefundable ? "translate-x-7" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-                <div
-                  className={`text-xs rounded-lg px-3 py-2 font-medium ${
-                    form.depositRefundable
-                      ? "bg-green-50 text-green-700 border border-green-200"
-                      : "bg-red-50 text-red-700 border border-red-200"
-                  }`}
-                >
-                  {form.depositRefundable
-                    ? "✅ Refundable — if the owner cancels, you will return the down payment in cash."
-                    : "❌ Non-refundable— if the owner cancels, you keep the down payment."}
+                <div className="p-3 rounded-lg text-xs" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>
+                  {policyForm.cancellationHoursNotice === 0
+                    ? "Pet owners can cancel at any time, even last minute."
+                    : `Pet owners must notify you at least ${policyForm.cancellationHoursNotice} hours before the service to cancel.`}
                 </div>
               </div>
-            </>
-          )}
-        </div>
-
-        {/* Cancellation Policy */}
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">⏰ Cancellation Policy</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              How much advance notice do you need before a pet owner can cancel their booking?
-            </p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-700">Minimum notice to cancel:</p>
-              <span className="text-base font-black text-blue-600">
-                {form.cancellationHoursNotice === 0
-                  ? "Anytime"
-                  : `${form.cancellationHoursNotice} hours`}
-              </span>
             </div>
-            <input
-              type="range"
-              min={0}
-              max={72}
-              step={1}
-              value={form.cancellationHoursNotice}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  cancellationHoursNotice: Number(e.target.value),
-                }))
-              }
-              className="w-full accent-blue-600"
-            />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>Anytime</span>
-              <span>24 hrs</span>
-              <span>48 hrs</span>
-              <span>72 hrs</span>
+
+            {/* ── Additional Notes ── */}
+            <div className="rounded-xl border p-5 space-y-3" style={{ borderColor: "var(--border)" }}>
+              <div>
+                <p className="text-sm font-900" style={{ color: "var(--fur-slate)", fontFamily: "'Fraunces', serif" }}>
+                  📝 Additional Notes
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
+                  Anything else pet owners should know before booking. This is shown directly on your booking page.
+                </p>
+              </div>
+              <textarea
+                value={policyForm.additionalNotes ?? ""}
+                rows={3}
+                onChange={(e) => setPolicyForm((prev) => ({ ...prev, additionalNotes: e.target.value }))}
+                placeholder="e.g. Please bring vaccination records. Prepare the exact cash amount."
+                className="fur-input resize-none"
+                suppressHydrationWarning
+              />
             </div>
-            <p className="text-xs text-gray-500 pt-1">
-              {form.cancellationHoursNotice === 0
-                ? "Pet owners can cancel at any time, even last minute."
-                : `Pet owners must notify you at least ${form.cancellationHoursNotice} hours before the service to cancel.`}
-            </p>
+
+            {/* Save */}
+            <div className="flex items-center gap-3 pt-1">
+              <button onClick={handleSave} disabled={saving} className="btn-primary px-6 py-2.5 text-sm disabled:opacity-60">
+                {saving ? "Saving..." : "Save Policies"}
+              </button>
+              {saved && (
+                <p className="text-sm font-700 flex items-center gap-1" style={{ color: "#059669" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Policies saved
+                </p>
+              )}
+            </div>
+
           </div>
-        </div>
-
-        {/* Additional Notes */}
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-3">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">📝 Additional Notes</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Any other reminders or instructions shown to pet owners when they book.
-            </p>
-          </div>
-          <textarea
-            value={form.additionalNotes ?? ""}
-            onChange={(e) => setForm((prev) => ({ ...prev, additionalNotes: e.target.value }))}
-            rows={3}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            placeholder="e.g., Please prepare the exact cash amount. Bring your pet's vaccination record on the day of service."
-          />
-        </div>
-
-        {/* Policy Preview — what owners see */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-5 space-y-3">
-          <p className="text-sm font-bold text-blue-900">📋 What pet owners will see:</p>
-          <ul className="text-sm text-blue-800 space-y-1.5">
-
-            {/* Cash only — always */}
-            <li className="flex gap-2">
-              <span>💵</span>
-              <span>Payment is <strong>cash only</strong> — paid directly to the provider.</span>
-            </li>
-
-            {/* Down payment terms */}
-            {form.depositRequired ? (
-              <>
-                <li className="flex gap-2">
-                  <span>💰</span>
-                  <span>
-                    A{" "}
-                    {form.fullPaymentRequiredUpfront
-                      ? "full cash payment"
-                      : `${form.depositPercentage}% cash down payment`}{" "}
-                    is required to confirm your booking —{" "}
-                    {form.depositRefundable ? "refundable" : "non-refundable"} if cancelled.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span>⏳</span>
-                  <span>
-                    Your booking stays <strong>Pending</strong> until the down payment is received in cash.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span>❌</span>
-                  <span>
-                    If the down payment is not made within <strong>24 hours</strong>, your booking
-                    will be <strong>automatically declined</strong>.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span>✏️</span>
-                  <span>
-                    You can cancel or edit your booking on your own within <strong>24 hours</strong>{" "}
-                    of submission — no provider approval needed.
-                  </span>
-                </li>
-              </>
-            ) : (
-              <>
-                <li className="flex gap-2">
-                  <span>✅</span>
-                  <span>No down payment required — pay in full on the day of service.</span>
-                </li>
-                <li className="flex gap-2">
-                  <span>⏳</span>
-                  <span>
-                    Your booking stays <strong>Pending</strong> until the provider manually accepts it.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span>✏️</span>
-                  <span>
-                    You can cancel or edit on your own while the booking is still{" "}
-                    <strong>Pending</strong> and within <strong>24 hours</strong> of submission.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span>🤝</span>
-                  <span>
-                    Once <strong>confirmed</strong>, any edits or cancellations require the
-                    provider's approval.
-                  </span>
-                </li>
-              </>
-            )}
-
-            {/* Delete rule — always */}
-            <li className="flex gap-2">
-              <span>🗑️</span>
-              <span>
-                A booking can only be deleted once it is <strong>Cancelled</strong> or{" "}
-                <strong>Completed</strong>.
-              </span>
-            </li>
-
-            {/* Cancellation notice */}
-            <li className="flex gap-2">
-              <span>🚫</span>
-              <span>
-                {form.cancellationHoursNotice === 0
-                  ? "You may cancel at any time."
-                  : `Cancellations must be made at least ${form.cancellationHoursNotice} hours in advance.`}
-              </span>
-            </li>
-
-            {/* Additional notes */}
-            {form.additionalNotes && (
-              <li className="flex gap-2">
-                <span>📌</span>
-                <span>{form.additionalNotes}</span>
-              </li>
-            )}
-          </ul>
-        </div>
-
-        {/* Save button */}
-        <div className="flex items-center gap-4 pb-6">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-60"
-          >
-            {saving ? "Saving..." : "Save Policies"}
-          </button>
-          {saved && (
-            <p className="text-sm font-medium text-green-600">✓ Policies saved successfully</p>
-          )}
         </div>
       </div>
     </ProviderLayout>
