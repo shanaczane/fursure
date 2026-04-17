@@ -31,7 +31,6 @@ export type ProviderServiceCategory =
   | "walking"
   | "daycare";
 
-// ✅ Added "payment_submitted" to fix the ts(2367) error
 export type BookingStatus =
   | "pending"
   | "awaiting_downpayment"
@@ -73,13 +72,20 @@ export interface ProviderBooking {
   downPaymentConfirmedAt?: string;
   editCancelGracePeriodHours?: number;
 
+  // ── Policy snapshot fields (stamped at booking-creation time) ──────────
+  // These are copied from the provider's ProviderPolicy at the moment the
+  // booking is created so that ManageBookingsPage always shows the exact
+  // terms the owner agreed to, even if the provider later changes their policy.
+  depositPercentage?: number;   // e.g. 25 | 50 | 75 | 100
+  depositRefundable?: boolean;  // whether the deposit is refundable on cancel
+
   // Edit / cancel request tracking
   editRequestStatus?: "none" | "pending" | "approved" | "rejected";
   cancelRequestStatus?: "none" | "pending" | "approved" | "rejected";
 
   rating?: number;
   reviewComment?: string;
-  reviewDate?: string;  
+  reviewDate?: string;
 }
 
 export interface ProviderUser {
@@ -170,7 +176,6 @@ export const PROVIDER_SERVICE_CATEGORIES: {
   { value: "daycare", label: "Daycare", emoji: "🎾" },
 ];
 
-// ✅ Added payment_submitted entry
 export const BOOKING_STATUS_CONFIG: Record<
   BookingStatus,
   { label: string; color: string; bg: string }

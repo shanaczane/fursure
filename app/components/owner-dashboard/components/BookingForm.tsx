@@ -11,12 +11,22 @@ interface BookingFormProps {
   policy: ProviderPolicy | null;
   isOpen: boolean;
   onClose: () => void;
+  // ── onBook now receives the full policy snapshot so the caller can
+  //    stamp depositPercentage, depositRefundable, and downPaymentDeadlineHours
+  //    directly onto the booking row at insert time. ──────────────────────────
   onBook: (
     serviceId: string,
     petId: string,
     date: string,
     time: string,
     notes: string,
+    policySnapshot: {
+      requiresDownPayment: boolean;
+      depositPercentage: number;
+      depositRefundable: boolean;
+      downPaymentDeadlineHours: number;
+      fullPaymentRequiredUpfront: boolean;
+    },
   ) => void;
 }
 
@@ -48,7 +58,6 @@ function parseTimeToHour(timeStr: string): number {
   if (!timeStr) return -1;
   const s = timeStr.trim().toLowerCase().replace(/\s+/g, "");
 
-  // e.g. "9am" | "9:00am" | "12:00pm" | "17:00" | "9"
   const match = s.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
   if (!match) return -1;
 
@@ -57,7 +66,6 @@ function parseTimeToHour(timeStr: string): number {
 
   if (meridiem === "pm" && hour !== 12) hour += 12;
   if (meridiem === "am" && hour === 12) hour = 0;
-  // No meridiem -> treat as 24h value as-is
 
   return hour;
 }
@@ -65,10 +73,6 @@ function parseTimeToHour(timeStr: string): number {
 /**
  * Given a service's availability strings and a selected date, returns
  * { startHour, endHour } for that day, or null if the provider is closed.
- *
- * Handles BOTH formats:
- *   Legacy  : "Mon-Sat: 9AM-6PM"
- *   Current : "Mon, Tue, Wed, Thu, Fri, Sat: 9:00 AM – 6:00 PM"
  */
 function getAvailabilityForDate(
   availability: string[],
@@ -77,20 +81,15 @@ function getAvailabilityForDate(
   if (!availability || availability.length === 0) return { startHour: 0, endHour: 24 };
 
   const [y, m, d] = dateStr.split("-").map(Number);
-  const dayOfWeek = new Date(y, m - 1, d).getDay(); // 0 = Sun
+  const dayOfWeek = new Date(y, m - 1, d).getDay();
 
   for (const slot of availability) {
-    // Split on the FIRST colon to separate "days part" from "time part".
-    // e.g. "Mon, Tue, Wed: 9:00 AM – 6:00 PM"
-    //       ^^^^^^^^^^^^ days      ^^^^^^^^^^^^ times
     const colonIdx = slot.indexOf(":");
     if (colonIdx === -1) continue;
 
     const daysPart = slot.slice(0, colonIdx).trim();
     const timePart = slot.slice(colonIdx + 1).trim();
 
-    // ── Parse the time range ─────────────────────────────────────────────
-    // Accept hyphen "-" and en/em dash "–" / "—" as the range separator.
     const timeSepMatch = timePart.match(/^(.+?)\s*[-\u2013\u2014]\s*(.+)$/);
     if (!timeSepMatch) continue;
 
@@ -98,22 +97,12 @@ function getAvailabilityForDate(
     const endHour   = parseTimeToHour(timeSepMatch[2].trim());
     if (startHour === -1 || endHour === -1) continue;
 
-    // ── Parse the days part ──────────────────────────────────────────────
-    // Possible formats:
-    //   "Mon-Sat"           (hyphenated range)
-    //   "Mon, Tue, Wed"     (comma-separated list)
-    //   "Mon"               (single day)
-    //
-    // Strategy: split on commas and/or spaces, then check each token for a
-    // hyphenated range (e.g. "Mon-Sat") or a plain 3-letter day abbreviation.
-
     const activeDays = new Set<number>();
     const tokens = daysPart.split(/[\s,]+/).map((t) => t.toLowerCase());
 
     for (const token of tokens) {
       if (!token) continue;
 
-      // Hyphenated range like "mon-sat"
       const rangeMatch = token.match(/^([a-z]{3})-([a-z]{3})$/);
       if (rangeMatch) {
         const from = DAY_INDEX[rangeMatch[1]];
@@ -123,14 +112,12 @@ function getAvailabilityForDate(
         if (to >= from) {
           for (let di = from; di <= to; di++) activeDays.add(di);
         } else {
-          // Wraps around week end (e.g. Sat-Mon)
           for (let di = from; di <= 6; di++) activeDays.add(di);
           for (let di = 0; di <= to; di++) activeDays.add(di);
         }
         continue;
       }
 
-      // Single 3-letter day abbreviation
       const abbrev = token.slice(0, 3);
       if (DAY_INDEX[abbrev] !== undefined) {
         activeDays.add(DAY_INDEX[abbrev]);
@@ -142,7 +129,7 @@ function getAvailabilityForDate(
     }
   }
 
-  return null; // provider not available this day
+  return null;
 }
 
 function getAvailableSlots(dateStr: string, availability?: string[]) {
@@ -170,6 +157,17 @@ function getAvailableSlots(dateStr: string, availability?: string[]) {
 function getFirstAvailableTime(dateStr: string, availability?: string[]): string {
   const slots = getAvailableSlots(dateStr, availability);
   return slots[0]?.value ?? "";
+}
+
+/* ─── Format deadline hours into a human-readable string ────────────────── */
+function formatDeadlineHours(hours: number): string {
+  if (hours === 1)  return "1 hour";
+  if (hours < 24)   return `${hours} hours`;
+  if (hours === 24) return "24 hours (1 day)";
+  if (hours === 48) return "48 hours (2 days)";
+  if (hours === 72) return "72 hours (3 days)";
+  const days = Math.round(hours / 24);
+  return `${hours} hours (${days} days)`;
 }
 
 /* ─── Term row ───────────────────────────────────────────────────────────── */
@@ -235,35 +233,17 @@ const BookingForm: React.FC<BookingFormProps> = ({
     getAvailabilityForDate(service!.availability, selectedDate) === null;
   const noSlotsLeft = !providerClosedThisDay && availableSlots.length === 0;
 
-  const handleDetailsNext = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!service || !selectedPetId || !selectedDate || !selectedTime) {
-      alert("Please fill in all required fields");
-      return;
-    }
-    if (policy) {
-      setStep("policy");
-    } else {
-      onBook(service.id, selectedPetId, selectedDate, selectedTime, notes);
-      onClose();
-    }
-  };
-
-  const handleConfirm = () => {
-    if (!service) return;
-    onBook(service.id, selectedPetId, selectedDate, selectedTime, notes);
-    onClose();
-  };
-
-  if (!isOpen || !service) return null;
-
-  // ── Derive from policy ──
-  const requiresDownPayment = Boolean(policy?.depositRequired);
-  const depositPct          = policy?.depositPercentage ?? 0;
-  const isFullUpfront       = policy?.fullPaymentRequiredUpfront ?? false;
-  const depositRefundable   = policy?.depositRefundable ?? false;
-  const cancellationHours   = policy?.cancellationHoursNotice ?? 0;
-  const additionalNotes     = policy?.additionalNotes ?? "";
+  // ── Derive from policy ────────────────────────────────────────────────────
+  // All values read directly from the ProviderPolicy the provider saved.
+  // These are also what gets stamped onto the booking row at creation time.
+  const requiresDownPayment     = Boolean(policy?.depositRequired);
+  const depositPct              = policy?.depositPercentage ?? 0;
+  const isFullUpfront           = policy?.fullPaymentRequiredUpfront ?? false;
+  const depositRefundable       = policy?.depositRefundable ?? false;
+  const cancellationHours       = policy?.cancellationHoursNotice ?? 0;
+  const additionalNotes         = policy?.additionalNotes ?? "";
+  const depositDeadlineHours    = policy?.downPaymentDeadlineHours ?? 24;
+  const deadlineLabel           = formatDeadlineHours(depositDeadlineHours);
 
   const depositLabel = isFullUpfront
     ? "full amount upfront"
@@ -277,6 +257,52 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
   const selectedPet = pets.find((p) => p.id === selectedPetId);
 
+  const depositAmount   = service ? (service.price * depositPct) / 100 : 0;
+  const remainingAmount = service ? service.price - depositAmount : 0;
+
+  // ── Build the policy snapshot that gets passed through onBook ────────────
+  // This is the single source of truth: whatever the provider has set in
+  // their Policies tab is what gets recorded on the booking row.
+  const policySnapshot = {
+    requiresDownPayment,
+    depositPercentage:        depositPct,
+    depositRefundable,
+    downPaymentDeadlineHours: depositDeadlineHours,
+    fullPaymentRequiredUpfront: isFullUpfront,
+  };
+
+  const handleDetailsNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!service || !selectedPetId || !selectedDate || !selectedTime) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    if (policy) {
+      setStep("policy");
+    } else {
+      // No policy configured — book immediately with safe defaults
+      onBook(service.id, selectedPetId, selectedDate, selectedTime, notes, {
+        requiresDownPayment: false,
+        depositPercentage: 0,
+        depositRefundable: false,
+        downPaymentDeadlineHours: 24,
+        fullPaymentRequiredUpfront: false,
+      });
+      onClose();
+    }
+  };
+
+  const handleConfirm = () => {
+    if (!service) return;
+    // ── Pass the full policy snapshot so the booking insert can store
+    //    depositPercentage, depositRefundable, and downPaymentDeadlineHours
+    //    alongside the booking row. ──────────────────────────────────────────
+    onBook(service.id, selectedPetId, selectedDate, selectedTime, notes, policySnapshot);
+    onClose();
+  };
+
+  if (!isOpen || !service) return null;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
       {/* Backdrop */}
@@ -286,7 +312,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
         onClick={onClose}
       />
       <div className="flex min-h-full items-center justify-center p-4">
-        {/* ↓ wider: was max-w-md (28rem), now max-w-xl (36rem) */}
         <div
           className="relative bg-white rounded-2xl shadow-2xl w-full flex flex-col"
           style={{ maxWidth: "580px", maxHeight: "90vh" }}
@@ -408,7 +433,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     </div>
                   )}
 
-                  {/* Date + Time — side by side on the wider modal */}
+                  {/* Date + Time */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-700 mb-1.5" style={{ color: "var(--fur-slate)" }}>
@@ -471,14 +496,36 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
                   {/* Price */}
                   <div
-                    className="flex justify-between items-center px-4 py-3 rounded-xl"
+                    className="rounded-xl px-4 py-3 space-y-1"
                     style={{ background: "var(--fur-teal-light)", border: "1px solid var(--fur-teal-light)" }}
                   >
-                    <span className="text-sm font-700" style={{ color: "var(--fur-teal-dark)" }}>Total Price</span>
-                    <span className="font-900 text-lg" style={{ color: "var(--fur-teal)", fontFamily: "'Fraunces', serif" }}>
-                      ₱{service.price}{" "}
-                      <span className="text-sm font-600" style={{ color: "var(--fur-teal-dark)" }}>{service.priceUnit}</span>
-                    </span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-700" style={{ color: "var(--fur-teal-dark)" }}>Total Price</span>
+                      <span className="font-900 text-lg" style={{ color: "var(--fur-teal)", fontFamily: "'Fraunces', serif" }}>
+                        ₱{service.price}{" "}
+                        <span className="text-sm font-600" style={{ color: "var(--fur-teal-dark)" }}>{service.priceUnit}</span>
+                      </span>
+                    </div>
+                    {requiresDownPayment && depositPct > 0 && (
+                      <div className="flex justify-between items-center pt-1 border-t" style={{ borderColor: "rgba(0,0,0,0.08)" }}>
+                        <span className="text-xs font-600" style={{ color: "var(--fur-teal-dark)" }}>
+                          {isFullUpfront ? "Pay upfront (100%)" : `Down payment (${depositPct}%)`}
+                        </span>
+                        <span className="text-sm font-800" style={{ color: "var(--fur-teal-dark)", fontFamily: "'Fraunces', serif" }}>
+                          ₱{depositAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    {requiresDownPayment && depositPct > 0 && !isFullUpfront && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-600" style={{ color: "var(--fur-teal-dark)" }}>
+                          Remaining (on appointment day)
+                        </span>
+                        <span className="text-sm font-800" style={{ color: "var(--fur-teal-dark)", fontFamily: "'Fraunces', serif" }}>
+                          ₱{remainingAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-1">
@@ -527,6 +574,27 @@ const BookingForm: React.FC<BookingFormProps> = ({
                   <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>
                     {selectedPet?.name} · {selectedDate} at {formattedTime(selectedTime)}
                   </p>
+
+                  {requiresDownPayment && depositPct > 0 && (
+                    <div className="mt-2 pt-2 border-t space-y-0.5" style={{ borderColor: "var(--border)" }}>
+                      <div className="flex justify-between text-xs">
+                        <span style={{ color: "var(--fur-slate-mid)" }}>Total</span>
+                        <span className="font-700" style={{ color: "var(--fur-slate)" }}>₱{service.price.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span style={{ color: "var(--fur-slate-mid)" }}>
+                          {isFullUpfront ? "Pay upfront (100%)" : `Down payment (${depositPct}%)`}
+                        </span>
+                        <span className="font-700" style={{ color: "var(--fur-teal)" }}>₱{depositAmount.toFixed(2)}</span>
+                      </div>
+                      {!isFullUpfront && (
+                        <div className="flex justify-between text-xs">
+                          <span style={{ color: "var(--fur-slate-mid)" }}>Remaining on appointment day</span>
+                          <span className="font-700" style={{ color: "var(--fur-slate)" }}>₱{remainingAmount.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2.5 mb-5">
@@ -536,8 +604,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
                     value={
                       requiresDownPayment ? (
                         <span>
-                          Pay a <strong>{depositLabel}</strong> in cash to the provider within{" "}
-                          <strong>24 hours</strong> to hold your slot. This deposit is{" "}
+                          Pay a <strong>{depositLabel}</strong>{" "}
+                          {depositPct > 0 && !isFullUpfront && (
+                            <>(₱{depositAmount.toFixed(2)})</>
+                          )}{" "}
+                          in cash to the provider within{" "}
+                          <strong>{deadlineLabel}</strong> to hold your slot. This deposit is{" "}
                           <strong>{depositRefundable ? "refundable" : "non-refundable"}</strong> if you cancel.
                         </span>
                       ) : (
@@ -555,7 +627,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                       requiresDownPayment ? (
                         <span>
                           Your booking stays <strong>Pending</strong> until your cash down payment is received.
-                          If not paid within <strong>24 hours</strong>, it is automatically cancelled.
+                          If not paid within <strong>{deadlineLabel}</strong>, it is automatically cancelled.
                         </span>
                       ) : (
                         <span>

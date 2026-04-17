@@ -24,6 +24,18 @@ import type { Vaccination, MedicalHistory } from "@/app/types";
 
 type ActionType = "accept" | "reject" | "reschedule" | "complete" | "approve_edit" | "approve_cancel";
 
+// ─── Helper: format deadline hours into a human-readable label ───────────────
+function formatDeadlineHours(hours: number): string {
+  if (!hours || hours <= 0) return "—";
+  if (hours === 1)  return "1 hour";
+  if (hours < 24)   return `${hours} hours`;
+  if (hours === 24) return "24 hours (1 day)";
+  if (hours === 48) return "48 hours (2 days)";
+  if (hours === 72) return "72 hours (3 days)";
+  const days = Math.round(hours / 24);
+  return `${hours} hours (${days} days)`;
+}
+
 /* ─── Service Emoji Map ──────────────────────────────────────────────────── */
 const SERVICE_EMOJI: Record<string, string> = {
   grooming:   "✂️",
@@ -188,7 +200,6 @@ const STATUS_LABELS: Record<string, string> = {
   declined: "Declined", rescheduled: "Rescheduled",
 };
 
-/* Matches BookingHistory pill exactly — regular weight, clean */
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const s = STATUS_STYLES[status] || STATUS_STYLES.declined;
   return (
@@ -214,7 +225,6 @@ function btnStyle(variant: "teal" | "purple" | "rose" | "ghost"): React.CSSPrope
   };
   return {
     padding: "5px 12px", borderRadius: 8,
-    /* Matches BookingHistory action buttons: regular weight, clean sans */
     fontSize: "0.82rem", fontWeight: 400,
     cursor: "pointer", fontFamily: "inherit",
     whiteSpace: "nowrap" as const,
@@ -268,11 +278,18 @@ const BookingDetailPanel: React.FC<{
   onApproveCancel: (id: string) => void;
   onRejectCancel: (id: string) => void;
   onOpenPetRecord: (b: ProviderBooking) => void;
+  // ── Fallback policy values used when the booking predates the policy-snapshot
+  //    feature. These come from the provider's live policy so that old bookings
+  //    still display something sensible. ──────────────────────────────────────
+  fallbackDepositPct: number;
+  fallbackDeadlineHours: number;
 }> = ({
   booking, isLast, onOpenModal, onConfirmPayment,
   isConfirming, hasPayError,
   onApproveEdit, onRejectEdit, onApproveCancel, onRejectCancel,
   onOpenPetRecord,
+  fallbackDepositPct,
+  fallbackDeadlineHours,
 }) => {
   const isCompleted        = booking.status === "completed";
   const isAwaitingPayment  = booking.status === "awaiting_downpayment";
@@ -285,14 +302,25 @@ const BookingDetailPanel: React.FC<{
   const hasRescheduleProposal = booking.status === "rescheduled" && !!booking.rescheduleDate;
   const ownerResponded     = booking.rescheduleStatus === "confirmed" || booking.rescheduleStatus === "declined";
   const showPaySection     = booking.requiresDownPayment && booking.price > 0;
-  const downAmt            = booking.price * 0.3;
-  const remaining          = booking.downPaymentPaid ? booking.price * 0.7 : booking.price;
+
+  // ── Policy snapshot: use the value stamped on the booking at creation time.
+  //    Fall back to the provider's live policy only for bookings created before
+  //    the snapshot feature was added. ───────────────────────────────────────
+  const depositPct     = booking.depositPercentage     ?? fallbackDepositPct;
+  const deadlineHours  = booking.downPaymentDeadlineHours ?? fallbackDeadlineHours;
+  const deadlineLabel  = formatDeadlineHours(deadlineHours);
+  const depositPctLabel = `${depositPct}%`;
+
+  // ── Amounts computed from the snapshotted percentage ─────────────────────
+  const downAmt   = booking.price * (depositPct / 100);
+  const remaining = booking.downPaymentPaid
+    ? booking.price - downAmt
+    : booking.price;
 
   const cell: React.CSSProperties = {
     background: "white", border: "1px solid var(--border)",
     borderRadius: 10, padding: "10px 14px",
   };
-  /* Detail label — same style as BookingHistory column headers */
   const cellLabel: React.CSSProperties = {
     fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase",
     letterSpacing: "0.06em", color: "var(--fur-slate-light)", marginBottom: 4,
@@ -427,8 +455,9 @@ const BookingDetailPanel: React.FC<{
                     }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <div>
+                          {/* Shows the snapshotted deposit percentage from the booking */}
                           <p style={{ fontSize: "0.82rem", fontWeight: 400, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E" }}>
-                            Down Payment (30%)
+                            Down Payment ({depositPctLabel})
                           </p>
                           {booking.downPaymentPaid && booking.downPaymentPaidAt && (
                             <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "#059669", marginTop: 2 }}>
@@ -439,9 +468,17 @@ const BookingDetailPanel: React.FC<{
                             <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "#1D4ED8", marginTop: 2 }}>Owner marked as paid — verify below</p>
                           )}
                           {!booking.downPaymentPaid && isAwaitingPayment && (
-                            <p style={{ fontSize: "0.72rem", fontWeight: 400, color: dpExpired ? "var(--fur-rose)" : "#D97706", marginTop: 2 }}>
-                              {dpExpired ? "Deadline passed" : `Due in ${Math.ceil(dpHoursLeft ?? 0)} hrs`}
-                            </p>
+                            <>
+                              <p style={{ fontSize: "0.72rem", fontWeight: 400, color: dpExpired ? "var(--fur-rose)" : "#D97706", marginTop: 2 }}>
+                                {dpExpired
+                                  ? "Deadline passed"
+                                  : `Due in ${Math.ceil(dpHoursLeft ?? 0)} hrs`}
+                              </p>
+                              {/* Shows the snapshotted deadline from the booking */}
+                              <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "var(--fur-slate-light)", marginTop: 1 }}>
+                                Deadline: {deadlineLabel} from booking
+                              </p>
+                            </>
                           )}
                           {!booking.downPaymentPaid && isConfirmed && (
                             <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "#92400E", marginTop: 2 }}>Awaiting payment from owner</p>
@@ -453,6 +490,7 @@ const BookingDetailPanel: React.FC<{
                               <CheckIcon /> Paid
                             </span>
                           )}
+                          {/* Computed from the snapshotted percentage */}
                           <span style={{ fontSize: "0.9rem", fontWeight: 400, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E" }}>
                             {formatCurrency(downAmt)}
                           </span>
@@ -466,6 +504,7 @@ const BookingDetailPanel: React.FC<{
                           {booking.downPaymentPaid ? "Collect on appointment day" : "Full amount still pending"}
                         </p>
                       </div>
+                      {/* Computed from the snapshotted percentage */}
                       <span style={{ fontSize: "1.1rem", fontWeight: 400, color: "var(--fur-teal-dark)" }}>{formatCurrency(remaining)}</span>
                     </div>
                   </div>
@@ -508,11 +547,13 @@ const BookingDetailPanel: React.FC<{
                   <span style={{ marginTop: 1, color: dpExpired ? "var(--fur-rose)" : "#D97706", flexShrink: 0 }}><ClockIcon /></span>
                   <div>
                     <p style={{ fontSize: "0.82rem", fontWeight: 400, color: dpExpired ? "var(--fur-rose)" : "#D97706" }}>
-                      {dpExpired ? "Payment deadline passed — booking will auto-decline" : `Payment due in ${Math.ceil(dpHoursLeft ?? 0)} hours`}
+                      {dpExpired
+                        ? "Payment deadline passed — booking will auto-decline"
+                        : `Payment due in ${Math.ceil(dpHoursLeft ?? 0)} hours`}
                     </p>
                     {!dpExpired && (
                       <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "#92400E", marginTop: 3 }}>
-                        Owner has been notified to complete the down payment.
+                        Owner has {deadlineLabel} from booking to pay {formatCurrency(downAmt)}.
                       </p>
                     )}
                   </div>
@@ -559,7 +600,7 @@ const BookingDetailPanel: React.FC<{
 /* ─── Main Page ──────────────────────────────────────────────────────────── */
 const ManageBookingsPage: React.FC = () => {
   const {
-    user, bookings, services,
+    user, bookings, services, policy,
     acceptBooking, rejectBooking, rescheduleBooking, completeBooking,
     updateBooking, confirmPaymentReceived,
   } = useProviderContext();
@@ -582,6 +623,11 @@ const ManageBookingsPage: React.FC = () => {
   const [vaxForm, setVaxForm] = useState({ name: "", dateGiven: "", nextDueDate: "", notes: "" });
   const [histForm, setHistForm] = useState({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
   const [saving, setSaving] = useState(false);
+
+  // ── Live policy values used as fallback for bookings that predate the
+  //    policy-snapshot feature (i.e. don't have depositPercentage on them). ──
+  const liveDepositPct      = policy?.depositPercentage      ?? 0;
+  const liveDeadlineHours   = policy?.downPaymentDeadlineHours ?? 24;
 
   const openPetRecord = async (booking: ProviderBooking) => {
     if (!booking.petId) { setPetRecordError("Pet ID not found for this booking."); setPetRecordBooking(booking); return; }
@@ -672,7 +718,6 @@ const ManageBookingsPage: React.FC = () => {
   const hasActiveFilters = filters.month !== "all" || filters.serviceId !== "all" || filters.searchQuery !== "";
   const COL = ["3%", "23%", "15%", "14%", "11%", "14%", "20%"];
 
-  /* Column headers — exactly matching BookingHistory screenshot */
   const thStyle: React.CSSProperties = {
     padding: "0.65rem 1.25rem",
     textAlign: "left",
@@ -689,7 +734,7 @@ const ManageBookingsPage: React.FC = () => {
     <ProviderLayout>
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
 
-        {/* ── Page Header — matches "Booking History" heading style ── */}
+        {/* ── Page Header ── */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 16, marginBottom: 16, borderBottom: "1px solid var(--border)" }}>
           <div>
             <h1 style={{ fontSize: "1.65rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 3 }}>
@@ -834,6 +879,9 @@ const ManageBookingsPage: React.FC = () => {
                     const dpHoursLeft        = isAwaitingPayment ? downPaymentHoursRemaining(booking) : null;
                     const emoji              = getServiceEmoji(booking.serviceName);
 
+                    // Use snapshotted value; fall back to live policy for old bookings
+                    const rowDepositPct = booking.depositPercentage ?? liveDepositPct;
+
                     const flags: { label: string; bg: string; color: string }[] = [];
                     if (booking.editRequestStatus === "pending")
                       flags.push({ label: "Edit Req", bg: "#FEF3C7", color: "#92400E" });
@@ -867,7 +915,7 @@ const ManageBookingsPage: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* Service & Pet — bold weight */}
+                          {/* Service & Pet */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 140 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <div style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, background: "var(--fur-cream)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem" }}>
@@ -904,14 +952,17 @@ const ManageBookingsPage: React.FC = () => {
                             <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>{effectiveTime}</p>
                           </td>
 
-                          {/* Price — bold weight */}
+                          {/* Price — shows deposit breakdown using snapshotted pct */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 90 }}>
                             <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)", marginBottom: 1 }}>
                               {formatCurrency(booking.price)}
                             </p>
                             {booking.requiresDownPayment && (
                               <p style={{ fontSize: "0.75rem", fontWeight: 400, color: booking.downPaymentPaid ? "#059669" : "var(--fur-slate-light)" }}>
-                                {booking.downPaymentPaid ? "DP paid" : `DP: ${formatCurrency(booking.price * 0.3)}`}
+                                {booking.downPaymentPaid
+                                  ? "DP paid"
+                                  : `DP (${rowDepositPct}%): ${formatCurrency(booking.price * (rowDepositPct / 100))}`
+                                }
                               </p>
                             )}
                           </td>
@@ -951,6 +1002,8 @@ const ManageBookingsPage: React.FC = () => {
                             onApproveEdit={handleApproveEdit} onRejectEdit={handleRejectEdit}
                             onApproveCancel={handleApproveCancel} onRejectCancel={handleRejectCancel}
                             onOpenPetRecord={openPetRecord}
+                            fallbackDepositPct={liveDepositPct}
+                            fallbackDeadlineHours={liveDeadlineHours}
                           />
                         )}
                       </React.Fragment>
