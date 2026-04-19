@@ -313,9 +313,8 @@ const BookingDetailPanel: React.FC<{
 
   // ── Amounts computed from the snapshotted percentage ─────────────────────
   const downAmt   = booking.price * (depositPct / 100);
-  const remaining = booking.downPaymentPaid
-    ? booking.price - downAmt
-    : booking.price;
+  const remaining = booking.price - downAmt;
+
 
   const cell: React.CSSProperties = {
     background: "white", border: "1px solid var(--border)",

@@ -5,6 +5,16 @@ import { useProviderContext } from "../context/ProviderAppContext";
 import ProviderLayout from "../components/ProviderLayout";
 import type { ProviderPolicy } from "../types";
 
+const DEPOSIT_DEADLINE_STEPS = [1, 2, 3, 6, 12, 24, 48, 72];
+
+const getDeadlineLabel = (hours: number): string => {
+  if (hours === 1) return "Within 1 hour";
+  if (hours <= 12) return `Within ${hours} hours`;
+  if (hours === 24) return "Within 24 hours (1 day)";
+  if (hours === 48) return "Within 48 hours (2 days)";
+  return "Within 72 hours (3 days)";
+};
+
 const PoliciesPage: React.FC = () => {
   const { policy, savePolicy } = useProviderContext();
   const [policyForm, setPolicyForm] = useState<ProviderPolicy>(policy);
@@ -31,6 +41,12 @@ const PoliciesPage: React.FC = () => {
       setSaving(false);
     }
   };
+
+  const currentDeadlineHours = policyForm.downPaymentDeadlineHours ?? 24;
+  const deadlineStepIndex = (() => {
+    const idx = DEPOSIT_DEADLINE_STEPS.indexOf(currentDeadlineHours);
+    return idx === -1 ? DEPOSIT_DEADLINE_STEPS.indexOf(24) : idx;
+  })();
 
   return (
     <ProviderLayout>
@@ -153,50 +169,33 @@ const PoliciesPage: React.FC = () => {
                       </p>
                     </div>
 
-                    {(() => {
-                      const STEPS = [1, 2, 3, 6, 12, 24, 48, 72];
-                      const currentHours: number = (policyForm as any).depositDeadlineHours ?? 24;
-                      const stepIndex = Math.max(0, STEPS.indexOf(currentHours) === -1 ? 5 : STEPS.indexOf(currentHours));
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>1 hour</span>
+                      <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
+                        style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+                        {getDeadlineLabel(currentDeadlineHours)}
+                      </span>
+                      <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>3 days</span>
+                    </div>
 
-                      const label = currentHours === 1
-                        ? "Within 1 hour"
-                        : currentHours <= 12
-                        ? `Within ${currentHours} hours`
-                        : currentHours === 24
-                        ? "Within 24 hours (1 day)"
-                        : currentHours === 48
-                        ? "Within 48 hours (2 days)"
-                        : "Within 72 hours (3 days)";
+                    <input
+                      type="range"
+                      min={0}
+                      max={DEPOSIT_DEADLINE_STEPS.length - 1}
+                      step={1}
+                      value={deadlineStepIndex}
+                      onChange={(e) => {
+                        const hrs = DEPOSIT_DEADLINE_STEPS[parseInt(e.target.value)];
+                        // Use the correct field name from ProviderPolicy type
+                        setPolicyForm((prev) => ({ ...prev, downPaymentDeadlineHours: hrs }));
+                      }}
+                      className="w-full"
+                      suppressHydrationWarning
+                    />
 
-                      return (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>1 hour</span>
-                            <span className="text-sm font-900 px-2.5 py-1 rounded-lg"
-                              style={{ background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
-                              {label}
-                            </span>
-                            <span className="text-xs" style={{ color: "var(--fur-slate-light)" }}>3 days</span>
-                          </div>
-                          <input
-                            type="range"
-                            min={0}
-                            max={STEPS.length - 1}
-                            step={1}
-                            value={stepIndex}
-                            onChange={(e) => {
-                              const hrs = STEPS[parseInt(e.target.value)];
-                              setPolicyForm((prev) => ({ ...prev, depositDeadlineHours: hrs } as any));
-                            }}
-                            className="w-full"
-                            suppressHydrationWarning
-                          />
-                          <div className="p-3 rounded-lg text-xs" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>
-                            Pet owners will see: <span className="font-700">"{label} of booking confirmation"</span>
-                          </div>
-                        </>
-                      );
-                    })()}
+                    <div className="p-3 rounded-lg text-xs" style={{ background: "var(--fur-cream)", color: "var(--fur-slate)" }}>
+                      Pet owners will see: <span className="font-700">"{getDeadlineLabel(currentDeadlineHours)} of booking confirmation"</span>
+                    </div>
                   </div>
 
                   {/* Refundable toggle */}
