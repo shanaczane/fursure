@@ -17,6 +17,10 @@ import BookingActionModal from "../components/BookingActionModal";
 import {
   providerInsertVaccination,
   providerInsertMedicalHistory,
+  providerUpdateVaccination,
+  providerDeleteVaccination,
+  providerUpdateMedicalHistory,
+  providerDeleteMedicalHistory,
 } from "@/app/lib/api";
 import type { Vaccination, MedicalHistory } from "@/app/types";
 
@@ -623,6 +627,11 @@ const ManageBookingsPage: React.FC = () => {
   const [vaxForm, setVaxForm] = useState({ name: "", dateGiven: "", nextDueDate: "", notes: "" });
   const [histForm, setHistForm] = useState({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
   const [saving, setSaving] = useState(false);
+  const [editingVaxId, setEditingVaxId] = useState<string | null>(null);
+  const [editVaxForm, setEditVaxForm] = useState({ name: "", dateGiven: "", nextDueDate: "", notes: "" });
+  const [editingHistId, setEditingHistId] = useState<string | null>(null);
+  const [editHistForm, setEditHistForm] = useState({ diagnosis: "", treatment: "", prescription: "", notes: "", date: "" });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // ── Live policy values used as fallback for bookings that predate the
   //    policy-snapshot feature (i.e. don't have depositPercentage on them). ──
@@ -679,6 +688,7 @@ const ManageBookingsPage: React.FC = () => {
     setPetRecordError(null); setAddingVax(false); setAddingHist(false);
     setVaxForm({ name: "", dateGiven: "", nextDueDate: "", notes: "" });
     setHistForm({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
+    setEditingVaxId(null); setEditingHistId(null); setDeletingId(null);
   };
 
   const handleProviderAddVax = async () => {
@@ -706,6 +716,60 @@ const ManageBookingsPage: React.FC = () => {
       setPetHistory((prev) => [created, ...prev]);
       setHistForm({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] }); setAddingHist(false);
     } catch (err) { setPetRecordError(err instanceof Error ? err.message : "Failed to save record."); }
+    finally { setSaving(false); }
+  };
+
+  const handleProviderEditVax = async () => {
+    if (!petRecordBooking?.petId || !editingVaxId || !editVaxForm.name || !editVaxForm.dateGiven) return;
+    setSaving(true);
+    try {
+      await providerUpdateVaccination(petRecordBooking.petId, editingVaxId, {
+        name: editVaxForm.name, dateGiven: editVaxForm.dateGiven,
+        nextDueDate: editVaxForm.nextDueDate || undefined, notes: editVaxForm.notes || undefined,
+      });
+      setPetVaccinations(prev => prev.map(v => v.id === editingVaxId
+        ? { ...v, name: editVaxForm.name, dateGiven: editVaxForm.dateGiven, nextDueDate: editVaxForm.nextDueDate || undefined, notes: editVaxForm.notes || undefined }
+        : v));
+      setEditingVaxId(null);
+    } catch (err) { setPetRecordError(err instanceof Error ? err.message : "Failed to update vaccination."); }
+    finally { setSaving(false); }
+  };
+
+  const handleProviderDeleteVax = async (recordId: string) => {
+    if (!petRecordBooking?.petId) return;
+    setSaving(true);
+    try {
+      await providerDeleteVaccination(petRecordBooking.petId, recordId);
+      setPetVaccinations(prev => prev.filter(v => v.id !== recordId));
+      setDeletingId(null);
+    } catch (err) { setPetRecordError(err instanceof Error ? err.message : "Failed to delete vaccination."); }
+    finally { setSaving(false); }
+  };
+
+  const handleProviderEditHist = async () => {
+    if (!petRecordBooking?.petId || !editingHistId || !editHistForm.diagnosis || !editHistForm.date) return;
+    setSaving(true);
+    try {
+      await providerUpdateMedicalHistory(petRecordBooking.petId, editingHistId, {
+        diagnosis: editHistForm.diagnosis, treatment: editHistForm.treatment || undefined,
+        prescription: editHistForm.prescription || undefined, notes: editHistForm.notes || undefined, date: editHistForm.date,
+      });
+      setPetHistory(prev => prev.map(h => h.id === editingHistId
+        ? { ...h, diagnosis: editHistForm.diagnosis, treatment: editHistForm.treatment || undefined, prescription: editHistForm.prescription || undefined, notes: editHistForm.notes || undefined, date: editHistForm.date }
+        : h));
+      setEditingHistId(null);
+    } catch (err) { setPetRecordError(err instanceof Error ? err.message : "Failed to update record."); }
+    finally { setSaving(false); }
+  };
+
+  const handleProviderDeleteHist = async (recordId: string) => {
+    if (!petRecordBooking?.petId) return;
+    setSaving(true);
+    try {
+      await providerDeleteMedicalHistory(petRecordBooking.petId, recordId);
+      setPetHistory(prev => prev.filter(h => h.id !== recordId));
+      setDeletingId(null);
+    } catch (err) { setPetRecordError(err instanceof Error ? err.message : "Failed to delete record."); }
     finally { setSaving(false); }
   };
 
@@ -1224,23 +1288,87 @@ const ManageBookingsPage: React.FC = () => {
                           <>
                             <div className="space-y-2">
                               {pagedVax.map((v) => (
-                                <div key={v.id} className="rounded-xl border p-4 flex items-start gap-3" style={{ background: "white", borderColor: "var(--border)" }}>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                      <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{v.name}</p>
-                                      {v.isVerified && (
-                                        <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
-                                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                          Verified
-                                        </span>
+                                <div key={v.id} className="rounded-xl border" style={{ background: "white", borderColor: "var(--border)" }}>
+                                  {editingVaxId === v.id ? (
+                                    <div className="p-4 space-y-3">
+                                      <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate)" }}>Edit Vaccination Record</p>
+                                      <div className="grid grid-cols-2 gap-3">
+                                        <div className="col-span-2">
+                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Vaccine Name *</label>
+                                          <input type="text" value={editVaxForm.name} onChange={e => setEditVaxForm({ ...editVaxForm, name: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                        </div>
+                                        <div>
+                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Date Given *</label>
+                                          <input type="date" value={editVaxForm.dateGiven} onChange={e => setEditVaxForm({ ...editVaxForm, dateGiven: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                        </div>
+                                        <div>
+                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Next Due Date</label>
+                                          <input type="date" value={editVaxForm.nextDueDate} onChange={e => setEditVaxForm({ ...editVaxForm, nextDueDate: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                        </div>
+                                        <div className="col-span-2">
+                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Notes</label>
+                                          <input type="text" value={editVaxForm.notes} onChange={e => setEditVaxForm({ ...editVaxForm, notes: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-end gap-2">
+                                        <button onClick={() => setEditingVaxId(null)} className="px-4 py-2 rounded-xl border"
+                                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.82rem", fontFamily: "inherit" }}>Cancel</button>
+                                        <button onClick={handleProviderEditVax} disabled={!editVaxForm.name || !editVaxForm.dateGiven || saving}
+                                          className="px-4 py-2 rounded-xl text-white disabled:opacity-50"
+                                          style={{ background: "#7C3AED", fontSize: "0.82rem", fontFamily: "inherit" }}>
+                                          {saving ? "Saving..." : "Save Changes"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : deletingId === v.id ? (
+                                    <div className="p-4 flex items-center justify-between gap-3">
+                                      <p style={{ fontSize: "0.82rem", color: "var(--fur-slate)" }}>Delete <strong>{v.name}</strong>? This cannot be undone.</p>
+                                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                                        <button onClick={() => setDeletingId(null)} className="px-3 py-1.5 rounded-lg border"
+                                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.78rem", fontFamily: "inherit" }}>Cancel</button>
+                                        <button onClick={() => handleProviderDeleteVax(v.id)} disabled={saving}
+                                          className="px-3 py-1.5 rounded-lg text-white disabled:opacity-50"
+                                          style={{ background: "#DC2626", fontSize: "0.78rem", fontFamily: "inherit" }}>
+                                          {saving ? "Deleting..." : "Delete"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="p-4 flex items-start gap-3">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                          <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{v.name}</p>
+                                          {v.isVerified && (
+                                            <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
+                                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                              Verified
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>
+                                          Given: {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                                          {v.nextDueDate && ` · Next: ${new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}`}
+                                        </p>
+                                        {v.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginTop: 2, color: "var(--fur-slate-light)" }}>by {v.providerName}</p>}
+                                      </div>
+                                      {v.addedBy === "provider" && (
+                                        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                                          <button onClick={() => { setEditingVaxId(v.id); setEditVaxForm({ name: v.name, dateGiven: v.dateGiven, nextDueDate: v.nextDueDate ?? "", notes: v.notes ?? "" }); }}
+                                            title="Edit" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--border)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fur-slate-mid)" }}>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                          </button>
+                                          <button onClick={() => setDeletingId(v.id)}
+                                            title="Delete" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid #FCA5A5", background: "#FEF2F2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#DC2626" }}>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                          </button>
+                                        </div>
                                       )}
                                     </div>
-                                    <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>
-                                      Given: {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-                                      {v.nextDueDate && ` · Next: ${new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}`}
-                                    </p>
-                                    {v.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginTop: 2, color: "var(--fur-slate-light)" }}>by {v.providerName}</p>}
-                                  </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -1328,25 +1456,96 @@ const ManageBookingsPage: React.FC = () => {
                           <>
                             <div className="space-y-2">
                               {pagedHist.map((h) => (
-                                <div key={h.id} className="rounded-xl border p-4" style={{ background: "white", borderColor: "var(--border)" }}>
-                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                    <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{h.diagnosis}</p>
-                                    {h.addedBy === "provider" && (
-                                      <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
-                                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                        Verified
-                                      </span>
-                                    )}
-                                    <span style={{ fontSize: "0.75rem", fontWeight: 400, marginLeft: "auto", color: "var(--fur-slate-light)" }}>
-                                      {new Date(h.date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-                                    </span>
-                                  </div>
-                                  {h.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginBottom: 6, color: "var(--fur-slate-light)" }}>by {h.providerName}</p>}
-                                  <div className="flex flex-wrap gap-2 mt-2">
-                                    {h.treatment && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Treatment: {h.treatment}</span>}
-                                    {h.prescription && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Rx: {h.prescription}</span>}
-                                    {h.notes && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Notes: {h.notes}</span>}
-                                  </div>
+                                <div key={h.id} className="rounded-xl border" style={{ background: "white", borderColor: "var(--border)" }}>
+                                  {editingHistId === h.id ? (
+                                    <div className="p-4 space-y-3">
+                                      <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate)" }}>Edit Medical Record</p>
+                                      <div className="grid grid-cols-2 gap-3">
+                                        <div className="col-span-2">
+                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Diagnosis *</label>
+                                          <input type="text" value={editHistForm.diagnosis} onChange={e => setEditHistForm({ ...editHistForm, diagnosis: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                        </div>
+                                        <div>
+                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Date *</label>
+                                          <input type="date" value={editHistForm.date} onChange={e => setEditHistForm({ ...editHistForm, date: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                        </div>
+                                        <div>
+                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Treatment</label>
+                                          <input type="text" value={editHistForm.treatment} onChange={e => setEditHistForm({ ...editHistForm, treatment: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                        </div>
+                                        <div>
+                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Prescription</label>
+                                          <input type="text" value={editHistForm.prescription} onChange={e => setEditHistForm({ ...editHistForm, prescription: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                        </div>
+                                        <div className="col-span-2">
+                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Notes</label>
+                                          <input type="text" value={editHistForm.notes} onChange={e => setEditHistForm({ ...editHistForm, notes: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                        </div>
+                                      </div>
+                                      <div className="flex justify-end gap-2">
+                                        <button onClick={() => setEditingHistId(null)} className="px-4 py-2 rounded-xl border"
+                                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.82rem", fontFamily: "inherit" }}>Cancel</button>
+                                        <button onClick={handleProviderEditHist} disabled={!editHistForm.diagnosis || !editHistForm.date || saving}
+                                          className="px-4 py-2 rounded-xl text-white disabled:opacity-50"
+                                          style={{ background: "#7C3AED", fontSize: "0.82rem", fontFamily: "inherit" }}>
+                                          {saving ? "Saving..." : "Save Changes"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : deletingId === h.id ? (
+                                    <div className="p-4 flex items-center justify-between gap-3">
+                                      <p style={{ fontSize: "0.82rem", color: "var(--fur-slate)" }}>Delete <strong>{h.diagnosis}</strong>? This cannot be undone.</p>
+                                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                                        <button onClick={() => setDeletingId(null)} className="px-3 py-1.5 rounded-lg border"
+                                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.78rem", fontFamily: "inherit" }}>Cancel</button>
+                                        <button onClick={() => handleProviderDeleteHist(h.id)} disabled={saving}
+                                          className="px-3 py-1.5 rounded-lg text-white disabled:opacity-50"
+                                          style={{ background: "#DC2626", fontSize: "0.78rem", fontFamily: "inherit" }}>
+                                          {saving ? "Deleting..." : "Delete"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="p-4">
+                                      <div className="flex items-start gap-2 mb-1">
+                                        <div className="flex items-center gap-2 flex-wrap flex-1">
+                                          <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{h.diagnosis}</p>
+                                          {h.addedBy === "provider" && (
+                                            <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
+                                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                              Verified
+                                            </span>
+                                          )}
+                                          <span style={{ fontSize: "0.75rem", fontWeight: 400, marginLeft: "auto", color: "var(--fur-slate-light)" }}>
+                                            {new Date(h.date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                                          </span>
+                                        </div>
+                                        {h.addedBy === "provider" && (
+                                          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                                            <button onClick={() => { setEditingHistId(h.id); setEditHistForm({ diagnosis: h.diagnosis, treatment: h.treatment ?? "", prescription: h.prescription ?? "", notes: h.notes ?? "", date: h.date }); }}
+                                              title="Edit" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--border)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fur-slate-mid)" }}>
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            </button>
+                                            <button onClick={() => setDeletingId(h.id)}
+                                              title="Delete" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid #FCA5A5", background: "#FEF2F2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#DC2626" }}>
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                      {h.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginBottom: 6, color: "var(--fur-slate-light)" }}>by {h.providerName}</p>}
+                                      <div className="flex flex-wrap gap-2 mt-2">
+                                        {h.treatment && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Treatment: {h.treatment}</span>}
+                                        {h.prescription && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Rx: {h.prescription}</span>}
+                                        {h.notes && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Notes: {h.notes}</span>}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>

@@ -712,6 +712,54 @@ export const providerInsertMedicalHistory = async (
   };
 };
 
+export const providerUpdateVaccination = async (
+  petId: string,
+  recordId: string,
+  record: { name: string; dateGiven: string; nextDueDate?: string; notes?: string },
+): Promise<void> => {
+  const res = await fetch(`/api/pets/${petId}/vaccinations/${recordId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(record),
+  });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error ?? "Failed to update vaccination");
+  }
+};
+
+export const providerDeleteVaccination = async (petId: string, recordId: string): Promise<void> => {
+  const res = await fetch(`/api/pets/${petId}/vaccinations/${recordId}`, { method: "DELETE" });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error ?? "Failed to delete vaccination");
+  }
+};
+
+export const providerUpdateMedicalHistory = async (
+  petId: string,
+  recordId: string,
+  record: { diagnosis: string; treatment?: string; prescription?: string; notes?: string; date: string },
+): Promise<void> => {
+  const res = await fetch(`/api/pets/${petId}/medical-history/${recordId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(record),
+  });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error ?? "Failed to update medical history");
+  }
+};
+
+export const providerDeleteMedicalHistory = async (petId: string, recordId: string): Promise<void> => {
+  const res = await fetch(`/api/pets/${petId}/medical-history/${recordId}`, { method: "DELETE" });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error ?? "Failed to delete medical history");
+  }
+};
+
 // ─── Provider Public Profile ──────────────────────────────────────────────────
 
 export interface PublicProviderProfile {
