@@ -15,8 +15,6 @@ import {
 import ProviderLayout from "../components/ProviderLayout";
 import BookingActionModal from "../components/BookingActionModal";
 import {
-  fetchPetVaccinations,
-  fetchMedicalHistory,
   providerInsertVaccination,
   providerInsertMedicalHistory,
 } from "@/app/lib/api";
@@ -633,8 +631,41 @@ const ManageBookingsPage: React.FC = () => {
     setPetRecordBooking(booking); setPetRecordTab("vaccinations");
     setPetRecordLoading(true); setPetRecordError(null);
     try {
-      const [vax, hist] = await Promise.all([fetchPetVaccinations(booking.petId), fetchMedicalHistory(booking.petId)]);
-      setPetVaccinations(vax); setPetHistory(hist);
+      const [vaxRes, histRes] = await Promise.all([
+        fetch(`/api/pets/${booking.petId}/vaccinations`),
+        fetch(`/api/pets/${booking.petId}/medical-history`),
+      ]);
+      const [vaxJson, histJson] = await Promise.all([vaxRes.json(), histRes.json()]);
+      if (!vaxRes.ok) throw new Error(vaxJson.error || "Failed to load vaccinations.");
+      if (!histRes.ok) throw new Error(histJson.error || "Failed to load medical history.");
+
+      // Map snake_case DB columns → camelCase app types
+      const vax: Vaccination[] = (vaxJson.data ?? []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        petId: r.pet_id as string,
+        name: r.name as string,
+        dateGiven: r.date_given as string,
+        nextDueDate: r.next_due_date as string | undefined,
+        vetName: r.vet_name as string | undefined,
+        notes: r.notes as string | undefined,
+        addedBy: (r.added_by ?? "owner") as "owner" | "provider",
+        isVerified: (r.is_verified ?? false) as boolean,
+        providerName: r.provider_name as string | undefined,
+      }));
+      const hist: MedicalHistory[] = (histJson.data ?? []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        petId: r.pet_id as string,
+        diagnosis: r.diagnosis as string,
+        treatment: r.treatment as string | undefined,
+        prescription: r.prescription as string | undefined,
+        notes: r.notes as string | undefined,
+        date: r.date as string,
+        addedBy: (r.added_by ?? "owner") as "owner" | "provider",
+        providerName: r.provider_name as string | undefined,
+      }));
+
+      setPetVaccinations(vax);
+      setPetHistory(hist);
     } catch (err) {
       setPetRecordError(err instanceof Error ? err.message : "Failed to load pet records.");
     } finally { setPetRecordLoading(false); }
