@@ -2,6 +2,7 @@
 
 import {
   useState,
+  useMemo,
   createContext,
   useContext,
   ReactNode,
@@ -78,6 +79,15 @@ export interface ActivityLog {
   createdAt: string;
 }
 
+export interface AdminNotification {
+  id: string;
+  type: "booking" | "cancellation" | "registration" | "verification";
+  title: string;
+  description: string;
+  createdAt: string;
+  read: boolean;
+}
+
 export interface SystemStats {
   totalUsers: number;
   totalProviders: number;
@@ -100,6 +110,10 @@ interface AdminContextType {
   activityLogs: ActivityLog[];
   stats: SystemStats;
   isLoading: boolean;
+  notifications: AdminNotification[];
+  unreadCount: number;
+  markAsRead: (id: string) => void;
+  markAllRead: () => void;
   verifyProvider: (providerId: string) => Promise<void>;
   unverifyProvider: (providerId: string) => Promise<void>;
   rejectProvider: (providerId: string) => Promise<void>;
@@ -142,6 +156,87 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [stats, setStats] = useState<SystemStats>(EMPTY_STATS);
   const [isLoading, setIsLoading] = useState(true);
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = localStorage.getItem("fursure_admin_seen_notifs");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const notifications = useMemo<AdminNotification[]>(() => {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - 48);
+    const notifs: AdminNotification[] = [];
+
+    bookings
+      .filter((b) => b.created_at && new Date(b.created_at) > cutoff && b.status !== "cancelled")
+      .forEach((b) => notifs.push({
+        id: `booking-${b.id}`,
+        type: "booking",
+        title: "New Booking",
+        description: `${b.owner_name ?? "A pet owner"} booked ${b.service_name ?? "a service"}`,
+        createdAt: b.created_at!,
+        read: seenIds.has(`booking-${b.id}`),
+      }));
+
+    bookings
+      .filter((b) => b.created_at && new Date(b.created_at) > cutoff && b.status === "cancelled")
+      .forEach((b) => notifs.push({
+        id: `cancel-${b.id}`,
+        type: "cancellation",
+        title: "Booking Cancelled",
+        description: `${b.owner_name ?? "A pet owner"} cancelled ${b.service_name ?? "a booking"}`,
+        createdAt: b.created_at!,
+        read: seenIds.has(`cancel-${b.id}`),
+      }));
+
+    users
+      .filter((u) => u.createdAt && new Date(u.createdAt) > cutoff && u.role !== "admin")
+      .forEach((u) => notifs.push({
+        id: `reg-${u.id}`,
+        type: "registration",
+        title: "New Registration",
+        description: `${u.name} joined as a ${u.role === "provider" ? "service provider" : "pet owner"}`,
+        createdAt: u.createdAt,
+        read: seenIds.has(`reg-${u.id}`),
+      }));
+
+    providers
+      .filter((p) => !p.isVerified && !p.isRejected)
+      .forEach((p) => notifs.push({
+        id: `prov-${p.id}`,
+        type: "verification",
+        title: "Verification Request",
+        description: `"${p.businessName}" is awaiting verification`,
+        createdAt: p.createdAt,
+        read: seenIds.has(`prov-${p.id}`),
+      }));
+
+    return notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [bookings, users, providers, seenIds]);
+
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !seenIds.has(n.id)).length,
+    [notifications, seenIds],
+  );
+
+  const markAsRead = (id: string) => {
+    setSeenIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem("fursure_admin_seen_notifs", JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  const markAllRead = () => {
+    setSeenIds(() => {
+      const next = new Set(notifications.map((n) => n.id));
+      localStorage.setItem("fursure_admin_seen_notifs", JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -353,6 +448,10 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
         activityLogs,
         stats,
         isLoading,
+        notifications,
+        unreadCount,
+        markAsRead,
+        markAllRead,
         verifyProvider,
         unverifyProvider,
         rejectProvider,
