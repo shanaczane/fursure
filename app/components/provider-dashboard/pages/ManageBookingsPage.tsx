@@ -707,6 +707,11 @@ const ManageBookingsPage: React.FC = () => {
   };
 
   const filtered = useMemo(() => filterAndSort(bookings, filters), [bookings, filters]);
+
+  const ROWS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
+  const pagedBookings = filtered.slice((currentPage - 1) * ROWS_PER_PAGE, currentPage * ROWS_PER_PAGE);
   const openModal = (booking: ProviderBooking, a: ActionType) => { setSelectedBooking(booking); setAction(a); };
   const closeModal = () => { setSelectedBooking(null); setAction(null); };
   const handleApproveEdit   = (id: string) => updateBooking(id, { editRequestStatus: "approved" });
@@ -744,7 +749,7 @@ const ManageBookingsPage: React.FC = () => {
     { value: "declined",    label: "Declined",     count: counts.declined },
   ];
 
-  const setFilter = (key: string, val: string) => setFilters(f => ({ ...f, [key]: val }));
+  const setFilter = (key: string, val: string) => { setFilters(f => ({ ...f, [key]: val })); setCurrentPage(1); };
   const hasActiveFilters = filters.month !== "all" || filters.serviceId !== "all" || filters.searchQuery !== "";
   const COL = ["3%", "23%", "15%", "14%", "11%", "14%", "20%"];
 
@@ -898,9 +903,9 @@ const ManageBookingsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((booking, idx) => {
+                  {pagedBookings.map((booking, idx) => {
                     const isExpanded         = expandedId === booking.id;
-                    const isLast             = idx === filtered.length - 1;
+                    const isLast             = idx === pagedBookings.length - 1;
                     const effectiveDate      = booking.rescheduleDate || booking.date;
                     const effectiveTime      = booking.rescheduleTime || booking.time;
                     const isPaymentSubmitted = booking.status === "payment_submitted";
@@ -1042,6 +1047,48 @@ const ManageBookingsPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderTop: "1px solid var(--border)" }}>
+                <p style={{ fontSize: "0.78rem", color: "var(--fur-slate-light)", fontWeight: 400 }}>
+                  Showing {(currentPage - 1) * ROWS_PER_PAGE + 1}–{Math.min(currentPage * ROWS_PER_PAGE, filtered.length)} of {filtered.length}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border)", background: "white", color: "var(--fur-slate-mid)", cursor: currentPage === 1 ? "not-allowed" : "pointer", opacity: currentPage === 1 ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                    .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                      if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push("...");
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((item, idx) => item === "..." ? (
+                      <span key={`e-${idx}`} style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.78rem", color: "var(--fur-slate-light)" }}>…</span>
+                    ) : (
+                      <button key={item} onClick={() => setCurrentPage(item as number)}
+                        style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+                          background: currentPage === item ? "var(--fur-teal)" : "white",
+                          color: currentPage === item ? "white" : "var(--fur-slate-mid)",
+                          borderColor: currentPage === item ? "var(--fur-teal)" : "var(--border)",
+                        }}>
+                        {item}
+                      </button>
+                    ))}
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border)", background: "white", color: "var(--fur-slate-mid)", cursor: currentPage === totalPages ? "not-allowed" : "pointer", opacity: currentPage === totalPages ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
