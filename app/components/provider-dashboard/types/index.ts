@@ -248,3 +248,132 @@ export function downPaymentHoursRemaining(booking: ProviderBooking): number {
   const deadline = booking.downPaymentDeadlineHours ?? 24;
   return Math.max(0, deadline - hoursElapsedSince(booking.createdAt));
 }
+
+// ─── Owner / shared types ────────────────────────────────────────────────────
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: "owner" | "provider";
+  avatar?: string;
+}
+
+export interface Service {
+  id: string;
+  providerId: string;
+  providerName: string;
+  name: string;
+  category: ProviderServiceCategory;
+  description: string;
+  price: number;
+  priceUnit: string;
+  duration: number;
+  image: string;
+  location: string;
+  features: string[];
+  availability: string[];
+  isActive: boolean;
+  rating: number;
+  reviews: number;
+}
+
+export interface Booking {
+  id: string;
+  serviceId: string;
+  serviceName: string;
+  providerId: string;
+  providerName: string;
+  petId?: string;
+  petName: string;
+  petType: string;
+  petBreed: string;
+  date: string;
+  time: string;
+  status: BookingStatus;
+  notes?: string;
+  price: number;
+  createdAt?: string;
+  rating?: number;
+  reviewComment?: string;
+
+  // Down payment fields
+  requiresDownPayment?: boolean;
+  downPaymentDeadlineHours?: number;
+  downPaymentPaid?: boolean;
+  downPaymentPaidAt?: string;
+  downPaymentConfirmed?: boolean;
+  downPaymentConfirmedAt?: string;
+  depositPercentage?: number;
+  depositRefundable?: boolean;
+
+  // Edit / cancel / reschedule tracking
+  editRequestStatus?: "none" | "pending" | "approved" | "rejected";
+  cancelRequestStatus?: "none" | "pending" | "approved" | "rejected";
+  rescheduleDate?: string;
+  rescheduleTime?: string;
+  rescheduleStatus?: "none" | "pending" | "confirmed" | "declined";
+}
+
+export interface Pet {
+  id: string;
+  name: string;
+  type: string;
+  breed: string;
+  age: number;
+  weight?: number;
+  avatar?: string;
+  notes?: string;
+  vaccinations?: PetVaccination[];
+  medicalHistory?: PetMedicalRecord[];
+}
+
+export interface PetVaccination {
+  id: string;
+  vaccineName: string;
+  dateGiven: string;
+  nextDueDate?: string;
+  veterinarianName?: string;
+  notes?: string;
+}
+
+export interface PetMedicalRecord {
+  id: string;
+  date: string;
+  type: string;
+  description: string;
+  veterinarianName?: string;
+  notes?: string;
+}
+
+export interface VaccinationReminder {
+  petId: string;
+  petName: string;
+  vaccineName: string;
+  nextDueDate: string;
+  daysUntilDue: number;
+}
+
+// ─── Owner notifications ─────────────────────────────────────────────────────
+// IMPORTANT: "vaccine_recorded" must stay in this union so that AppContext
+// and TopNavbar can reference it without ts(2322) / ts(2367) errors.
+
+export interface OwnerNotification {
+  id: string;
+  type:
+    | "booking_confirmed"
+    | "booking_declined"
+    | "reschedule_proposal"
+    | "payment_required"
+    | "review_pending"
+    | "edit_approved"
+    | "cancel_approved"
+    | "vaccine_overdue"
+    | "vaccine_due"
+    | "vaccine_recorded";   // ← added: provider recorded a vaccination for the pet
+  title: string;
+  description: string;
+  createdAt: string;
+  read: boolean;
+}

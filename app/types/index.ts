@@ -75,7 +75,8 @@ export interface OwnerNotification {
     | "edit_approved"
     | "cancel_approved"
     | "vaccine_overdue"
-    | "vaccine_due";
+    | "vaccine_due"
+    | "vaccine_recorded"; // provider recorded a vaccination for the pet
   title: string;
   description: string;
   createdAt: string;

@@ -22,6 +22,7 @@ import {
   providerUpdateMedicalHistory,
   providerDeleteMedicalHistory,
 } from "@/app/lib/api";
+import { storeVaxRecordedEvent } from "@/app/contexts/AppContext";
 import type { Vaccination, MedicalHistory } from "@/app/types";
 
 type ActionType = "accept" | "reject" | "reschedule" | "complete" | "approve_edit" | "approve_cancel";
@@ -170,6 +171,24 @@ const RescheduleProposalIcon = () => (
     <polyline points="12 6 12 12 16 14"/>
   </svg>
 );
+// ─── NEW: Syringe icon for "Record Vaccination" CTA ───────────────────────────
+const SyringeIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="21" x2="9" y2="15"/>
+    <path d="M21 3l-3 3"/>
+    <path d="M15 3l6 6"/>
+    <path d="M9 9l6 6"/>
+    <path d="M13 5l6 6"/>
+    <path d="M5 13l-2 6 6-2z"/>
+  </svg>
+);
+// ─── NEW: Shield-check icon for "Recorded" badge ──────────────────────────────
+const ShieldCheckIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    <polyline points="9 12 11 14 15 10"/>
+  </svg>
+);
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -219,24 +238,16 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
 /* ─── Shared text style tokens ───────────────────────────────────────────── */
 const T = {
-  // Primary content text — used for names, values, main labels
   primary: { fontSize: "0.875rem", fontWeight: 500, color: "var(--fur-slate)" } as React.CSSProperties,
-  // Secondary / supporting text — dates, sub-labels, emails
   secondary: { fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" } as React.CSSProperties,
-  // Section header labels (UPPERCASE caps inside panels)
   label: {
     fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase" as const,
     letterSpacing: "0.07em", color: "var(--fur-slate-mid)", marginBottom: 4,
   } as React.CSSProperties,
-  // Body/description paragraphs inside panels
   body: { fontSize: "0.85rem", fontWeight: 400, color: "var(--fur-slate)", lineHeight: 1.6 } as React.CSSProperties,
-  // Muted italic helper text
   muted: { fontSize: "0.82rem", fontWeight: 400, fontStyle: "italic", color: "var(--fur-slate-light)" } as React.CSSProperties,
-  // Bold price / emphasized numeric values
   amount: { fontSize: "0.9rem", fontWeight: 600, color: "var(--fur-slate)" } as React.CSSProperties,
-  // Table cell primary (service name, price — bolder)
   cellPrimary: { fontSize: "0.875rem", fontWeight: 700, color: "var(--fur-slate)" } as React.CSSProperties,
-  // Table cell secondary (pet name, dp line)
   cellSecondary: { fontSize: "0.75rem", fontWeight: 500, color: "var(--fur-slate-light)" } as React.CSSProperties,
 };
 
@@ -641,6 +652,16 @@ const ManageBookingsPage: React.FC = () => {
   const [editHistForm, setEditHistForm] = useState({ diagnosis: "", treatment: "", prescription: "", notes: "", date: "" });
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // ── NEW: "Record Vaccination" inline form state for overdue entries ─────────
+  // recordingVaxId = the existing vaccination record ID being updated as "given"
+  const [recordingVaxId, setRecordingVaxId] = useState<string | null>(null);
+  const [recordVaxForm, setRecordVaxForm] = useState({
+    dateGiven: new Date().toISOString().split("T")[0],
+    nextDueDate: "",
+    notes: "",
+  });
+  const [recordVaxSuccess, setRecordVaxSuccess] = useState<string | null>(null); // vaccineName after success
+
   const liveDepositPct      = policy?.depositPercentage      ?? 0;
   const liveDeadlineHours   = policy?.downPaymentDeadlineHours ?? 24;
 
@@ -648,6 +669,7 @@ const ManageBookingsPage: React.FC = () => {
     if (!booking.petId) { setPetRecordError("Pet ID not found for this booking."); setPetRecordBooking(booking); return; }
     setPetRecordBooking(booking); setPetRecordTab("vaccinations"); setVaxPage(1); setHistPage(1);
     setPetRecordLoading(true); setPetRecordError(null);
+    setRecordingVaxId(null); setRecordVaxSuccess(null);
     try {
       const [vaxRes, histRes] = await Promise.all([
         fetch(`/api/pets/${booking.petId}/vaccinations`),
@@ -694,6 +716,7 @@ const ManageBookingsPage: React.FC = () => {
     setVaxForm({ name: "", dateGiven: "", nextDueDate: "", notes: "" });
     setHistForm({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
     setEditingVaxId(null); setEditingHistId(null); setDeletingId(null);
+    setRecordingVaxId(null); setRecordVaxSuccess(null);
   };
 
   const handleProviderAddVax = async () => {
@@ -776,6 +799,64 @@ const ManageBookingsPage: React.FC = () => {
       setDeletingId(null);
     } catch (err) { setPetRecordError(err instanceof Error ? err.message : "Failed to delete record."); }
     finally { setSaving(false); }
+  };
+
+  // ── NEW: Handle "Record Vaccination" for an overdue entry ────────────────────
+  // Strategy: update the existing overdue record's dateGiven + nextDueDate +
+  // mark it verified by the provider, then persist a localStorage event so
+  // the owner's notification panel reflects the change immediately.
+  const handleRecordOverdueVaccination = async (v: Vaccination) => {
+    if (!petRecordBooking?.petId || !recordVaxForm.dateGiven) return;
+    setSaving(true);
+    setPetRecordError(null);
+    try {
+      await providerUpdateVaccination(petRecordBooking.petId, v.id, {
+        name: v.name,
+        dateGiven: recordVaxForm.dateGiven,
+        nextDueDate: recordVaxForm.nextDueDate || undefined,
+        notes: recordVaxForm.notes || undefined,
+      });
+
+      // Update local state: mark verified, update dates
+      setPetVaccinations(prev => prev.map(existing =>
+        existing.id === v.id
+          ? {
+              ...existing,
+              dateGiven: recordVaxForm.dateGiven,
+              nextDueDate: recordVaxForm.nextDueDate || undefined,
+              notes: recordVaxForm.notes || undefined,
+              isVerified: true,
+              addedBy: "provider" as const,
+              providerName: user.name,
+            }
+          : existing
+      ));
+
+      // Persist notification event for the owner's dashboard
+      storeVaxRecordedEvent({
+        petId: petRecordBooking.petId,
+        petName: petRecordBooking.petName,
+        vaccineName: v.name,
+        dateGiven: recordVaxForm.dateGiven,
+        nextDueDate: recordVaxForm.nextDueDate || undefined,
+        providerName: user.name,
+        recordedAt: new Date().toISOString(),
+      });
+
+      setRecordVaxSuccess(v.name);
+      setRecordingVaxId(null);
+      setRecordVaxForm({ dateGiven: new Date().toISOString().split("T")[0], nextDueDate: "", notes: "" });
+    } catch (err) {
+      setPetRecordError(err instanceof Error ? err.message : "Failed to record vaccination.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Helper: is a vaccination considered overdue?
+  const isVaxOverdue = (v: Vaccination) => {
+    if (!v.nextDueDate) return false;
+    return new Date(v.nextDueDate) < new Date();
   };
 
   const filtered = useMemo(() => filterAndSort(bookings, filters), [bookings, filters]);
@@ -1055,7 +1136,6 @@ const ManageBookingsPage: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* ── Service & Pet — BOLD column ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 140 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <div style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, background: "var(--fur-cream)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem" }}>
@@ -1072,7 +1152,6 @@ const ManageBookingsPage: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* ── Owner ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 120 }}>
                             <p style={{ ...T.primary, marginBottom: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {booking.ownerName}
@@ -1084,7 +1163,6 @@ const ManageBookingsPage: React.FC = () => {
                             )}
                           </td>
 
-                          {/* ── Date & Time ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 140, whiteSpace: "nowrap" }}>
                             <p style={{ ...T.primary, marginBottom: 1 }}>
                               {new Date(effectiveDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -1092,7 +1170,6 @@ const ManageBookingsPage: React.FC = () => {
                             <p style={T.secondary}>{effectiveTime}</p>
                           </td>
 
-                          {/* ── Price — BOLD column ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 90 }}>
                             <p style={{ ...T.cellPrimary, marginBottom: 2 }}>
                               {formatCurrency(booking.price)}
@@ -1107,12 +1184,10 @@ const ManageBookingsPage: React.FC = () => {
                             )}
                           </td>
 
-                          {/* ── Status ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 120 }}>
                             <StatusBadge status={booking.status} />
                           </td>
 
-                          {/* ── Flags ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 160 }}>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                               {flags.length === 0
@@ -1261,6 +1336,29 @@ const ManageBookingsPage: React.FC = () => {
                   {petRecordError}
                 </div>
               )}
+
+              {/* ── Success banner after recording a vaccination ── */}
+              {recordVaxSuccess && (
+                <div className="mb-4 px-4 py-3 rounded-xl border flex items-center gap-3"
+                  style={{ background: "#F0FDF4", borderColor: "#6EE7B7", color: "#065F46", fontSize: "0.82rem", fontWeight: 500 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: 8, background: "#D1FAE5", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <ShieldCheckIcon />
+                  </div>
+                  <div>
+                    <p style={{ fontWeight: 700, marginBottom: 1 }}>Vaccination recorded!</p>
+                    <p style={{ fontWeight: 400 }}>
+                      <strong>{recordVaxSuccess}</strong> has been marked as administered.
+                      The pet owner will be notified.
+                    </p>
+                  </div>
+                  <button onClick={() => setRecordVaxSuccess(null)} style={{ marginLeft: "auto", color: "#059669", background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
+
               {petRecordLoading ? (
                 <p style={{ ...T.secondary, textAlign: "center", padding: "32px 0" }}>Loading records...</p>
               ) : petRecordTab === "vaccinations" ? (
@@ -1318,84 +1416,210 @@ const ManageBookingsPage: React.FC = () => {
                         return (
                           <>
                             <div className="space-y-2">
-                              {pagedVax.map((v) => (
-                                <div key={v.id} className="rounded-xl border" style={{ background: "white", borderColor: "var(--border)" }}>
-                                  {editingVaxId === v.id ? (
-                                    <div className="p-4 space-y-3">
-                                      <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)" }}>Edit Vaccination Record</p>
-                                      <div className="grid grid-cols-2 gap-3">
-                                        <div className="col-span-2">
-                                          <label style={formLabelStyle}>Vaccine Name *</label>
-                                          <input type="text" value={editVaxForm.name} onChange={e => setEditVaxForm({ ...editVaxForm, name: e.target.value })} style={inputStyle} />
+                              {pagedVax.map((v) => {
+                                const overdue = isVaxOverdue(v) && !v.isVerified;
+                                const alreadyRecorded = v.isVerified && v.addedBy === "provider";
+                                const isRecordingThis = recordingVaxId === v.id;
+
+                                return (
+                                  <div key={v.id} className="rounded-xl border" style={{
+                                    background: overdue ? "#FFF5F5" : "white",
+                                    borderColor: overdue ? "#FCA5A5" : "var(--border)",
+                                    // highlight the entry being recorded
+                                    ...(isRecordingThis ? { borderColor: "#7C3AED", background: "#F5F3FF" } : {}),
+                                  }}>
+                                    {editingVaxId === v.id ? (
+                                      <div className="p-4 space-y-3">
+                                        <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)" }}>Edit Vaccination Record</p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div className="col-span-2">
+                                            <label style={formLabelStyle}>Vaccine Name *</label>
+                                            <input type="text" value={editVaxForm.name} onChange={e => setEditVaxForm({ ...editVaxForm, name: e.target.value })} style={inputStyle} />
+                                          </div>
+                                          <div>
+                                            <label style={formLabelStyle}>Date Given *</label>
+                                            <input type="date" value={editVaxForm.dateGiven} onChange={e => setEditVaxForm({ ...editVaxForm, dateGiven: e.target.value })} style={inputStyle} />
+                                          </div>
+                                          <div>
+                                            <label style={formLabelStyle}>Next Due Date</label>
+                                            <input type="date" value={editVaxForm.nextDueDate} onChange={e => setEditVaxForm({ ...editVaxForm, nextDueDate: e.target.value })} style={inputStyle} />
+                                          </div>
+                                          <div className="col-span-2">
+                                            <label style={formLabelStyle}>Notes</label>
+                                            <input type="text" value={editVaxForm.notes} onChange={e => setEditVaxForm({ ...editVaxForm, notes: e.target.value })} style={inputStyle} />
+                                          </div>
                                         </div>
-                                        <div>
-                                          <label style={formLabelStyle}>Date Given *</label>
-                                          <input type="date" value={editVaxForm.dateGiven} onChange={e => setEditVaxForm({ ...editVaxForm, dateGiven: e.target.value })} style={inputStyle} />
-                                        </div>
-                                        <div>
-                                          <label style={formLabelStyle}>Next Due Date</label>
-                                          <input type="date" value={editVaxForm.nextDueDate} onChange={e => setEditVaxForm({ ...editVaxForm, nextDueDate: e.target.value })} style={inputStyle} />
-                                        </div>
-                                        <div className="col-span-2">
-                                          <label style={formLabelStyle}>Notes</label>
-                                          <input type="text" value={editVaxForm.notes} onChange={e => setEditVaxForm({ ...editVaxForm, notes: e.target.value })} style={inputStyle} />
-                                        </div>
-                                      </div>
-                                      <div className="flex justify-end gap-2">
-                                        <button onClick={() => setEditingVaxId(null)}
-                                          style={{ padding: "6px 14px", borderRadius: 9, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                                        <button onClick={handleProviderEditVax} disabled={!editVaxForm.name || !editVaxForm.dateGiven || saving}
-                                          style={{ padding: "6px 14px", borderRadius: 9, background: "#7C3AED", color: "white", border: "none", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: (!editVaxForm.name || !editVaxForm.dateGiven || saving) ? 0.5 : 1 }}>
-                                          {saving ? "Saving..." : "Save Changes"}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : deletingId === v.id ? (
-                                    <div className="p-4 flex items-center justify-between gap-3">
-                                      <p style={{ fontSize: "0.85rem", fontWeight: 400, color: "var(--fur-slate)" }}>Delete <strong style={{ fontWeight: 600 }}>{v.name}</strong>? This cannot be undone.</p>
-                                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                                        <button onClick={() => setDeletingId(null)}
-                                          style={{ padding: "5px 12px", borderRadius: 8, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.78rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
-                                        <button onClick={() => handleProviderDeleteVax(v.id)} disabled={saving}
-                                          style={{ padding: "5px 12px", borderRadius: 8, background: "#DC2626", color: "white", border: "none", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.5 : 1 }}>
-                                          {saving ? "Deleting..." : "Delete"}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="p-4 flex items-start gap-3">
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                          <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)" }}>{v.name}</p>
-                                          {v.isVerified && (
-                                            <span style={{ fontSize: "0.68rem", fontWeight: 600, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
-                                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                              Verified
-                                            </span>
-                                          )}
-                                        </div>
-                                        <p style={T.secondary}>
-                                          Given: {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-                                          {v.nextDueDate && ` · Next: ${new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}`}
-                                        </p>
-                                        {v.providerName && <p style={{ ...T.secondary, marginTop: 2 }}>by {v.providerName}</p>}
-                                      </div>
-                                      {v.addedBy === "provider" && (
-                                        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                                          <button onClick={() => { setEditingVaxId(v.id); setEditVaxForm({ name: v.name, dateGiven: v.dateGiven, nextDueDate: v.nextDueDate ?? "", notes: v.notes ?? "" }); }}
-                                            title="Edit" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--border)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fur-slate-mid)" }}>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                          </button>
-                                          <button onClick={() => setDeletingId(v.id)}
-                                            title="Delete" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid #FCA5A5", background: "#FEF2F2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#DC2626" }}>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                        <div className="flex justify-end gap-2">
+                                          <button onClick={() => setEditingVaxId(null)}
+                                            style={{ padding: "6px 14px", borderRadius: 9, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                                          <button onClick={handleProviderEditVax} disabled={!editVaxForm.name || !editVaxForm.dateGiven || saving}
+                                            style={{ padding: "6px 14px", borderRadius: 9, background: "#7C3AED", color: "white", border: "none", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: (!editVaxForm.name || !editVaxForm.dateGiven || saving) ? 0.5 : 1 }}>
+                                            {saving ? "Saving..." : "Save Changes"}
                                           </button>
                                         </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                                      </div>
+                                    ) : deletingId === v.id ? (
+                                      <div className="p-4 flex items-center justify-between gap-3">
+                                        <p style={{ fontSize: "0.85rem", fontWeight: 400, color: "var(--fur-slate)" }}>Delete <strong style={{ fontWeight: 600 }}>{v.name}</strong>? This cannot be undone.</p>
+                                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                                          <button onClick={() => setDeletingId(null)}
+                                            style={{ padding: "5px 12px", borderRadius: 8, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.78rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                                          <button onClick={() => handleProviderDeleteVax(v.id)} disabled={saving}
+                                            style={{ padding: "5px 12px", borderRadius: 8, background: "#DC2626", color: "white", border: "none", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.5 : 1 }}>
+                                            {saving ? "Deleting..." : "Delete"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="p-4">
+                                        {/* ── Row header ── */}
+                                        <div className="flex items-start gap-3">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                              <p style={{ fontSize: "0.88rem", fontWeight: 600, color: overdue ? "#991B1B" : "var(--fur-slate)" }}>{v.name}</p>
+
+                                              {/* Overdue badge */}
+                                              {overdue && (
+                                                <span style={{ fontSize: "0.68rem", fontWeight: 700, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#FEE2E2", color: "#991B1B" }}>
+                                                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                                  Overdue
+                                                </span>
+                                              )}
+
+                                              {/* Verified / recorded badge */}
+                                              {v.isVerified && (
+                                                <span style={{ fontSize: "0.68rem", fontWeight: 600, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#D1FAE5", color: "#065F46" }}>
+                                                  <ShieldCheckIcon /> Recorded by provider
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p style={T.secondary}>
+                                              Given: {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                                              {v.nextDueDate && ` · Next: ${new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}`}
+                                            </p>
+                                            {v.providerName && <p style={{ ...T.secondary, marginTop: 2 }}>by {v.providerName}</p>}
+                                          </div>
+
+                                          {/* Action buttons */}
+                                          <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "flex-start" }}>
+                                            {/* ── NEW: "Record Vaccination" CTA for overdue entries ── */}
+                                            {overdue && !isRecordingThis && (
+                                              <button
+                                                onClick={() => {
+                                                  setRecordingVaxId(v.id);
+                                                  setRecordVaxForm({ dateGiven: new Date().toISOString().split("T")[0], nextDueDate: "", notes: "" });
+                                                  setAddingVax(false);
+                                                  setPetRecordError(null);
+                                                }}
+                                                style={{
+                                                  display: "inline-flex", alignItems: "center", gap: 5,
+                                                  padding: "5px 10px", borderRadius: 8,
+                                                  background: "#059669", color: "white",
+                                                  border: "none", fontSize: "0.75rem", fontWeight: 600,
+                                                  cursor: "pointer", fontFamily: "inherit",
+                                                  whiteSpace: "nowrap",
+                                                }}
+                                                title="Record this vaccination as administered today"
+                                              >
+                                                <SyringeIcon /> Record Vaccination
+                                              </button>
+                                            )}
+                                            {/* ── Cancel "Record" inline form ── */}
+                                            {isRecordingThis && (
+                                              <button
+                                                onClick={() => setRecordingVaxId(null)}
+                                                style={{ padding: "5px 10px", borderRadius: 8, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.75rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+                                              >
+                                                Cancel
+                                              </button>
+                                            )}
+                                            {/* Edit / Delete only for provider-added records not currently in record-mode */}
+                                            {v.addedBy === "provider" && !isRecordingThis && (
+                                              <>
+                                                <button onClick={() => { setEditingVaxId(v.id); setEditVaxForm({ name: v.name, dateGiven: v.dateGiven, nextDueDate: v.nextDueDate ?? "", notes: v.notes ?? "" }); }}
+                                                  title="Edit" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--border)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fur-slate-mid)" }}>
+                                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                </button>
+                                                <button onClick={() => setDeletingId(v.id)}
+                                                  title="Delete" style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid #FCA5A5", background: "#FEF2F2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#DC2626" }}>
+                                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {/* ── NEW: Inline "Record Vaccination" form for overdue entries ── */}
+                                        {isRecordingThis && (
+                                          <div style={{
+                                            marginTop: 12, padding: "12px 14px",
+                                            background: "#F5F3FF", borderRadius: 10,
+                                            border: "1px solid #C4B5FD",
+                                          }}>
+                                            <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#5B21B6", marginBottom: 10 }}>
+                                              Record <strong>{v.name}</strong> as administered
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                              <div>
+                                                <label style={{ ...formLabelStyle, color: "#5B21B6" }}>Date Administered *</label>
+                                                <input
+                                                  type="date"
+                                                  value={recordVaxForm.dateGiven}
+                                                  onChange={e => setRecordVaxForm({ ...recordVaxForm, dateGiven: e.target.value })}
+                                                  style={inputStyle}
+                                                />
+                                              </div>
+                                              <div>
+                                                <label style={{ ...formLabelStyle, color: "#5B21B6" }}>Next Due Date</label>
+                                                <input
+                                                  type="date"
+                                                  value={recordVaxForm.nextDueDate}
+                                                  onChange={e => setRecordVaxForm({ ...recordVaxForm, nextDueDate: e.target.value })}
+                                                  style={inputStyle}
+                                                />
+                                              </div>
+                                              <div className="col-span-2">
+                                                <label style={{ ...formLabelStyle, color: "#5B21B6" }}>Notes (optional)</label>
+                                                <input
+                                                  type="text"
+                                                  value={recordVaxForm.notes}
+                                                  onChange={e => setRecordVaxForm({ ...recordVaxForm, notes: e.target.value })}
+                                                  style={inputStyle}
+                                                  placeholder="e.g., administered at clinic, lot number, etc."
+                                                />
+                                              </div>
+                                            </div>
+                                            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 10 }}>
+                                              <button
+                                                onClick={() => setRecordingVaxId(null)}
+                                                style={{ padding: "6px 14px", borderRadius: 9, border: "1.5px solid #C4B5FD", background: "white", color: "#5B21B6", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+                                              >
+                                                Cancel
+                                              </button>
+                                              <button
+                                                onClick={() => handleRecordOverdueVaccination(v)}
+                                                disabled={!recordVaxForm.dateGiven || saving}
+                                                style={{
+                                                  padding: "6px 14px", borderRadius: 9,
+                                                  background: "#059669", color: "white",
+                                                  border: "none", fontSize: "0.82rem", fontWeight: 600,
+                                                  cursor: (!recordVaxForm.dateGiven || saving) ? "not-allowed" : "pointer",
+                                                  fontFamily: "inherit",
+                                                  opacity: (!recordVaxForm.dateGiven || saving) ? 0.5 : 1,
+                                                  display: "inline-flex", alignItems: "center", gap: 5,
+                                                }}
+                                              >
+                                                <ShieldCheckIcon />
+                                                {saving ? "Saving..." : "Confirm & Notify Owner"}
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                             {vaxTotalPages > 1 && (
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8 }}>

@@ -90,6 +90,16 @@ const NOTIF_CONFIG: Record<
       </svg>
     ),
   },
+  // ── Provider recorded a vaccination ──────────────────────────────────────
+  vaccine_recorded: {
+    bg: "#D1FAE5", color: "#065F46",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <polyline points="9 12 11 14 15 10"/>
+      </svg>
+    ),
+  },
 };
 
 /* ── Relative time ─────────────────────────────────────────────────────────── */
@@ -102,6 +112,13 @@ function relativeTime(dateStr: string): string {
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
+
+/* ── Vaccine-activity notification types ───────────────────────────────────── */
+const VACCINE_ACTIVITY_TYPES: OwnerNotification["type"][] = [
+  "vaccine_overdue",
+  "vaccine_due",
+  "vaccine_recorded",
+];
 
 /* ── Component ─────────────────────────────────────────────────────────────── */
 const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarOpen }) => {
@@ -117,6 +134,10 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarO
     if (open) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
+
+  const hasVaccineActivity = notifications.some((n) =>
+    VACCINE_ACTIVITY_TYPES.includes(n.type)
+  );
 
   return (
     <header
@@ -217,6 +238,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarO
                   ) : (
                     notifications.map((n) => {
                       const cfg = NOTIF_CONFIG[n.type];
+                      const isVaxRecorded = n.type === "vaccine_recorded";
                       return (
                         <div
                           key={n.id}
@@ -225,11 +247,13 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarO
                             display: "flex", alignItems: "flex-start", gap: 12,
                             padding: "12px 16px", cursor: "pointer",
                             borderBottom: "1px solid var(--border)",
-                            background: !n.read ? "#F0FDF9" : "white",
+                            background: !n.read
+                              ? (isVaxRecorded ? "#F0FDF4" : "#F0FDF9")
+                              : "white",
                             transition: "background 0.15s",
                           }}
                           onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = !n.read ? "#F0FDF9" : "white")}
+                          onMouseLeave={e => (e.currentTarget.style.background = !n.read ? (isVaxRecorded ? "#F0FDF4" : "#F0FDF9") : "white")}
                         >
                           <div style={{
                             width: 32, height: 32, borderRadius: 10, flexShrink: 0,
@@ -240,7 +264,19 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarO
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
-                              <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--fur-slate)", whiteSpace: "nowrap" }}>{n.title}</p>
+                              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--fur-slate)", whiteSpace: "nowrap" }}>{n.title}</p>
+                                {isVaxRecorded && (
+                                  <span style={{
+                                    fontSize: "0.65rem", fontWeight: 700,
+                                    padding: "1px 6px", borderRadius: 9999,
+                                    background: "#D1FAE5", color: "#065F46",
+                                    whiteSpace: "nowrap",
+                                  }}>
+                                    ✓ Recorded
+                                  </span>
+                                )}
+                              </div>
                               <p style={{ fontSize: "0.72rem", color: "var(--fur-slate-light)", whiteSpace: "nowrap", flexShrink: 0 }}>{relativeTime(n.createdAt)}</p>
                             </div>
                             <p style={{ fontSize: "0.78rem", color: "var(--fur-slate-mid)", lineHeight: 1.4 }}>{n.description}</p>
@@ -255,7 +291,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarO
                 </div>
 
                 {/* Footer */}
-                {(notifications.some(n => n.type === "vaccine_overdue" || n.type === "vaccine_due")) && (
+                {hasVaccineActivity && (
                   <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)", textAlign: "center" }}>
                     <Link
                       href="/owner/pets"

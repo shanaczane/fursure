@@ -64,6 +64,49 @@ const DEFAULT_USER: User = {
   avatar: "👤",
 };
 
+// ─── Local-storage key for vaccine_recorded events ────────────────────────────
+const VAX_RECORDED_KEY = "fursure_owner_vax_recorded_events";
+
+interface StoredVaxRecordedEvent {
+  id: string;           // "vax-recorded-{petId}-{vaccineName}-{dateGiven}"
+  petId: string;
+  petName: string;
+  vaccineName: string;
+  dateGiven: string;
+  nextDueDate?: string;
+  providerName: string;
+  recordedAt: string;
+}
+
+function loadVaxRecordedEvents(): StoredVaxRecordedEvent[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(VAX_RECORDED_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveVaxRecordedEvents(events: StoredVaxRecordedEvent[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(VAX_RECORDED_KEY, JSON.stringify(events));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+// ─── Exported helper: called by the provider side after inserting a record ────
+// This stores a lightweight event in localStorage so the owner's AppContext
+// can surface it as a "vaccine_recorded" notification on next load / tab focus.
+export function storeVaxRecordedEvent(event: Omit<StoredVaxRecordedEvent, "id">): void {
+  const id = `vax-recorded-${event.petId}-${event.vaccineName.replace(/\s+/g, "_")}-${event.dateGiven}`;
+  const existing = loadVaxRecordedEvents();
+  if (existing.some((e) => e.id === id)) return; // idempotent
+  saveVaxRecordedEvents([...existing, { id, ...event }]);
+}
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User>(DEFAULT_USER);
   const [services, setServices] = useState<Service[]>([]);
@@ -71,6 +114,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [pets, setPets] = useState<Pet[]>([]);
   const [vaccinationReminders, setVaccinationReminders] = useState<VaccinationReminder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [vaxRecordedEvents, setVaxRecordedEvents] = useState<StoredVaxRecordedEvent[]>([]);
+
   const [seenIds, setSeenIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -78,6 +123,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       return stored ? new Set(JSON.parse(stored)) : new Set();
     } catch { return new Set(); }
   });
+
+  // Sync vaxRecordedEvents from localStorage on mount and when tab regains focus
+  useEffect(() => {
+    const sync = () => setVaxRecordedEvents(loadVaxRecordedEvents());
+    sync();
+    window.addEventListener("focus", sync);
+    return () => window.removeEventListener("focus", sync);
+  }, []);
 
   const notifications = useMemo<OwnerNotification[]>(() => {
     const cutoff = new Date();
@@ -111,7 +164,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         notifs.push({ id: `cancelok-${b.id}`, type: "cancel_approved", title: "Cancellation Approved", description: `Your cancellation for ${b.serviceName} was approved`, createdAt, read: seenIds.has(`cancelok-${b.id}`) });
     }
 
+    // ── Vaccination reminders (only if NOT already recorded by a provider) ──
+    const recordedVaxKeys = new Set(
+      vaxRecordedEvents.map((e) => `${e.petId}-${e.vaccineName}`)
+    );
+
     for (const r of vaccinationReminders) {
+      const key = `${r.petId}-${r.vaccineName}`;
+      // Suppress overdue/due reminders when a provider has already recorded it
+      if (recordedVaxKeys.has(key)) continue;
+
       const id = `vax-${r.petId}-${r.vaccineName}`;
       if (r.daysUntilDue < 0)
         notifs.push({ id, type: "vaccine_overdue", title: "Vaccine Overdue", description: `${r.vaccineName} for ${r.petName} is overdue by ${Math.abs(r.daysUntilDue)} day${Math.abs(r.daysUntilDue) !== 1 ? "s" : ""}`, createdAt: now, read: seenIds.has(id) });
@@ -119,14 +181,35 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         notifs.push({ id, type: "vaccine_due", title: "Vaccine Due Soon", description: `${r.vaccineName} for ${r.petName} is due in ${r.daysUntilDue === 0 ? "today" : `${r.daysUntilDue} day${r.daysUntilDue !== 1 ? "s" : ""}`}`, createdAt: now, read: seenIds.has(id) });
     }
 
+    // ── vaccine_recorded notifications from provider-side actions ────────────
+    for (const evt of vaxRecordedEvents) {
+      const id = evt.id;
+      const formattedDate = new Date(evt.dateGiven).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      const nextDueStr = evt.nextDueDate
+        ? ` · Next due: ${new Date(evt.nextDueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+        : "";
+      notifs.push({
+        id,
+        type: "vaccine_recorded" as const,
+        title: "Vaccination Recorded",
+        description: `${evt.petName}'s ${evt.vaccineName} was recorded by ${evt.providerName} on ${formattedDate}${nextDueStr}`,
+        createdAt: evt.recordedAt,
+        read: seenIds.has(id),
+      });
+    }
+
     return notifs.sort((a, b) => {
       // Actionable types always float to top
       const priority = (t: OwnerNotification["type"]) =>
-        ["payment_required", "reschedule_proposal", "vaccine_overdue"].includes(t) ? 0 : 1;
+        (["payment_required", "reschedule_proposal", "vaccine_overdue"] as OwnerNotification["type"][]).includes(t) ? 0 : 1;
       if (priority(a.type) !== priority(b.type)) return priority(a.type) - priority(b.type);
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [bookings, vaccinationReminders, seenIds]);
+  }, [bookings, vaccinationReminders, seenIds, vaxRecordedEvents]);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
@@ -240,6 +323,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (!user.id) return;
     const reminders = await fetchAllOwnerVaccinations(user.id);
     setVaccinationReminders(reminders);
+    // Also re-sync vax recorded events so new provider records suppress overdue alerts
+    setVaxRecordedEvents(loadVaxRecordedEvents());
   };
 
   return (
