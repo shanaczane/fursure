@@ -2,6 +2,7 @@
 
 import {
   useState,
+  useMemo,
   createContext,
   useContext,
   ReactNode,
@@ -13,6 +14,7 @@ import type {
   ProviderUser,
   BookingStatus,
   ProviderPolicy,
+  ProviderNotification,
 } from "../types";
 import { DEFAULT_POLICY } from "../types";
 import { supabase } from "@/app/lib/supabase";
@@ -33,6 +35,10 @@ interface ProviderContextType {
   bookings: ProviderBooking[];
   policy: ProviderPolicy;
   isLoading: boolean;
+  notifications: ProviderNotification[];
+  unreadCount: number;
+  markAsRead: (id: string) => void;
+  markAllRead: () => void;
   updateUser: (updates: Partial<ProviderUser>) => void;
   savePolicy: (policy: ProviderPolicy) => Promise<void>;
 
@@ -88,6 +94,80 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
   const [policy, setPolicy] = useState<ProviderPolicy>(DEFAULT_POLICY);
   const [isLoading, setIsLoading] = useState(true);
   const [providerDbId, setProviderDbId] = useState<string | null>(null);
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = localStorage.getItem("fursure_provider_seen_notifs");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const notifications = useMemo<ProviderNotification[]>(() => {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - 48);
+    const notifs: ProviderNotification[] = [];
+
+    for (const b of bookings) {
+      const createdAt = b.createdAt;
+      const isRecent = createdAt && new Date(createdAt) > cutoff;
+
+      // New booking request
+      if (b.status === "pending" && isRecent)
+        notifs.push({ id: `new-${b.id}`, type: "new_booking", title: "New Booking Request", description: `${b.ownerName} booked ${b.serviceName}`, createdAt, read: seenIds.has(`new-${b.id}`) });
+
+      // Payment submitted
+      if (b.status === "payment_submitted" && isRecent)
+        notifs.push({ id: `pay-${b.id}`, type: "payment_submitted", title: "Payment Submitted", description: `${b.ownerName} submitted a down payment for ${b.serviceName}`, createdAt, read: seenIds.has(`pay-${b.id}`) });
+
+      // Down payment overdue
+      if (b.status === "awaiting_downpayment" && !b.downPaymentPaid) {
+        const deadlineMs = (b.downPaymentDeadlineHours ?? 24) * 60 * 60 * 1000;
+        if (Date.now() - new Date(createdAt).getTime() > deadlineMs)
+          notifs.push({ id: `overdue-${b.id}`, type: "payment_overdue", title: "Down Payment Overdue", description: `${b.ownerName} hasn't paid the deposit for ${b.serviceName}`, createdAt, read: seenIds.has(`overdue-${b.id}`) });
+      }
+
+      // Edit request pending
+      if (b.editRequestStatus === "pending")
+        notifs.push({ id: `edit-${b.id}`, type: "edit_request", title: "Edit Request", description: `${b.ownerName} wants to edit their ${b.serviceName} booking`, createdAt, read: seenIds.has(`edit-${b.id}`) });
+
+      // Cancel request pending
+      if (b.cancelRequestStatus === "pending")
+        notifs.push({ id: `cancel-${b.id}`, type: "cancel_request", title: "Cancellation Request", description: `${b.ownerName} wants to cancel their ${b.serviceName} booking`, createdAt, read: seenIds.has(`cancel-${b.id}`) });
+
+      // Owner accepted reschedule
+      if (b.rescheduleStatus === "confirmed" && isRecent)
+        notifs.push({ id: `rsa-${b.id}`, type: "reschedule_accepted", title: "Reschedule Accepted", description: `${b.ownerName} accepted the new schedule for ${b.serviceName}`, createdAt, read: seenIds.has(`rsa-${b.id}`) });
+
+      // Owner declined reschedule
+      if (b.rescheduleStatus === "declined" && isRecent)
+        notifs.push({ id: `rsd-${b.id}`, type: "reschedule_declined", title: "Reschedule Declined", description: `${b.ownerName} declined the new schedule for ${b.serviceName}`, createdAt, read: seenIds.has(`rsd-${b.id}`) });
+
+      // New review
+      if (b.status === "completed" && typeof b.rating === "number" && b.rating > 0 && b.reviewDate && new Date(b.reviewDate) > cutoff)
+        notifs.push({ id: `rev-${b.id}`, type: "new_review", title: "New Review", description: `${b.ownerName} rated your service ${b.rating} star${b.rating !== 1 ? "s" : ""}`, createdAt: b.reviewDate, read: seenIds.has(`rev-${b.id}`) });
+    }
+
+    return notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [bookings, seenIds]);
+
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+
+  const markAsRead = (id: string) => {
+    setSeenIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem("fursure_provider_seen_notifs", JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  const markAllRead = () => {
+    setSeenIds(() => {
+      const next = new Set(notifications.map((n) => n.id));
+      localStorage.setItem("fursure_provider_seen_notifs", JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -433,6 +513,10 @@ export const ProviderAppProvider = ({ children }: { children: ReactNode }) => {
         bookings,
         policy,
         isLoading,
+        notifications,
+        unreadCount,
+        markAsRead,
+        markAllRead,
         updateUser,
         savePolicy,
         addService,

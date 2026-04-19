@@ -88,6 +88,15 @@ export interface ProviderBooking {
   reviewDate?: string;
 }
 
+export interface ProviderNotification {
+  id: string;
+  type: "new_booking" | "payment_submitted" | "payment_overdue" | "edit_request" | "cancel_request" | "reschedule_accepted" | "reschedule_declined" | "new_review";
+  title: string;
+  description: string;
+  createdAt: string;
+  read: boolean;
+}
+
 export interface ProviderUser {
   id: string;
   name: string;
