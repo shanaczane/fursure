@@ -61,6 +61,28 @@ export interface VaccinationReminder {
 }
 
 // ─────────────────────────────────────────────────────────────
+// OWNER NOTIFICATION
+// ─────────────────────────────────────────────────────────────
+
+export interface OwnerNotification {
+  id: string;
+  type:
+    | "booking_confirmed"
+    | "booking_declined"
+    | "reschedule_proposal"
+    | "payment_required"
+    | "review_pending"
+    | "edit_approved"
+    | "cancel_approved"
+    | "vaccine_overdue"
+    | "vaccine_due";
+  title: string;
+  description: string;
+  createdAt: string;
+  read: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────
 // USER
 // ─────────────────────────────────────────────────────────────
 

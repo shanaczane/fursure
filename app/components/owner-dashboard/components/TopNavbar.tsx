@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { type User } from "@/app/types";
+import { type User, type OwnerNotification } from "@/app/types";
 import { useAppContext } from "@/app/contexts/AppContext";
 
 interface TopNavbarProps {
@@ -11,24 +11,112 @@ interface TopNavbarProps {
   isSidebarOpen: boolean;
 }
 
-const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarOpen }) => {
-  const { vaccinationReminders } = useAppContext();
-  const [notifOpen, setNotifOpen] = useState(false);
-  const notifRef = useRef<HTMLDivElement>(null);
+/* ── Notification type config ──────────────────────────────────────────────── */
+const NOTIF_CONFIG: Record<
+  OwnerNotification["type"],
+  { bg: string; color: string; icon: React.ReactNode }
+> = {
+  booking_confirmed: {
+    bg: "#D1FAE5", color: "#065F46",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    ),
+  },
+  booking_declined: {
+    bg: "#FEE2E2", color: "#991B1B",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    ),
+  },
+  reschedule_proposal: {
+    bg: "#EDE9FE", color: "#5B21B6",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    ),
+  },
+  payment_required: {
+    bg: "#FFEDD5", color: "#9A3412",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+      </svg>
+    ),
+  },
+  review_pending: {
+    bg: "#FEF3C7", color: "#92400E",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    ),
+  },
+  edit_approved: {
+    bg: "#DBEAFE", color: "#1E40AF",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    ),
+  },
+  cancel_approved: {
+    bg: "#F3F4F6", color: "#374151",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    ),
+  },
+  vaccine_overdue: {
+    bg: "#FEE2E2", color: "#991B1B",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    ),
+  },
+  vaccine_due: {
+    bg: "#FEF3C7", color: "#92400E",
+    icon: (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      </svg>
+    ),
+  },
+};
 
-  // Close dropdown when clicking outside
+/* ── Relative time ─────────────────────────────────────────────────────────── */
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+/* ── Component ─────────────────────────────────────────────────────────────── */
+const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarOpen }) => {
+  const { notifications, unreadCount, markAsRead, markAllRead } = useAppContext();
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setNotifOpen(false);
-      }
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
+        setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
+    if (open) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const overdueCount = vaccinationReminders.filter((r) => r.daysUntilDue < 0).length;
-  const totalCount = vaccinationReminders.length;
+  }, [open]);
 
   return (
     <header
@@ -51,89 +139,115 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarO
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Notification Bell */}
-          <div ref={notifRef} className="relative">
+          {/* ── Bell ── */}
+          <div ref={dropdownRef} style={{ position: "relative" }}>
             <button
-              onClick={() => setNotifOpen((o) => !o)}
-              className="relative p-2 rounded-xl transition-colors"
-              style={{ color: "var(--fur-slate-light)" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-mist)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+              onClick={() => setOpen(v => !v)}
+              style={{
+                position: "relative", width: 38, height: 38, borderRadius: 12,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: open ? "1.5px solid var(--border)" : "1.5px solid transparent",
+                background: open ? "var(--fur-mist)" : "transparent",
+                color: "var(--fur-slate-mid)", cursor: "pointer", transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { if (!open) e.currentTarget.style.background = "var(--fur-mist)"; }}
+              onMouseLeave={e => { if (!open) e.currentTarget.style.background = "transparent"; }}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
-              {totalCount > 0 && (
-                <span
-                  className="absolute -top-0.5 -right-0.5 min-w-4.5 h-4.5 flex items-center justify-center rounded-full text-white text-xs font-700 px-1"
-                  style={{ background: overdueCount > 0 ? "var(--fur-rose)" : "var(--fur-teal)", fontSize: "0.6rem" }}
-                >
-                  {totalCount}
+              {unreadCount > 0 && (
+                <span style={{
+                  position: "absolute", top: 4, right: 4,
+                  minWidth: 16, height: 16, borderRadius: 9999,
+                  background: "var(--fur-teal)", color: "white",
+                  fontSize: "0.6rem", fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  padding: "0 3px", border: "1.5px solid white",
+                }}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
             </button>
 
-            {/* Dropdown */}
-            {notifOpen && (
-              <div
-                className="absolute right-0 top-12 w-80 rounded-2xl shadow-2xl border overflow-hidden z-50"
-                style={{ background: "white", borderColor: "var(--border)", fontFamily: "'Nunito', sans-serif" }}
-              >
+            {/* ── Dropdown ── */}
+            {open && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0,
+                width: 340, maxHeight: 420,
+                background: "white", border: "1px solid var(--border)",
+                borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                display: "flex", flexDirection: "column",
+                overflow: "hidden", zIndex: 50,
+                fontFamily: "'Nunito', sans-serif",
+              }}>
                 {/* Header */}
-                <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: "var(--border)", background: "var(--fur-cream)" }}>
-                  <h3 className="font-800 text-sm" style={{ fontFamily: "'Fraunces', serif", color: "var(--fur-slate)" }}>
-                    Vaccination Reminders
-                  </h3>
-                  {totalCount > 0 && (
-                    <span className="text-xs font-700 px-2 py-0.5 rounded-full" style={{ background: overdueCount > 0 ? "#FEE2E2" : "var(--fur-teal-light)", color: overdueCount > 0 ? "#991B1B" : "var(--fur-teal-dark)" }}>
-                      {totalCount} alert{totalCount !== 1 ? "s" : ""}
-                    </span>
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "14px 16px 10px",
+                  borderBottom: "1px solid var(--border)",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <p style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--fur-slate)" }}>Notifications</p>
+                    {unreadCount > 0 && (
+                      <span style={{ padding: "1px 7px", borderRadius: 9999, fontSize: "0.72rem", fontWeight: 700, background: "var(--fur-teal-light)", color: "var(--fur-teal-dark)" }}>
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllRead}
+                      style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--fur-teal)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      Mark all read
+                    </button>
                   )}
                 </div>
 
-                {/* Content */}
-                <div className="max-h-72 overflow-y-auto">
-                  {totalCount === 0 ? (
-                    <div className="px-4 py-8 text-center">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style={{ background: "#D1FAE5", color: "#065F46" }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                      </div>
-                      <p className="text-sm font-700" style={{ color: "var(--fur-slate)" }}>All vaccines up to date</p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--fur-slate-light)" }}>No reminders in the next 30 days</p>
+                {/* List */}
+                <div style={{ overflowY: "auto", flex: 1 }}>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: "36px 16px", textAlign: "center" }}>
+                      <div style={{ fontSize: "1.8rem", marginBottom: 8 }}>🔔</div>
+                      <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--fur-slate)", marginBottom: 4 }}>All caught up!</p>
+                      <p style={{ fontSize: "0.78rem", color: "var(--fur-slate-light)" }}>No new activity to show.</p>
                     </div>
                   ) : (
-                    vaccinationReminders.map((r, idx) => {
-                      const isOverdue = r.daysUntilDue < 0;
-                      const isSoon = r.daysUntilDue >= 0 && r.daysUntilDue <= 7;
-                      const bgColor = isOverdue ? "#FFF5F5" : isSoon ? "#FFFBEB" : "white";
-                      const badgeBg = isOverdue ? "#FEE2E2" : isSoon ? "#FEF3C7" : "var(--fur-teal-light)";
-                      const badgeColor = isOverdue ? "#991B1B" : isSoon ? "#92400E" : "var(--fur-teal-dark)";
-                      const label = isOverdue
-                        ? `Overdue by ${Math.abs(r.daysUntilDue)} day${Math.abs(r.daysUntilDue) !== 1 ? "s" : ""}`
-                        : r.daysUntilDue === 0
-                        ? "Due today"
-                        : `Due in ${r.daysUntilDue} day${r.daysUntilDue !== 1 ? "s" : ""}`;
-
+                    notifications.map((n) => {
+                      const cfg = NOTIF_CONFIG[n.type];
                       return (
                         <div
-                          key={idx}
-                          className="flex items-start gap-3 px-4 py-3 border-b"
-                          style={{ borderColor: "var(--border)", background: bgColor }}
+                          key={n.id}
+                          onClick={() => markAsRead(n.id)}
+                          style={{
+                            display: "flex", alignItems: "flex-start", gap: 12,
+                            padding: "12px 16px", cursor: "pointer",
+                            borderBottom: "1px solid var(--border)",
+                            background: !n.read ? "#F0FDF9" : "white",
+                            transition: "background 0.15s",
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-cream)")}
+                          onMouseLeave={e => (e.currentTarget.style.background = !n.read ? "#F0FDF9" : "white")}
                         >
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: badgeBg }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={badgeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                            </svg>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            background: cfg.bg, color: cfg.color,
+                          }}>
+                            {cfg.icon}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-700 truncate" style={{ color: "var(--fur-slate)" }}>{r.vaccineName}</p>
-                            <p className="text-xs" style={{ color: "var(--fur-slate-light)" }}>{r.petName}</p>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+                              <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--fur-slate)", whiteSpace: "nowrap" }}>{n.title}</p>
+                              <p style={{ fontSize: "0.72rem", color: "var(--fur-slate-light)", whiteSpace: "nowrap", flexShrink: 0 }}>{relativeTime(n.createdAt)}</p>
+                            </div>
+                            <p style={{ fontSize: "0.78rem", color: "var(--fur-slate-mid)", lineHeight: 1.4 }}>{n.description}</p>
                           </div>
-                          <span className="text-xs font-700 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap" style={{ background: badgeBg, color: badgeColor }}>
-                            {label}
-                          </span>
+                          {!n.read && (
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--fur-teal)", flexShrink: 0, marginTop: 4 }} />
+                          )}
                         </div>
                       );
                     })
@@ -141,21 +255,22 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, isSidebarO
                 </div>
 
                 {/* Footer */}
-                <div className="px-4 py-3 border-t text-center" style={{ borderColor: "var(--border)" }}>
-                  <Link
-                    href="/owner/pets"
-                    onClick={() => setNotifOpen(false)}
-                    className="text-sm font-700"
-                    style={{ color: "var(--fur-teal)" }}
-                  >
-                    Manage pet vaccinations →
-                  </Link>
-                </div>
+                {(notifications.some(n => n.type === "vaccine_overdue" || n.type === "vaccine_due")) && (
+                  <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)", textAlign: "center" }}>
+                    <Link
+                      href="/owner/pets"
+                      onClick={() => setOpen(false)}
+                      style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--fur-teal)", textDecoration: "none" }}
+                    >
+                      Manage pet vaccinations →
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Profile */}
+          {/* ── Profile ── */}
           <Link href="/owner/profile" className="flex items-center gap-3 rounded-xl px-2 py-1 transition-colors"
             style={{ textDecoration: "none" }}
             onMouseEnter={e => (e.currentTarget.style.background = "var(--fur-mist)")}

@@ -2,12 +2,13 @@
 
 import {
   useState,
+  useMemo,
   createContext,
   useContext,
   ReactNode,
   useEffect,
 } from "react";
-import { type Service, type Booking, type Pet, type User, type VaccinationReminder } from "@/app/types";
+import { type Service, type Booking, type Pet, type User, type VaccinationReminder, type OwnerNotification } from "@/app/types";
 import {
   getCurrentUser,
   upsertUserProfile,
@@ -30,6 +31,10 @@ interface AppContextType {
   pets: Pet[];
   vaccinationReminders: VaccinationReminder[];
   isLoading: boolean;
+  notifications: OwnerNotification[];
+  unreadCount: number;
+  markAsRead: (id: string) => void;
+  markAllRead: () => void;
   updateUser: (updates: Partial<User>) => Promise<void>;
   addBooking: (booking: Omit<Booking, "id">) => Promise<void>;
   updateBooking: (id: string, updates: Partial<Booking>) => Promise<void>;
@@ -66,6 +71,81 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [pets, setPets] = useState<Pet[]>([]);
   const [vaccinationReminders, setVaccinationReminders] = useState<VaccinationReminder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = localStorage.getItem("fursure_owner_seen_notifs");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const notifications = useMemo<OwnerNotification[]>(() => {
+    const cutoff = new Date();
+    cutoff.setHours(cutoff.getHours() - 48);
+    const notifs: OwnerNotification[] = [];
+    const now = new Date().toISOString();
+
+    for (const b of bookings) {
+      const createdAt = b.createdAt ?? now;
+      const isRecent = new Date(createdAt) > cutoff;
+
+      if (b.status === "confirmed" && isRecent)
+        notifs.push({ id: `confirmed-${b.id}`, type: "booking_confirmed", title: "Booking Confirmed", description: `${b.providerName} confirmed your ${b.serviceName} booking`, createdAt, read: seenIds.has(`confirmed-${b.id}`) });
+
+      if (b.status === "declined" && isRecent)
+        notifs.push({ id: `declined-${b.id}`, type: "booking_declined", title: "Booking Declined", description: `${b.providerName} declined your ${b.serviceName} booking`, createdAt, read: seenIds.has(`declined-${b.id}`) });
+
+      if (b.status === "awaiting_downpayment" && !b.downPaymentPaid)
+        notifs.push({ id: `pay-${b.id}`, type: "payment_required", title: "Down Payment Required", description: `Pay the deposit for your ${b.serviceName} booking to confirm it`, createdAt, read: seenIds.has(`pay-${b.id}`) });
+
+      if (b.status === "rescheduled" && b.rescheduleStatus === "pending")
+        notifs.push({ id: `resched-${b.id}`, type: "reschedule_proposal", title: "Reschedule Proposal", description: `${b.providerName} proposed a new time for ${b.serviceName}`, createdAt, read: seenIds.has(`resched-${b.id}`) });
+
+      if (b.status === "completed" && !b.rating)
+        notifs.push({ id: `review-${b.id}`, type: "review_pending", title: "Leave a Review", description: `How was your ${b.serviceName} with ${b.providerName}?`, createdAt, read: seenIds.has(`review-${b.id}`) });
+
+      if (b.editRequestStatus === "approved" && isRecent)
+        notifs.push({ id: `editok-${b.id}`, type: "edit_approved", title: "Edit Approved", description: `Your edit request for ${b.serviceName} was approved`, createdAt, read: seenIds.has(`editok-${b.id}`) });
+
+      if (b.cancelRequestStatus === "approved" && isRecent)
+        notifs.push({ id: `cancelok-${b.id}`, type: "cancel_approved", title: "Cancellation Approved", description: `Your cancellation for ${b.serviceName} was approved`, createdAt, read: seenIds.has(`cancelok-${b.id}`) });
+    }
+
+    for (const r of vaccinationReminders) {
+      const id = `vax-${r.petId}-${r.vaccineName}`;
+      if (r.daysUntilDue < 0)
+        notifs.push({ id, type: "vaccine_overdue", title: "Vaccine Overdue", description: `${r.vaccineName} for ${r.petName} is overdue by ${Math.abs(r.daysUntilDue)} day${Math.abs(r.daysUntilDue) !== 1 ? "s" : ""}`, createdAt: now, read: seenIds.has(id) });
+      else if (r.daysUntilDue <= 7)
+        notifs.push({ id, type: "vaccine_due", title: "Vaccine Due Soon", description: `${r.vaccineName} for ${r.petName} is due in ${r.daysUntilDue === 0 ? "today" : `${r.daysUntilDue} day${r.daysUntilDue !== 1 ? "s" : ""}`}`, createdAt: now, read: seenIds.has(id) });
+    }
+
+    return notifs.sort((a, b) => {
+      // Actionable types always float to top
+      const priority = (t: OwnerNotification["type"]) =>
+        ["payment_required", "reschedule_proposal", "vaccine_overdue"].includes(t) ? 0 : 1;
+      if (priority(a.type) !== priority(b.type)) return priority(a.type) - priority(b.type);
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [bookings, vaccinationReminders, seenIds]);
+
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+
+  const markAsRead = (id: string) => {
+    setSeenIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      localStorage.setItem("fursure_owner_seen_notifs", JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  const markAllRead = () => {
+    setSeenIds(() => {
+      const next = new Set(notifications.map((n) => n.id));
+      localStorage.setItem("fursure_owner_seen_notifs", JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   // Load all data from Supabase after mount
   useEffect(() => {
@@ -171,6 +251,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         pets,
         vaccinationReminders,
         isLoading,
+        notifications,
+        unreadCount,
+        markAsRead,
+        markAllRead,
         refreshReminders,
         updateUser,
         addBooking,
