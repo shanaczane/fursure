@@ -617,6 +617,9 @@ const ManageBookingsPage: React.FC = () => {
   const [petRecordError, setPetRecordError] = useState<string | null>(null);
   const [addingVax, setAddingVax] = useState(false);
   const [addingHist, setAddingHist] = useState(false);
+  const [vaxPage, setVaxPage] = useState(1);
+  const [histPage, setHistPage] = useState(1);
+  const RECORDS_PER_PAGE = 5;
   const [vaxForm, setVaxForm] = useState({ name: "", dateGiven: "", nextDueDate: "", notes: "" });
   const [histForm, setHistForm] = useState({ diagnosis: "", treatment: "", prescription: "", notes: "", date: new Date().toISOString().split("T")[0] });
   const [saving, setSaving] = useState(false);
@@ -628,7 +631,7 @@ const ManageBookingsPage: React.FC = () => {
 
   const openPetRecord = async (booking: ProviderBooking) => {
     if (!booking.petId) { setPetRecordError("Pet ID not found for this booking."); setPetRecordBooking(booking); return; }
-    setPetRecordBooking(booking); setPetRecordTab("vaccinations");
+    setPetRecordBooking(booking); setPetRecordTab("vaccinations"); setVaxPage(1); setHistPage(1);
     setPetRecordLoading(true); setPetRecordError(null);
     try {
       const [vaxRes, histRes] = await Promise.all([
@@ -1132,7 +1135,7 @@ const ManageBookingsPage: React.FC = () => {
                 { key: "vaccinations" as const, label: `Vaccinations (${petVaccinations.length})` },
                 { key: "history" as const,       label: `Medical History (${petHistory.length})` },
               ]).map(({ key, label }) => (
-                <button key={key} onClick={() => setPetRecordTab(key)}
+                <button key={key} onClick={() => { setPetRecordTab(key); setVaxPage(1); setHistPage(1); }}
                   className="px-6 py-3 border-b-2 transition-colors"
                   style={{
                     fontSize: "0.85rem", fontWeight: 400, fontFamily: "inherit",
@@ -1204,30 +1207,53 @@ const ManageBookingsPage: React.FC = () => {
                   )}
                   {petVaccinations.length === 0 && !addingVax
                     ? <p style={{ fontSize: "0.82rem", fontWeight: 400, textAlign: "center", padding: "24px 0", color: "var(--fur-slate-light)" }}>No vaccination records yet.</p>
-                    : (
-                      <div className="space-y-2">
-                        {petVaccinations.map((v) => (
-                          <div key={v.id} className="rounded-xl border p-4 flex items-start gap-3" style={{ background: "white", borderColor: "var(--border)" }}>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{v.name}</p>
-                                {v.isVerified && (
-                                  <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
-                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                    Verified
-                                  </span>
-                                )}
-                              </div>
-                              <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>
-                                Given: {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-                                {v.nextDueDate && ` · Next: ${new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}`}
-                              </p>
-                              {v.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginTop: 2, color: "var(--fur-slate-light)" }}>by {v.providerName}</p>}
+                    : (() => {
+                        const vaxTotalPages = Math.max(1, Math.ceil(petVaccinations.length / RECORDS_PER_PAGE));
+                        const pagedVax = petVaccinations.slice((vaxPage - 1) * RECORDS_PER_PAGE, vaxPage * RECORDS_PER_PAGE);
+                        return (
+                          <>
+                            <div className="space-y-2">
+                              {pagedVax.map((v) => (
+                                <div key={v.id} className="rounded-xl border p-4 flex items-start gap-3" style={{ background: "white", borderColor: "var(--border)" }}>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                      <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{v.name}</p>
+                                      {v.isVerified && (
+                                        <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
+                                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                          Verified
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>
+                                      Given: {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                                      {v.nextDueDate && ` · Next: ${new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}`}
+                                    </p>
+                                    {v.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginTop: 2, color: "var(--fur-slate-light)" }}>by {v.providerName}</p>}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )
+                            {vaxTotalPages > 1 && (
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8 }}>
+                                <p style={{ fontSize: "0.75rem", color: "var(--fur-slate-light)" }}>
+                                  {(vaxPage - 1) * RECORDS_PER_PAGE + 1}–{Math.min(vaxPage * RECORDS_PER_PAGE, petVaccinations.length)} of {petVaccinations.length}
+                                </p>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <button onClick={() => setVaxPage(p => Math.max(1, p - 1))} disabled={vaxPage === 1}
+                                    style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--border)", background: "white", cursor: vaxPage === 1 ? "not-allowed" : "pointer", opacity: vaxPage === 1 ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                                  </button>
+                                  <button onClick={() => setVaxPage(p => Math.min(vaxTotalPages, p + 1))} disabled={vaxPage === vaxTotalPages}
+                                    style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--border)", background: "white", cursor: vaxPage === vaxTotalPages ? "not-allowed" : "pointer", opacity: vaxPage === vaxTotalPages ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()
                   }
                 </div>
               ) : (
@@ -1285,32 +1311,55 @@ const ManageBookingsPage: React.FC = () => {
                   )}
                   {petHistory.length === 0 && !addingHist
                     ? <p style={{ fontSize: "0.82rem", fontWeight: 400, textAlign: "center", padding: "24px 0", color: "var(--fur-slate-light)" }}>No medical history yet.</p>
-                    : (
-                      <div className="space-y-2">
-                        {petHistory.map((h) => (
-                          <div key={h.id} className="rounded-xl border p-4" style={{ background: "white", borderColor: "var(--border)" }}>
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{h.diagnosis}</p>
-                              {h.addedBy === "provider" && (
-                                <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
-                                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                  Verified
-                                </span>
-                              )}
-                              <span style={{ fontSize: "0.75rem", fontWeight: 400, marginLeft: "auto", color: "var(--fur-slate-light)" }}>
-                                {new Date(h.date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
-                              </span>
+                    : (() => {
+                        const histTotalPages = Math.max(1, Math.ceil(petHistory.length / RECORDS_PER_PAGE));
+                        const pagedHist = petHistory.slice((histPage - 1) * RECORDS_PER_PAGE, histPage * RECORDS_PER_PAGE);
+                        return (
+                          <>
+                            <div className="space-y-2">
+                              {pagedHist.map((h) => (
+                                <div key={h.id} className="rounded-xl border p-4" style={{ background: "white", borderColor: "var(--border)" }}>
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{h.diagnosis}</p>
+                                    {h.addedBy === "provider" && (
+                                      <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
+                                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Verified
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 400, marginLeft: "auto", color: "var(--fur-slate-light)" }}>
+                                      {new Date(h.date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
+                                    </span>
+                                  </div>
+                                  {h.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginBottom: 6, color: "var(--fur-slate-light)" }}>by {h.providerName}</p>}
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {h.treatment && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Treatment: {h.treatment}</span>}
+                                    {h.prescription && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Rx: {h.prescription}</span>}
+                                    {h.notes && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Notes: {h.notes}</span>}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            {h.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginBottom: 6, color: "var(--fur-slate-light)" }}>by {h.providerName}</p>}
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {h.treatment && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Treatment: {h.treatment}</span>}
-                              {h.prescription && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Rx: {h.prescription}</span>}
-                              {h.notes && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Notes: {h.notes}</span>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )
+                            {histTotalPages > 1 && (
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8 }}>
+                                <p style={{ fontSize: "0.75rem", color: "var(--fur-slate-light)" }}>
+                                  {(histPage - 1) * RECORDS_PER_PAGE + 1}–{Math.min(histPage * RECORDS_PER_PAGE, petHistory.length)} of {petHistory.length}
+                                </p>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <button onClick={() => setHistPage(p => Math.max(1, p - 1))} disabled={histPage === 1}
+                                    style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--border)", background: "white", cursor: histPage === 1 ? "not-allowed" : "pointer", opacity: histPage === 1 ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                                  </button>
+                                  <button onClick={() => setHistPage(p => Math.min(histTotalPages, p + 1))} disabled={histPage === histTotalPages}
+                                    style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--border)", background: "white", cursor: histPage === histTotalPages ? "not-allowed" : "pointer", opacity: histPage === histTotalPages ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()
                   }
                 </div>
               )}
