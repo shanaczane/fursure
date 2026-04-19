@@ -191,7 +191,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   payment_submitted:    { bg: "#DBEAFE", color: "#1E40AF" },
   confirmed:            { bg: "#DBEAFE", color: "#1E40AF" },
   completed:            { bg: "#D1FAE5", color: "#065F46" },
-  cancelled:            { bg: "#F3F4F6", color: "#374151" },
+  cancelled:            { bg: "#FEE2E2", color: "#991B1B" },
   declined:             { bg: "#FEE2E2", color: "#991B1B" },
   rescheduled:          { bg: "#EDE9FE", color: "#5B21B6" },
 };
@@ -208,13 +208,36 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     <span style={{
       display: "inline-flex", alignItems: "center",
       background: s.bg, color: s.color,
-      fontSize: "0.8rem", fontWeight: 400,
-      padding: "4px 12px", borderRadius: 9999,
-      whiteSpace: "nowrap",
+      fontSize: "0.78rem", fontWeight: 500,
+      padding: "4px 10px", borderRadius: 9999,
+      whiteSpace: "nowrap", letterSpacing: "0.01em",
     }}>
       {STATUS_LABELS[status] || status}
     </span>
   );
+};
+
+/* ─── Shared text style tokens ───────────────────────────────────────────── */
+const T = {
+  // Primary content text — used for names, values, main labels
+  primary: { fontSize: "0.875rem", fontWeight: 500, color: "var(--fur-slate)" } as React.CSSProperties,
+  // Secondary / supporting text — dates, sub-labels, emails
+  secondary: { fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" } as React.CSSProperties,
+  // Section header labels (UPPERCASE caps inside panels)
+  label: {
+    fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase" as const,
+    letterSpacing: "0.07em", color: "var(--fur-slate-mid)", marginBottom: 4,
+  } as React.CSSProperties,
+  // Body/description paragraphs inside panels
+  body: { fontSize: "0.85rem", fontWeight: 400, color: "var(--fur-slate)", lineHeight: 1.6 } as React.CSSProperties,
+  // Muted italic helper text
+  muted: { fontSize: "0.82rem", fontWeight: 400, fontStyle: "italic", color: "var(--fur-slate-light)" } as React.CSSProperties,
+  // Bold price / emphasized numeric values
+  amount: { fontSize: "0.9rem", fontWeight: 600, color: "var(--fur-slate)" } as React.CSSProperties,
+  // Table cell primary (service name, price — bolder)
+  cellPrimary: { fontSize: "0.875rem", fontWeight: 700, color: "var(--fur-slate)" } as React.CSSProperties,
+  // Table cell secondary (pet name, dp line)
+  cellSecondary: { fontSize: "0.75rem", fontWeight: 500, color: "var(--fur-slate-light)" } as React.CSSProperties,
 };
 
 /* ─── Button style helper ────────────────────────────────────────────────── */
@@ -227,10 +250,11 @@ function btnStyle(variant: "teal" | "purple" | "rose" | "ghost"): React.CSSPrope
   };
   return {
     padding: "5px 12px", borderRadius: 8,
-    fontSize: "0.82rem", fontWeight: 400,
+    fontSize: "0.82rem", fontWeight: 500,
     cursor: "pointer", fontFamily: "inherit",
     whiteSpace: "nowrap" as const,
     display: "inline-flex", alignItems: "center", gap: 6,
+    letterSpacing: "0.01em",
     ...variants[variant],
   };
 }
@@ -280,9 +304,6 @@ const BookingDetailPanel: React.FC<{
   onApproveCancel: (id: string) => void;
   onRejectCancel: (id: string) => void;
   onOpenPetRecord: (b: ProviderBooking) => void;
-  // ── Fallback policy values used when the booking predates the policy-snapshot
-  //    feature. These come from the provider's live policy so that old bookings
-  //    still display something sensible. ──────────────────────────────────────
   fallbackDepositPct: number;
   fallbackDeadlineHours: number;
 }> = ({
@@ -305,26 +326,17 @@ const BookingDetailPanel: React.FC<{
   const ownerResponded     = booking.rescheduleStatus === "confirmed" || booking.rescheduleStatus === "declined";
   const showPaySection     = booking.requiresDownPayment && booking.price > 0;
 
-  // ── Policy snapshot: use the value stamped on the booking at creation time.
-  //    Fall back to the provider's live policy only for bookings created before
-  //    the snapshot feature was added. ───────────────────────────────────────
   const depositPct     = booking.depositPercentage     ?? fallbackDepositPct;
   const deadlineHours  = booking.downPaymentDeadlineHours ?? fallbackDeadlineHours;
   const deadlineLabel  = formatDeadlineHours(deadlineHours);
   const depositPctLabel = `${depositPct}%`;
 
-  // ── Amounts computed from the snapshotted percentage ─────────────────────
   const downAmt   = booking.price * (depositPct / 100);
   const remaining = booking.price - downAmt;
-
 
   const cell: React.CSSProperties = {
     background: "white", border: "1px solid var(--border)",
     borderRadius: 10, padding: "10px 14px",
-  };
-  const cellLabel: React.CSSProperties = {
-    fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase",
-    letterSpacing: "0.06em", color: "var(--fur-slate-light)", marginBottom: 4,
   };
 
   return (
@@ -338,48 +350,48 @@ const BookingDetailPanel: React.FC<{
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div style={cell}>
-                  <p style={cellLabel}>Owner</p>
-                  <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 2 }}>{booking.ownerName}</p>
-                  {booking.ownerEmail && <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>{booking.ownerEmail}</p>}
-                  {booking.ownerPhone && <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>{booking.ownerPhone}</p>}
+                  <p style={T.label}>Owner</p>
+                  <p style={{ ...T.primary, marginBottom: 2 }}>{booking.ownerName}</p>
+                  {booking.ownerEmail && <p style={T.secondary}>{booking.ownerEmail}</p>}
+                  {booking.ownerPhone && <p style={T.secondary}>{booking.ownerPhone}</p>}
                 </div>
                 <div style={cell}>
-                  <p style={cellLabel}>Pet</p>
-                  <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 2 }}>{booking.petName}</p>
-                  <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)", textTransform: "capitalize" }}>{booking.petType} · {booking.petBreed}</p>
+                  <p style={T.label}>Pet</p>
+                  <p style={{ ...T.primary, marginBottom: 2 }}>{booking.petName}</p>
+                  <p style={{ ...T.secondary, textTransform: "capitalize" }}>{booking.petType} · {booking.petBreed}</p>
                 </div>
               </div>
 
               {booking.notes && (
                 <div style={cell}>
-                  <p style={cellLabel}>Owner Notes</p>
-                  <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate)", lineHeight: 1.55 }}>{booking.notes}</p>
+                  <p style={T.label}>Owner Notes</p>
+                  <p style={T.body}>{booking.notes}</p>
                 </div>
               )}
 
               {booking.providerNotes && (
                 <div style={{ background: "var(--fur-teal-light)", border: "1px solid var(--fur-teal)", borderRadius: 10, padding: "10px 14px" }}>
-                  <p style={{ ...cellLabel, color: "var(--fur-teal-dark)" }}>Your Notes</p>
-                  <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate)", lineHeight: 1.55 }}>{booking.providerNotes}</p>
+                  <p style={{ ...T.label, color: "var(--fur-teal-dark)" }}>Your Notes</p>
+                  <p style={T.body}>{booking.providerNotes}</p>
                 </div>
               )}
 
               {isCompleted && typeof booking.rating === "number" && booking.rating > 0 && (
                 <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid #FDE68A" }}>
                   <div style={{ background: "#FFFBEB", borderBottom: "1px solid #FDE68A", padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#92400E" }}>Client Review</span>
+                    <span style={{ ...T.label, color: "#92400E", marginBottom: 0 }}>Client Review</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <StarRow rating={booking.rating} />
-                      <span style={{ fontSize: "0.82rem", fontWeight: 400, color: "#92400E" }}>{booking.rating.toFixed(1)}</span>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#92400E" }}>{booking.rating.toFixed(1)}</span>
                     </div>
                   </div>
                   <div style={{ background: "#FFFBEB", padding: "10px 14px" }}>
                     {booking.reviewComment
-                      ? <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "#92400E", fontStyle: "italic", lineHeight: 1.55 }}>"{booking.reviewComment}"</p>
+                      ? <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "#92400E", fontStyle: "italic", lineHeight: 1.6 }}>"{booking.reviewComment}"</p>
                       : <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "#B45309", fontStyle: "italic" }}>Rating only — no written comment.</p>
                     }
                     {booking.reviewDate && (
-                      <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "#B45309", marginTop: 4 }}>
+                      <p style={{ ...T.secondary, marginTop: 4, color: "#B45309" }}>
                         {new Date(booking.reviewDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </p>
                     )}
@@ -391,12 +403,12 @@ const BookingDetailPanel: React.FC<{
                 <div style={{ background: "#F5F3FF", border: "1px solid #C4B5FD", borderRadius: 10, padding: "10px 14px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
                     <RescheduleProposalIcon />
-                    <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "#5B21B6" }}>Reschedule proposal sent</p>
+                    <p style={{ ...T.primary, color: "#5B21B6" }}>Reschedule proposal sent</p>
                   </div>
-                  <p style={{ fontSize: "0.78rem", fontWeight: 400, color: "#6D28D9" }}>
+                  <p style={{ ...T.secondary, color: "#6D28D9" }}>
                     Proposed: {formatBookingDateTime(booking.rescheduleDate!, booking.rescheduleTime!)}
                   </p>
-                  <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "#7C3AED", marginTop: 3 }}>Awaiting owner response</p>
+                  <p style={{ ...T.secondary, color: "#7C3AED", marginTop: 3 }}>Awaiting owner response</p>
                 </div>
               )}
 
@@ -404,13 +416,13 @@ const BookingDetailPanel: React.FC<{
                 <div style={{ background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, padding: "10px 14px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                     <EditApproveIcon />
-                    <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "#92400E" }}>Owner requested to edit this booking</p>
+                    <p style={{ ...T.primary, color: "#92400E" }}>Owner requested to edit this booking</p>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => onApproveEdit(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", background: "#059669", color: "white", border: "none", borderRadius: 8, fontSize: "0.82rem", fontWeight: 400, cursor: "pointer", fontFamily: "inherit" }}>
+                    <button onClick={() => onApproveEdit(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", background: "#059669", color: "white", border: "none", borderRadius: 8, fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
                       <AcceptIcon /> Approve Edit
                     </button>
-                    <button onClick={() => onRejectEdit(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: "0.82rem", fontWeight: 400, cursor: "pointer", fontFamily: "inherit" }}>
+                    <button onClick={() => onRejectEdit(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
                       <RejectIcon /> Reject Edit
                     </button>
                   </div>
@@ -421,13 +433,13 @@ const BookingDetailPanel: React.FC<{
                 <div style={{ background: "var(--fur-rose-light)", border: "1px solid #FCA5A5", borderRadius: 10, padding: "10px 14px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                     <CancelIcon />
-                    <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-rose)" }}>Owner requested to cancel this booking</p>
+                    <p style={{ ...T.primary, color: "var(--fur-rose)" }}>Owner requested to cancel this booking</p>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => onApproveCancel(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", background: "var(--fur-rose)", color: "white", border: "none", borderRadius: 8, fontSize: "0.82rem", fontWeight: 400, cursor: "pointer", fontFamily: "inherit" }}>
+                    <button onClick={() => onApproveCancel(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", background: "var(--fur-rose)", color: "white", border: "none", borderRadius: 8, fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
                       <AcceptIcon /> Approve Cancel
                     </button>
-                    <button onClick={() => onRejectCancel(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", background: "white", color: "var(--fur-slate-mid)", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.82rem", fontWeight: 400, cursor: "pointer", fontFamily: "inherit" }}>
+                    <button onClick={() => onRejectCancel(booking.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", background: "white", color: "var(--fur-slate-mid)", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
                       Keep Booking
                     </button>
                   </div>
@@ -442,12 +454,12 @@ const BookingDetailPanel: React.FC<{
                 <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid var(--fur-teal)" }}>
                   <div style={{ background: "var(--fur-teal)", padding: "9px 14px", display: "flex", alignItems: "center", gap: 6 }}>
                     <PaymentIcon />
-                    <p style={{ fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "white" }}>Payment Summary</p>
+                    <p style={{ ...T.label, color: "white", marginBottom: 0 }}>Payment Summary</p>
                   </div>
                   <div style={{ background: "var(--fur-teal-light)", padding: "14px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <span style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate)" }}>Total Service Fee</span>
-                      <span style={{ fontSize: "1rem", fontWeight: 400, color: "var(--fur-slate)" }}>{formatCurrency(booking.price)}</span>
+                      <span style={T.body}>Total Service Fee</span>
+                      <span style={T.amount}>{formatCurrency(booking.price)}</span>
                     </div>
                     <div style={{
                       background: booking.downPaymentPaid ? "#D1FAE5" : isPaymentSubmitted ? "#DBEAFE" : "#FEF3C7",
@@ -456,43 +468,40 @@ const BookingDetailPanel: React.FC<{
                     }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <div>
-                          {/* Shows the snapshotted deposit percentage from the booking */}
-                          <p style={{ fontSize: "0.82rem", fontWeight: 400, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E" }}>
+                          <p style={{ fontSize: "0.85rem", fontWeight: 500, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E" }}>
                             Down Payment ({depositPctLabel})
                           </p>
                           {booking.downPaymentPaid && booking.downPaymentPaidAt && (
-                            <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "#059669", marginTop: 2 }}>
+                            <p style={{ ...T.secondary, color: "#059669", marginTop: 2 }}>
                               Paid · {new Date(booking.downPaymentPaidAt).toLocaleString()}
                             </p>
                           )}
                           {!booking.downPaymentPaid && isPaymentSubmitted && (
-                            <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "#1D4ED8", marginTop: 2 }}>Owner marked as paid — verify below</p>
+                            <p style={{ ...T.secondary, color: "#1D4ED8", marginTop: 2 }}>Owner marked as paid — verify below</p>
                           )}
                           {!booking.downPaymentPaid && isAwaitingPayment && (
                             <>
-                              <p style={{ fontSize: "0.72rem", fontWeight: 400, color: dpExpired ? "var(--fur-rose)" : "#D97706", marginTop: 2 }}>
+                              <p style={{ ...T.secondary, color: dpExpired ? "var(--fur-rose)" : "#D97706", marginTop: 2 }}>
                                 {dpExpired
                                   ? "Deadline passed"
                                   : `Due in ${Math.ceil(dpHoursLeft ?? 0)} hrs`}
                               </p>
-                              {/* Shows the snapshotted deadline from the booking */}
-                              <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "var(--fur-slate-light)", marginTop: 1 }}>
+                              <p style={{ ...T.secondary, marginTop: 1 }}>
                                 Deadline: {deadlineLabel} from booking
                               </p>
                             </>
                           )}
                           {!booking.downPaymentPaid && isConfirmed && (
-                            <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "#92400E", marginTop: 2 }}>Awaiting payment from owner</p>
+                            <p style={{ ...T.secondary, color: "#92400E", marginTop: 2 }}>Awaiting payment from owner</p>
                           )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, marginLeft: 12 }}>
                           {booking.downPaymentPaid && (
-                            <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: "0.72rem", fontWeight: 400, color: "#059669" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: "0.72rem", fontWeight: 500, color: "#059669" }}>
                               <CheckIcon /> Paid
                             </span>
                           )}
-                          {/* Computed from the snapshotted percentage */}
-                          <span style={{ fontSize: "0.9rem", fontWeight: 400, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E" }}>
+                          <span style={{ fontSize: "0.9rem", fontWeight: 600, color: booking.downPaymentPaid ? "#065F46" : isPaymentSubmitted ? "#1E40AF" : "#92400E" }}>
                             {formatCurrency(downAmt)}
                           </span>
                         </div>
@@ -500,13 +509,12 @@ const BookingDetailPanel: React.FC<{
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--fur-teal)", paddingTop: 12 }}>
                       <div>
-                        <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-teal-dark)" }}>Remaining Balance</p>
-                        <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "var(--fur-slate-light)", marginTop: 1 }}>
+                        <p style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--fur-teal-dark)" }}>Remaining Balance</p>
+                        <p style={{ ...T.secondary, marginTop: 1 }}>
                           {booking.downPaymentPaid ? "Collect on appointment day" : "Full amount still pending"}
                         </p>
                       </div>
-                      {/* Computed from the snapshotted percentage */}
-                      <span style={{ fontSize: "1.1rem", fontWeight: 400, color: "var(--fur-teal-dark)" }}>{formatCurrency(remaining)}</span>
+                      <span style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--fur-teal-dark)" }}>{formatCurrency(remaining)}</span>
                     </div>
                   </div>
                 </div>
@@ -516,22 +524,22 @@ const BookingDetailPanel: React.FC<{
                 <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: "12px 14px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                     <ClockIcon />
-                    <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "#1E40AF" }}>
+                    <p style={{ ...T.primary, color: "#1E40AF" }}>
                       Owner marked down payment as paid — verify and confirm
                     </p>
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button onClick={() => onConfirmPayment(booking.id)} disabled={isConfirming}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 14px", background: "#059669", color: "white", border: "none", borderRadius: 8, fontSize: "0.82rem", fontWeight: 400, cursor: isConfirming ? "not-allowed" : "pointer", opacity: isConfirming ? 0.6 : 1, fontFamily: "inherit" }}>
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 14px", background: "#059669", color: "white", border: "none", borderRadius: 8, fontSize: "0.82rem", fontWeight: 500, cursor: isConfirming ? "not-allowed" : "pointer", opacity: isConfirming ? 0.6 : 1, fontFamily: "inherit" }}>
                       <CheckIcon /> {isConfirming ? "Confirming…" : "Confirm Payment Received"}
                     </button>
                     <button onClick={() => onOpenModal(booking, "reject")} disabled={isConfirming}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 14px", background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: "0.82rem", fontWeight: 400, cursor: isConfirming ? "not-allowed" : "pointer", opacity: isConfirming ? 0.6 : 1, fontFamily: "inherit" }}>
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 14px", background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5", borderRadius: 8, fontSize: "0.82rem", fontWeight: 500, cursor: isConfirming ? "not-allowed" : "pointer", opacity: isConfirming ? 0.6 : 1, fontFamily: "inherit" }}>
                       <RejectIcon /> Not Received
                     </button>
                   </div>
                   {hasPayError && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.75rem", fontWeight: 400, marginTop: 8, padding: "6px 10px", borderRadius: 6, background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.75rem", fontWeight: 500, marginTop: 8, padding: "6px 10px", borderRadius: 6, background: "var(--fur-rose-light)", color: "var(--fur-rose)", border: "1px solid #FCA5A5" }}>
                       <AlertIcon /> Failed to confirm. Check your connection and try again.
                     </div>
                   )}
@@ -547,13 +555,13 @@ const BookingDetailPanel: React.FC<{
                 }}>
                   <span style={{ marginTop: 1, color: dpExpired ? "var(--fur-rose)" : "#D97706", flexShrink: 0 }}><ClockIcon /></span>
                   <div>
-                    <p style={{ fontSize: "0.82rem", fontWeight: 400, color: dpExpired ? "var(--fur-rose)" : "#D97706" }}>
+                    <p style={{ fontSize: "0.85rem", fontWeight: 500, color: dpExpired ? "var(--fur-rose)" : "#D97706" }}>
                       {dpExpired
                         ? "Payment deadline passed — booking will auto-decline"
                         : `Payment due in ${Math.ceil(dpHoursLeft ?? 0)} hours`}
                     </p>
                     {!dpExpired && (
-                      <p style={{ fontSize: "0.72rem", fontWeight: 400, color: "#92400E", marginTop: 3 }}>
+                      <p style={{ ...T.secondary, color: "#92400E", marginTop: 3 }}>
                         Owner has {deadlineLabel} from booking to pay {formatCurrency(downAmt)}.
                       </p>
                     )}
@@ -580,7 +588,7 @@ const BookingDetailPanel: React.FC<{
                   <button onClick={() => onOpenModal(booking, "reject")} style={btnStyle("rose")}><CancelIcon /> Cancel</button>
                 </>)}
                 {(isCompleted || booking.status === "cancelled" || booking.status === "declined") && (
-                  <p style={{ fontSize: "0.82rem", fontWeight: 400, fontStyle: "italic", color: "var(--fur-slate-light)" }}>No further actions</p>
+                  <p style={T.muted}>No further actions</p>
                 )}
                 {booking.petId && (<>
                   <div style={{ width: 1, height: 26, background: "var(--border)", margin: "0 2px", flexShrink: 0 }} />
@@ -633,8 +641,6 @@ const ManageBookingsPage: React.FC = () => {
   const [editHistForm, setEditHistForm] = useState({ diagnosis: "", treatment: "", prescription: "", notes: "", date: "" });
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // ── Live policy values used as fallback for bookings that predate the
-  //    policy-snapshot feature (i.e. don't have depositPercentage on them). ──
   const liveDepositPct      = policy?.depositPercentage      ?? 0;
   const liveDeadlineHours   = policy?.downPaymentDeadlineHours ?? 24;
 
@@ -651,7 +657,6 @@ const ManageBookingsPage: React.FC = () => {
       if (!vaxRes.ok) throw new Error(vaxJson.error || "Failed to load vaccinations.");
       if (!histRes.ok) throw new Error(histJson.error || "Failed to load medical history.");
 
-      // Map snake_case DB columns → camelCase app types
       const vax: Vaccination[] = (vaxJson.data ?? []).map((r: Record<string, unknown>) => ({
         id: r.id as string,
         petId: r.pet_id as string,
@@ -824,12 +829,36 @@ const ManageBookingsPage: React.FC = () => {
     padding: "0.65rem 1.25rem",
     textAlign: "left",
     fontSize: "0.7rem",
-    fontWeight: 600,
-    letterSpacing: "0.06em",
+    fontWeight: 700,
+    letterSpacing: "0.07em",
     textTransform: "uppercase",
     color: "var(--fur-slate-mid)",
     whiteSpace: "nowrap",
     borderBottom: "1.5px solid var(--border)",
+  };
+
+  /* ── Shared form input style ── */
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "8px 12px",
+    border: "1.5px solid var(--border)",
+    borderRadius: 10,
+    fontSize: "0.85rem",
+    fontFamily: "inherit",
+    fontWeight: 400,
+    color: "var(--fur-slate)",
+    outline: "none",
+    background: "white",
+  };
+
+  const formLabelStyle: React.CSSProperties = {
+    display: "block",
+    fontSize: "0.68rem",
+    fontWeight: 700,
+    marginBottom: 5,
+    textTransform: "uppercase",
+    letterSpacing: "0.07em",
+    color: "var(--fur-slate-mid)",
   };
 
   return (
@@ -839,17 +868,17 @@ const ManageBookingsPage: React.FC = () => {
         {/* ── Page Header ── */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 16, marginBottom: 16, borderBottom: "1px solid var(--border)" }}>
           <div>
-            <h1 style={{ fontSize: "1.65rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 3 }}>
+            <h1 style={{ fontSize: "1.65rem", fontWeight: 700, color: "var(--fur-slate)", marginBottom: 4, letterSpacing: "-0.02em" }}>
               Manage Bookings
             </h1>
-            <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>
+            <p style={T.secondary}>
               {bookings.length} total booking{bookings.length !== 1 ? "s" : ""} · {counts.pending} pending · {counts.confirmed} confirmed
             </p>
           </div>
           {hasActiveFilters && (
             <button
               onClick={() => setFilters({ status: "all", month: "all", serviceId: "all", searchQuery: "" })}
-              style={{ fontSize: "0.82rem", fontWeight: 400, padding: "5px 14px", borderRadius: 8, background: "var(--fur-mist)", color: "var(--fur-slate-mid)", border: "1px solid var(--border)", cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ fontSize: "0.82rem", fontWeight: 500, padding: "5px 14px", borderRadius: 8, background: "var(--fur-mist)", color: "var(--fur-slate-mid)", border: "1px solid var(--border)", cursor: "pointer", fontFamily: "inherit" }}>
               Clear filters
             </button>
           )}
@@ -859,21 +888,21 @@ const ManageBookingsPage: React.FC = () => {
         {(awaitingPayment > 0 || pendingRequests > 0 || pendingReschedules > 0) && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
             {awaitingPayment > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: "0.82rem", fontWeight: 400 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: "0.82rem", fontWeight: 500 }}>
                 <PaymentIcon />
-                <span><strong style={{ fontWeight: 600 }}>{awaitingPayment}</strong> booking{awaitingPayment > 1 ? "s" : ""} awaiting down payment verification</span>
+                <span><strong style={{ fontWeight: 700 }}>{awaitingPayment}</strong> booking{awaitingPayment > 1 ? "s" : ""} awaiting down payment verification</span>
               </div>
             )}
             {pendingRequests > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, background: "#FFFBEB", border: "1px solid #FCD34D", color: "#92400E", fontSize: "0.82rem", fontWeight: 400 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, background: "#FFFBEB", border: "1px solid #FCD34D", color: "#92400E", fontSize: "0.82rem", fontWeight: 500 }}>
                 <BellIcon />
-                <span><strong style={{ fontWeight: 600 }}>{pendingRequests}</strong> pending edit/cancel request{pendingRequests > 1 ? "s" : ""} from owner</span>
+                <span><strong style={{ fontWeight: 700 }}>{pendingRequests}</strong> pending edit/cancel request{pendingRequests > 1 ? "s" : ""} from owner</span>
               </div>
             )}
             {pendingReschedules > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, background: "#F5F3FF", border: "1px solid #C4B5FD", color: "#5B21B6", fontSize: "0.82rem", fontWeight: 400 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 8, background: "#F5F3FF", border: "1px solid #C4B5FD", color: "#5B21B6", fontSize: "0.82rem", fontWeight: 500 }}>
                 <RescheduleIcon />
-                <span><strong style={{ fontWeight: 600 }}>{pendingReschedules}</strong> reschedule proposal{pendingReschedules > 1 ? "s" : ""} awaiting owner response</span>
+                <span><strong style={{ fontWeight: 700 }}>{pendingReschedules}</strong> reschedule proposal{pendingReschedules > 1 ? "s" : ""} awaiting owner response</span>
               </div>
             )}
           </div>
@@ -888,7 +917,7 @@ const ManageBookingsPage: React.FC = () => {
                 onClick={() => setFilter("status", tab.value)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  padding: "10px 16px", fontSize: "0.85rem", fontWeight: 400,
+                  padding: "10px 16px", fontSize: "0.85rem", fontWeight: active ? 600 : 500,
                   whiteSpace: "nowrap", flexShrink: 0, border: "none",
                   borderBottom: active ? "2.5px solid var(--fur-teal)" : "2.5px solid transparent",
                   background: active ? "var(--fur-teal-light)" : "white",
@@ -898,7 +927,7 @@ const ManageBookingsPage: React.FC = () => {
                 {tab.label}
                 {tab.count > 0 && (
                   <span style={{
-                    padding: "1px 7px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 400,
+                    padding: "1px 7px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 600,
                     background: tab.value === "pending" ? "#FEF3C7" : active ? "rgba(0,0,0,0.07)" : "var(--fur-mist)",
                     color: tab.value === "pending" ? "#92400E" : active ? "var(--fur-teal-dark)" : "var(--fur-slate-mid)",
                   }}>
@@ -952,7 +981,7 @@ const ManageBookingsPage: React.FC = () => {
         </div>
 
         {hasActiveFilters && (
-          <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate-light)", marginBottom: 10 }}>
+          <p style={{ ...T.secondary, marginBottom: 10 }}>
             Showing {filtered.length} of {bookings.length} bookings
           </p>
         )}
@@ -963,8 +992,8 @@ const ManageBookingsPage: React.FC = () => {
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--fur-mist)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", color: "var(--fur-slate-light)" }}>
               <InboxIcon />
             </div>
-            <p style={{ fontWeight: 400, fontSize: "0.95rem", color: "var(--fur-slate)", marginBottom: 4 }}>No bookings found</p>
-            <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>Try adjusting your filters or status tab</p>
+            <p style={{ fontWeight: 600, fontSize: "0.95rem", color: "var(--fur-slate)", marginBottom: 4 }}>No bookings found</p>
+            <p style={T.secondary}>Try adjusting your filters or status tab</p>
           </div>
         ) : (
           <div style={{ background: "white", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
@@ -991,7 +1020,6 @@ const ManageBookingsPage: React.FC = () => {
                     const dpHoursLeft        = isAwaitingPayment ? downPaymentHoursRemaining(booking) : null;
                     const emoji              = getServiceEmoji(booking.serviceName);
 
-                    // Use snapshotted value; fall back to live policy for old bookings
                     const rowDepositPct = booking.depositPercentage ?? liveDepositPct;
 
                     const flags: { label: string; bg: string; color: string }[] = [];
@@ -1027,74 +1055,75 @@ const ManageBookingsPage: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* Service & Pet */}
+                          {/* ── Service & Pet — BOLD column ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 140 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <div style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0, background: "var(--fur-cream)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem" }}>
                                 {emoji}
                               </div>
                               <div style={{ minWidth: 0 }}>
-                                <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)", marginBottom: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                <p style={{ ...T.cellPrimary, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {booking.serviceName}
                                 </p>
-                                <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--fur-slate-light)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                <p style={{ ...T.cellSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {booking.petName} · {booking.petType}
                                 </p>
                               </div>
                             </div>
                           </td>
 
-                          {/* Owner */}
+                          {/* ── Owner ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 120 }}>
-                            <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <p style={{ ...T.primary, marginBottom: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {booking.ownerName}
                             </p>
                             {booking.ownerEmail && (
-                              <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <p style={{ ...T.secondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {booking.ownerEmail}
                               </p>
                             )}
                           </td>
 
-                          {/* Date & Time */}
+                          {/* ── Date & Time ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 140, whiteSpace: "nowrap" }}>
-                            <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)", marginBottom: 1 }}>
+                            <p style={{ ...T.primary, marginBottom: 1 }}>
                               {new Date(effectiveDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                             </p>
-                            <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>{effectiveTime}</p>
+                            <p style={T.secondary}>{effectiveTime}</p>
                           </td>
 
-                          {/* Price — shows deposit breakdown using snapshotted pct */}
+                          {/* ── Price — BOLD column ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 90 }}>
-                            <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)", marginBottom: 1 }}>
+                            <p style={{ ...T.cellPrimary, marginBottom: 2 }}>
                               {formatCurrency(booking.price)}
                             </p>
                             {booking.requiresDownPayment && (
-                              <p style={{ fontSize: "0.75rem", fontWeight: 400, color: booking.downPaymentPaid ? "#059669" : "var(--fur-slate-light)" }}>
+                              <p style={{ ...T.cellSecondary, color: booking.downPaymentPaid ? "#059669" : "var(--fur-slate-light)" }}>
                                 {booking.downPaymentPaid
-                                  ? "DP paid"
+                                  ? "DP paid ✓"
                                   : `DP (${rowDepositPct}%): ${formatCurrency(booking.price * (rowDepositPct / 100))}`
                                 }
                               </p>
                             )}
                           </td>
 
-                          {/* Status */}
+                          {/* ── Status ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 120 }}>
                             <StatusBadge status={booking.status} />
                           </td>
 
-                          {/* Flags */}
+                          {/* ── Flags ── */}
                           <td style={{ padding: "0.9rem 1.25rem", verticalAlign: "middle", minWidth: 160 }}>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                               {flags.length === 0
-                                ? <span style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>—</span>
+                                ? <span style={T.secondary}>—</span>
                                 : flags.map((f, fi) => (
                                   <span key={fi} style={{
                                     display: "inline-flex", alignItems: "center",
                                     background: f.bg, color: f.color,
-                                    fontSize: "0.75rem", fontWeight: 400,
-                                    padding: "3px 10px", borderRadius: 9999, whiteSpace: "nowrap",
+                                    fontSize: "0.72rem", fontWeight: 600,
+                                    padding: "3px 9px", borderRadius: 9999, whiteSpace: "nowrap",
+                                    letterSpacing: "0.01em",
                                   }}>
                                     {f.label}
                                   </span>
@@ -1128,7 +1157,7 @@ const ManageBookingsPage: React.FC = () => {
             {/* Pagination */}
             {totalPages > 1 && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderTop: "1px solid var(--border)" }}>
-                <p style={{ fontSize: "0.78rem", color: "var(--fur-slate-light)", fontWeight: 400 }}>
+                <p style={T.secondary}>
                   Showing {(currentPage - 1) * ROWS_PER_PAGE + 1}–{Math.min(currentPage * ROWS_PER_PAGE, filtered.length)} of {filtered.length}
                 </p>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -1183,13 +1212,14 @@ const ManageBookingsPage: React.FC = () => {
           <div className="absolute inset-0" style={{ background: "rgba(26,35,50,0.45)", backdropFilter: "blur(4px)" }} onClick={closePetRecord} />
           <div className="relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ maxHeight: "90vh" }}>
 
+            {/* Modal header */}
             <div className="flex items-center gap-4 px-6 py-5 shrink-0" style={{ background: "linear-gradient(135deg, #5B21B6 0%, #7C3AED 100%)" }}>
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0"
-                style={{ background: "rgba(255,255,255,0.2)", color: "white", fontWeight: 400, backdropFilter: "blur(4px)" }}>
+                style={{ background: "rgba(255,255,255,0.2)", color: "white", fontWeight: 700, backdropFilter: "blur(4px)" }}>
                 {petRecordBooking.petName.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <h2 style={{ fontWeight: 400, fontSize: "1.1rem", color: "white" }}>{petRecordBooking.petName}</h2>
+                <h2 style={{ fontWeight: 700, fontSize: "1.1rem", color: "white", letterSpacing: "-0.01em" }}>{petRecordBooking.petName}</h2>
                 <p style={{ fontSize: "0.82rem", fontWeight: 400, textTransform: "capitalize", color: "rgba(255,255,255,0.75)" }}>
                   {petRecordBooking.petType} · {petRecordBooking.petBreed} · Owner: {petRecordBooking.ownerName}
                 </p>
@@ -1204,6 +1234,7 @@ const ManageBookingsPage: React.FC = () => {
               </button>
             </div>
 
+            {/* Tabs */}
             <div className="flex border-b shrink-0" style={{ background: "white", borderColor: "var(--border)" }}>
               {([
                 { key: "vaccinations" as const, label: `Vaccinations (${petVaccinations.length})` },
@@ -1212,7 +1243,7 @@ const ManageBookingsPage: React.FC = () => {
                 <button key={key} onClick={() => { setPetRecordTab(key); setVaxPage(1); setHistPage(1); }}
                   className="px-6 py-3 border-b-2 transition-colors"
                   style={{
-                    fontSize: "0.85rem", fontWeight: 400, fontFamily: "inherit",
+                    fontSize: "0.85rem", fontWeight: petRecordTab === key ? 600 : 500, fontFamily: "inherit",
                     ...(petRecordTab === key
                       ? { borderColor: "#7C3AED", color: "#5B21B6" }
                       : { borderColor: "transparent", color: "var(--fur-slate-light)" })
@@ -1222,22 +1253,23 @@ const ManageBookingsPage: React.FC = () => {
               ))}
             </div>
 
+            {/* Modal body */}
             <div className="overflow-y-auto flex-1 p-6" style={{ background: "white" }}>
               {petRecordError && (
                 <div className="mb-4 px-4 py-3 rounded-xl border"
-                  style={{ background: "#FEF2F2", borderColor: "#FCA5A5", color: "#991B1B", fontSize: "0.82rem", fontWeight: 400 }}>
+                  style={{ background: "#FEF2F2", borderColor: "#FCA5A5", color: "#991B1B", fontSize: "0.82rem", fontWeight: 500 }}>
                   {petRecordError}
                 </div>
               )}
               {petRecordLoading ? (
-                <p style={{ fontSize: "0.82rem", fontWeight: 400, textAlign: "center", padding: "32px 0", color: "var(--fur-slate-light)" }}>Loading records...</p>
+                <p style={{ ...T.secondary, textAlign: "center", padding: "32px 0" }}>Loading records...</p>
               ) : petRecordTab === "vaccinations" ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>{petVaccinations.length} record{petVaccinations.length !== 1 ? "s" : ""}</p>
+                    <p style={T.secondary}>{petVaccinations.length} record{petVaccinations.length !== 1 ? "s" : ""}</p>
                     <button onClick={() => { setAddingVax(!addingVax); setPetRecordError(null); }}
                       className="px-4 py-2 rounded-xl text-white transition-colors"
-                      style={{ background: "#7C3AED", fontSize: "0.82rem", fontWeight: 400, fontFamily: "inherit" }}
+                      style={{ background: "#7C3AED", fontSize: "0.82rem", fontWeight: 600, fontFamily: "inherit" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")}
                       onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
                       {addingVax ? "Cancel" : "+ Add Vaccination"}
@@ -1245,42 +1277,41 @@ const ManageBookingsPage: React.FC = () => {
                   </div>
                   {addingVax && (
                     <div className="rounded-xl border p-4 space-y-3" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
-                      <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>New Vaccination Record (Verified)</p>
+                      <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)" }}>New Vaccination Record <span style={{ fontWeight: 400, color: "var(--fur-slate-light)" }}>(Verified)</span></p>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2">
-                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Vaccine Name *</label>
+                          <label style={formLabelStyle}>Vaccine Name *</label>
                           <input type="text" value={vaxForm.name} onChange={e => setVaxForm({ ...vaxForm, name: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontWeight: 400, fontFamily: "inherit" }} placeholder="e.g., Rabies" />
+                            style={inputStyle} placeholder="e.g., Rabies" />
                         </div>
                         <div>
-                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Date Given *</label>
+                          <label style={formLabelStyle}>Date Given *</label>
                           <input type="date" value={vaxForm.dateGiven} onChange={e => setVaxForm({ ...vaxForm, dateGiven: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                            style={inputStyle} />
                         </div>
                         <div>
-                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Next Due Date</label>
+                          <label style={formLabelStyle}>Next Due Date</label>
                           <input type="date" value={vaxForm.nextDueDate} onChange={e => setVaxForm({ ...vaxForm, nextDueDate: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                            style={inputStyle} />
                         </div>
                         <div className="col-span-2">
-                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Notes</label>
+                          <label style={formLabelStyle}>Notes</label>
                           <input type="text" value={vaxForm.notes} onChange={e => setVaxForm({ ...vaxForm, notes: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} placeholder="Any notes" />
+                            style={inputStyle} placeholder="Any notes" />
                         </div>
                       </div>
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setAddingVax(false)} className="px-4 py-2 rounded-xl border"
-                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.82rem", fontWeight: 400, fontFamily: "inherit" }}>Cancel</button>
+                        <button onClick={() => setAddingVax(false)}
+                          style={{ padding: "6px 14px", borderRadius: 9, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                         <button onClick={handleProviderAddVax} disabled={!vaxForm.name || !vaxForm.dateGiven || saving}
-                          className="px-4 py-2 rounded-xl text-white disabled:opacity-50"
-                          style={{ background: "#7C3AED", fontSize: "0.82rem", fontWeight: 400, fontFamily: "inherit" }}>
+                          style={{ padding: "6px 14px", borderRadius: 9, background: "#7C3AED", color: "white", border: "none", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: (!vaxForm.name || !vaxForm.dateGiven || saving) ? 0.5 : 1 }}>
                           {saving ? "Saving..." : "Save Record"}
                         </button>
                       </div>
                     </div>
                   )}
                   {petVaccinations.length === 0 && !addingVax
-                    ? <p style={{ fontSize: "0.82rem", fontWeight: 400, textAlign: "center", padding: "24px 0", color: "var(--fur-slate-light)" }}>No vaccination records yet.</p>
+                    ? <p style={{ ...T.secondary, textAlign: "center", padding: "24px 0" }}>No vaccination records yet.</p>
                     : (() => {
                         const vaxTotalPages = Math.max(1, Math.ceil(petVaccinations.length / RECORDS_PER_PAGE));
                         const pagedVax = petVaccinations.slice((vaxPage - 1) * RECORDS_PER_PAGE, vaxPage * RECORDS_PER_PAGE);
@@ -1291,48 +1322,42 @@ const ManageBookingsPage: React.FC = () => {
                                 <div key={v.id} className="rounded-xl border" style={{ background: "white", borderColor: "var(--border)" }}>
                                   {editingVaxId === v.id ? (
                                     <div className="p-4 space-y-3">
-                                      <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate)" }}>Edit Vaccination Record</p>
+                                      <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)" }}>Edit Vaccination Record</p>
                                       <div className="grid grid-cols-2 gap-3">
                                         <div className="col-span-2">
-                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Vaccine Name *</label>
-                                          <input type="text" value={editVaxForm.name} onChange={e => setEditVaxForm({ ...editVaxForm, name: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                          <label style={formLabelStyle}>Vaccine Name *</label>
+                                          <input type="text" value={editVaxForm.name} onChange={e => setEditVaxForm({ ...editVaxForm, name: e.target.value })} style={inputStyle} />
                                         </div>
                                         <div>
-                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Date Given *</label>
-                                          <input type="date" value={editVaxForm.dateGiven} onChange={e => setEditVaxForm({ ...editVaxForm, dateGiven: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                          <label style={formLabelStyle}>Date Given *</label>
+                                          <input type="date" value={editVaxForm.dateGiven} onChange={e => setEditVaxForm({ ...editVaxForm, dateGiven: e.target.value })} style={inputStyle} />
                                         </div>
                                         <div>
-                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Next Due Date</label>
-                                          <input type="date" value={editVaxForm.nextDueDate} onChange={e => setEditVaxForm({ ...editVaxForm, nextDueDate: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                          <label style={formLabelStyle}>Next Due Date</label>
+                                          <input type="date" value={editVaxForm.nextDueDate} onChange={e => setEditVaxForm({ ...editVaxForm, nextDueDate: e.target.value })} style={inputStyle} />
                                         </div>
                                         <div className="col-span-2">
-                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Notes</label>
-                                          <input type="text" value={editVaxForm.notes} onChange={e => setEditVaxForm({ ...editVaxForm, notes: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                          <label style={formLabelStyle}>Notes</label>
+                                          <input type="text" value={editVaxForm.notes} onChange={e => setEditVaxForm({ ...editVaxForm, notes: e.target.value })} style={inputStyle} />
                                         </div>
                                       </div>
                                       <div className="flex justify-end gap-2">
-                                        <button onClick={() => setEditingVaxId(null)} className="px-4 py-2 rounded-xl border"
-                                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.82rem", fontFamily: "inherit" }}>Cancel</button>
+                                        <button onClick={() => setEditingVaxId(null)}
+                                          style={{ padding: "6px 14px", borderRadius: 9, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                                         <button onClick={handleProviderEditVax} disabled={!editVaxForm.name || !editVaxForm.dateGiven || saving}
-                                          className="px-4 py-2 rounded-xl text-white disabled:opacity-50"
-                                          style={{ background: "#7C3AED", fontSize: "0.82rem", fontFamily: "inherit" }}>
+                                          style={{ padding: "6px 14px", borderRadius: 9, background: "#7C3AED", color: "white", border: "none", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: (!editVaxForm.name || !editVaxForm.dateGiven || saving) ? 0.5 : 1 }}>
                                           {saving ? "Saving..." : "Save Changes"}
                                         </button>
                                       </div>
                                     </div>
                                   ) : deletingId === v.id ? (
                                     <div className="p-4 flex items-center justify-between gap-3">
-                                      <p style={{ fontSize: "0.82rem", color: "var(--fur-slate)" }}>Delete <strong>{v.name}</strong>? This cannot be undone.</p>
+                                      <p style={{ fontSize: "0.85rem", fontWeight: 400, color: "var(--fur-slate)" }}>Delete <strong style={{ fontWeight: 600 }}>{v.name}</strong>? This cannot be undone.</p>
                                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                                        <button onClick={() => setDeletingId(null)} className="px-3 py-1.5 rounded-lg border"
-                                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.78rem", fontFamily: "inherit" }}>Cancel</button>
+                                        <button onClick={() => setDeletingId(null)}
+                                          style={{ padding: "5px 12px", borderRadius: 8, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.78rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                                         <button onClick={() => handleProviderDeleteVax(v.id)} disabled={saving}
-                                          className="px-3 py-1.5 rounded-lg text-white disabled:opacity-50"
-                                          style={{ background: "#DC2626", fontSize: "0.78rem", fontFamily: "inherit" }}>
+                                          style={{ padding: "5px 12px", borderRadius: 8, background: "#DC2626", color: "white", border: "none", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.5 : 1 }}>
                                           {saving ? "Deleting..." : "Delete"}
                                         </button>
                                       </div>
@@ -1341,19 +1366,19 @@ const ManageBookingsPage: React.FC = () => {
                                     <div className="p-4 flex items-start gap-3">
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                          <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{v.name}</p>
+                                          <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)" }}>{v.name}</p>
                                           {v.isVerified && (
-                                            <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
+                                            <span style={{ fontSize: "0.68rem", fontWeight: 600, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
                                               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                               Verified
                                             </span>
                                           )}
                                         </div>
-                                        <p style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>
+                                        <p style={T.secondary}>
                                           Given: {new Date(v.dateGiven).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
                                           {v.nextDueDate && ` · Next: ${new Date(v.nextDueDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}`}
                                         </p>
-                                        {v.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginTop: 2, color: "var(--fur-slate-light)" }}>by {v.providerName}</p>}
+                                        {v.providerName && <p style={{ ...T.secondary, marginTop: 2 }}>by {v.providerName}</p>}
                                       </div>
                                       {v.addedBy === "provider" && (
                                         <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
@@ -1374,7 +1399,7 @@ const ManageBookingsPage: React.FC = () => {
                             </div>
                             {vaxTotalPages > 1 && (
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8 }}>
-                                <p style={{ fontSize: "0.75rem", color: "var(--fur-slate-light)" }}>
+                                <p style={T.secondary}>
                                   {(vaxPage - 1) * RECORDS_PER_PAGE + 1}–{Math.min(vaxPage * RECORDS_PER_PAGE, petVaccinations.length)} of {petVaccinations.length}
                                 </p>
                                 <div style={{ display: "flex", gap: 4 }}>
@@ -1395,12 +1420,13 @@ const ManageBookingsPage: React.FC = () => {
                   }
                 </div>
               ) : (
+                /* ─── Medical History Tab ─── */
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate-light)" }}>{petHistory.length} record{petHistory.length !== 1 ? "s" : ""}</p>
+                    <p style={T.secondary}>{petHistory.length} record{petHistory.length !== 1 ? "s" : ""}</p>
                     <button onClick={() => { setAddingHist(!addingHist); setPetRecordError(null); }}
                       className="px-4 py-2 rounded-xl text-white transition-colors"
-                      style={{ background: "#7C3AED", fontSize: "0.82rem", fontWeight: 400, fontFamily: "inherit" }}
+                      style={{ background: "#7C3AED", fontSize: "0.82rem", fontWeight: 600, fontFamily: "inherit" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "#6D28D9")}
                       onMouseLeave={e => (e.currentTarget.style.background = "#7C3AED")}>
                       {addingHist ? "Cancel" : "+ Add Record"}
@@ -1408,47 +1434,45 @@ const ManageBookingsPage: React.FC = () => {
                   </div>
                   {addingHist && (
                     <div className="rounded-xl border p-4 space-y-3" style={{ background: "var(--fur-cream)", borderColor: "var(--border)" }}>
-                      <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>New Medical Record</p>
+                      <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)" }}>New Medical Record</p>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2">
-                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Diagnosis *</label>
+                          <label style={formLabelStyle}>Diagnosis *</label>
                           <input type="text" value={histForm.diagnosis} onChange={e => setHistForm({ ...histForm, diagnosis: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} placeholder="e.g., Skin Allergy" />
+                            style={inputStyle} placeholder="e.g., Skin Allergy" />
                         </div>
                         <div>
-                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Date *</label>
-                          <input type="date" value={histForm.date} onChange={e => setHistForm({ ...histForm, date: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                          <label style={formLabelStyle}>Date *</label>
+                          <input type="date" value={histForm.date} onChange={e => setHistForm({ ...histForm, date: e.target.value })} style={inputStyle} />
                         </div>
                         <div>
-                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Treatment</label>
+                          <label style={formLabelStyle}>Treatment</label>
                           <input type="text" value={histForm.treatment} onChange={e => setHistForm({ ...histForm, treatment: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} placeholder="e.g., Antihistamine" />
+                            style={inputStyle} placeholder="e.g., Antihistamine" />
                         </div>
                         <div>
-                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Prescription</label>
+                          <label style={formLabelStyle}>Prescription</label>
                           <input type="text" value={histForm.prescription} onChange={e => setHistForm({ ...histForm, prescription: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} placeholder="e.g., Cetirizine 5mg" />
+                            style={inputStyle} placeholder="e.g., Cetirizine 5mg" />
                         </div>
                         <div className="col-span-2">
-                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Notes</label>
+                          <label style={formLabelStyle}>Notes</label>
                           <input type="text" value={histForm.notes} onChange={e => setHistForm({ ...histForm, notes: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} placeholder="Any additional notes" />
+                            style={inputStyle} placeholder="Any additional notes" />
                         </div>
                       </div>
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setAddingHist(false)} className="px-4 py-2 rounded-xl border"
-                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.82rem", fontWeight: 400, fontFamily: "inherit" }}>Cancel</button>
+                        <button onClick={() => setAddingHist(false)}
+                          style={{ padding: "6px 14px", borderRadius: 9, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                         <button onClick={handleProviderAddHistory} disabled={!histForm.diagnosis || !histForm.date || saving}
-                          className="px-4 py-2 rounded-xl text-white disabled:opacity-50"
-                          style={{ background: "#7C3AED", fontSize: "0.82rem", fontWeight: 400, fontFamily: "inherit" }}>
+                          style={{ padding: "6px 14px", borderRadius: 9, background: "#7C3AED", color: "white", border: "none", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: (!histForm.diagnosis || !histForm.date || saving) ? 0.5 : 1 }}>
                           {saving ? "Saving..." : "Save Record"}
                         </button>
                       </div>
                     </div>
                   )}
                   {petHistory.length === 0 && !addingHist
-                    ? <p style={{ fontSize: "0.82rem", fontWeight: 400, textAlign: "center", padding: "24px 0", color: "var(--fur-slate-light)" }}>No medical history yet.</p>
+                    ? <p style={{ ...T.secondary, textAlign: "center", padding: "24px 0" }}>No medical history yet.</p>
                     : (() => {
                         const histTotalPages = Math.max(1, Math.ceil(petHistory.length / RECORDS_PER_PAGE));
                         const pagedHist = petHistory.slice((histPage - 1) * RECORDS_PER_PAGE, histPage * RECORDS_PER_PAGE);
@@ -1459,53 +1483,46 @@ const ManageBookingsPage: React.FC = () => {
                                 <div key={h.id} className="rounded-xl border" style={{ background: "white", borderColor: "var(--border)" }}>
                                   {editingHistId === h.id ? (
                                     <div className="p-4 space-y-3">
-                                      <p style={{ fontSize: "0.82rem", fontWeight: 400, color: "var(--fur-slate)" }}>Edit Medical Record</p>
+                                      <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)" }}>Edit Medical Record</p>
                                       <div className="grid grid-cols-2 gap-3">
                                         <div className="col-span-2">
-                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Diagnosis *</label>
-                                          <input type="text" value={editHistForm.diagnosis} onChange={e => setEditHistForm({ ...editHistForm, diagnosis: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                          <label style={formLabelStyle}>Diagnosis *</label>
+                                          <input type="text" value={editHistForm.diagnosis} onChange={e => setEditHistForm({ ...editHistForm, diagnosis: e.target.value })} style={inputStyle} />
                                         </div>
                                         <div>
-                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Date *</label>
-                                          <input type="date" value={editHistForm.date} onChange={e => setEditHistForm({ ...editHistForm, date: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                          <label style={formLabelStyle}>Date *</label>
+                                          <input type="date" value={editHistForm.date} onChange={e => setEditHistForm({ ...editHistForm, date: e.target.value })} style={inputStyle} />
                                         </div>
                                         <div>
-                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Treatment</label>
-                                          <input type="text" value={editHistForm.treatment} onChange={e => setEditHistForm({ ...editHistForm, treatment: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                          <label style={formLabelStyle}>Treatment</label>
+                                          <input type="text" value={editHistForm.treatment} onChange={e => setEditHistForm({ ...editHistForm, treatment: e.target.value })} style={inputStyle} />
                                         </div>
                                         <div>
-                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Prescription</label>
-                                          <input type="text" value={editHistForm.prescription} onChange={e => setEditHistForm({ ...editHistForm, prescription: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                          <label style={formLabelStyle}>Prescription</label>
+                                          <input type="text" value={editHistForm.prescription} onChange={e => setEditHistForm({ ...editHistForm, prescription: e.target.value })} style={inputStyle} />
                                         </div>
                                         <div className="col-span-2">
-                                          <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--fur-slate-mid)" }}>Notes</label>
-                                          <input type="text" value={editHistForm.notes} onChange={e => setEditHistForm({ ...editHistForm, notes: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-xl" style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.85rem", fontFamily: "inherit" }} />
+                                          <label style={formLabelStyle}>Notes</label>
+                                          <input type="text" value={editHistForm.notes} onChange={e => setEditHistForm({ ...editHistForm, notes: e.target.value })} style={inputStyle} />
                                         </div>
                                       </div>
                                       <div className="flex justify-end gap-2">
-                                        <button onClick={() => setEditingHistId(null)} className="px-4 py-2 rounded-xl border"
-                                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.82rem", fontFamily: "inherit" }}>Cancel</button>
+                                        <button onClick={() => setEditingHistId(null)}
+                                          style={{ padding: "6px 14px", borderRadius: 9, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                                         <button onClick={handleProviderEditHist} disabled={!editHistForm.diagnosis || !editHistForm.date || saving}
-                                          className="px-4 py-2 rounded-xl text-white disabled:opacity-50"
-                                          style={{ background: "#7C3AED", fontSize: "0.82rem", fontFamily: "inherit" }}>
+                                          style={{ padding: "6px 14px", borderRadius: 9, background: "#7C3AED", color: "white", border: "none", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: (!editHistForm.diagnosis || !editHistForm.date || saving) ? 0.5 : 1 }}>
                                           {saving ? "Saving..." : "Save Changes"}
                                         </button>
                                       </div>
                                     </div>
                                   ) : deletingId === h.id ? (
                                     <div className="p-4 flex items-center justify-between gap-3">
-                                      <p style={{ fontSize: "0.82rem", color: "var(--fur-slate)" }}>Delete <strong>{h.diagnosis}</strong>? This cannot be undone.</p>
+                                      <p style={{ fontSize: "0.85rem", fontWeight: 400, color: "var(--fur-slate)" }}>Delete <strong style={{ fontWeight: 600 }}>{h.diagnosis}</strong>? This cannot be undone.</p>
                                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                                        <button onClick={() => setDeletingId(null)} className="px-3 py-1.5 rounded-lg border"
-                                          style={{ borderColor: "var(--border)", color: "var(--fur-slate)", fontSize: "0.78rem", fontFamily: "inherit" }}>Cancel</button>
+                                        <button onClick={() => setDeletingId(null)}
+                                          style={{ padding: "5px 12px", borderRadius: 8, border: "1.5px solid var(--border)", background: "white", color: "var(--fur-slate)", fontSize: "0.78rem", fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
                                         <button onClick={() => handleProviderDeleteHist(h.id)} disabled={saving}
-                                          className="px-3 py-1.5 rounded-lg text-white disabled:opacity-50"
-                                          style={{ background: "#DC2626", fontSize: "0.78rem", fontFamily: "inherit" }}>
+                                          style={{ padding: "5px 12px", borderRadius: 8, background: "#DC2626", color: "white", border: "none", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", opacity: saving ? 0.5 : 1 }}>
                                           {saving ? "Deleting..." : "Delete"}
                                         </button>
                                       </div>
@@ -1514,14 +1531,14 @@ const ManageBookingsPage: React.FC = () => {
                                     <div className="p-4">
                                       <div className="flex items-start gap-2 mb-1">
                                         <div className="flex items-center gap-2 flex-wrap flex-1">
-                                          <p style={{ fontSize: "0.88rem", fontWeight: 400, color: "var(--fur-slate)" }}>{h.diagnosis}</p>
+                                          <p style={{ fontSize: "0.88rem", fontWeight: 600, color: "var(--fur-slate)" }}>{h.diagnosis}</p>
                                           {h.addedBy === "provider" && (
-                                            <span style={{ fontSize: "0.68rem", fontWeight: 400, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
+                                            <span style={{ fontSize: "0.68rem", fontWeight: 600, padding: "2px 7px", borderRadius: 9999, display: "inline-flex", alignItems: "center", gap: 3, background: "#DBEAFE", color: "#1E40AF" }}>
                                               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                               Verified
                                             </span>
                                           )}
-                                          <span style={{ fontSize: "0.75rem", fontWeight: 400, marginLeft: "auto", color: "var(--fur-slate-light)" }}>
+                                          <span style={{ ...T.secondary, marginLeft: "auto" }}>
                                             {new Date(h.date).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}
                                           </span>
                                         </div>
@@ -1538,11 +1555,11 @@ const ManageBookingsPage: React.FC = () => {
                                           </div>
                                         )}
                                       </div>
-                                      {h.providerName && <p style={{ fontSize: "0.75rem", fontWeight: 400, marginBottom: 6, color: "var(--fur-slate-light)" }}>by {h.providerName}</p>}
+                                      {h.providerName && <p style={{ ...T.secondary, marginBottom: 6 }}>by {h.providerName}</p>}
                                       <div className="flex flex-wrap gap-2 mt-2">
-                                        {h.treatment && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Treatment: {h.treatment}</span>}
-                                        {h.prescription && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Rx: {h.prescription}</span>}
-                                        {h.notes && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Notes: {h.notes}</span>}
+                                        {h.treatment && <span style={{ fontSize: "0.75rem", fontWeight: 500, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Treatment: {h.treatment}</span>}
+                                        {h.prescription && <span style={{ fontSize: "0.75rem", fontWeight: 500, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate)" }}>Rx: {h.prescription}</span>}
+                                        {h.notes && <span style={{ fontSize: "0.75rem", fontWeight: 400, padding: "3px 8px", borderRadius: 8, background: "var(--fur-cream)", color: "var(--fur-slate-light)" }}>Notes: {h.notes}</span>}
                                       </div>
                                     </div>
                                   )}
@@ -1551,7 +1568,7 @@ const ManageBookingsPage: React.FC = () => {
                             </div>
                             {histTotalPages > 1 && (
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8 }}>
-                                <p style={{ fontSize: "0.75rem", color: "var(--fur-slate-light)" }}>
+                                <p style={T.secondary}>
                                   {(histPage - 1) * RECORDS_PER_PAGE + 1}–{Math.min(histPage * RECORDS_PER_PAGE, petHistory.length)} of {petHistory.length}
                                 </p>
                                 <div style={{ display: "flex", gap: 4 }}>
