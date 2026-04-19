@@ -865,16 +865,26 @@ const ManageBookingsPage: React.FC = () => {
               }}
             />
           </div>
-          <select value={filters.month} onChange={(e) => setFilter("month", e.target.value)}
-            style={{ height: 40, width: 148, padding: "0 10px", flexShrink: 0, fontSize: "0.85rem", fontFamily: "inherit", fontWeight: 400, border: "1.5px solid var(--border)", borderRadius: 10, background: "white", color: "var(--fur-slate)", outline: "none", cursor: "pointer" }}>
-            <option value="all">All months</option>
-            {MONTHS.map((m, i) => <option key={i} value={String(i)}>{m}</option>)}
-          </select>
-          <select value={filters.serviceId} onChange={(e) => setFilter("serviceId", e.target.value)}
-            style={{ height: 40, width: 170, padding: "0 10px", flexShrink: 0, fontSize: "0.85rem", fontFamily: "inherit", fontWeight: 400, border: "1.5px solid var(--border)", borderRadius: 10, background: "white", color: "var(--fur-slate)", outline: "none", cursor: "pointer" }}>
-            <option value="all">All services</option>
-            {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <div style={{ position: "relative", flexShrink: 0, width: 148 }}>
+            <select value={filters.month} onChange={(e) => setFilter("month", e.target.value)}
+              style={{ height: 40, width: "100%", paddingLeft: 10, paddingRight: 32, fontSize: "0.85rem", fontFamily: "inherit", fontWeight: 400, border: "1.5px solid var(--border)", borderRadius: 10, background: "white", color: "#374151", outline: "none", cursor: "pointer", appearance: "none", WebkitAppearance: "none" }}>
+              <option value="all">All months</option>
+              {MONTHS.map((m, i) => <option key={i} value={String(i)}>{m}</option>)}
+            </select>
+            <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#9CA3AF", display: "flex" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </div>
+          <div style={{ position: "relative", flexShrink: 0, width: 170 }}>
+            <select value={filters.serviceId} onChange={(e) => setFilter("serviceId", e.target.value)}
+              style={{ height: 40, width: "100%", paddingLeft: 10, paddingRight: 32, fontSize: "0.85rem", fontFamily: "inherit", fontWeight: 400, border: "1.5px solid var(--border)", borderRadius: 10, background: "white", color: "#374151", outline: "none", cursor: "pointer", appearance: "none", WebkitAppearance: "none" }}>
+              <option value="all">All services</option>
+              {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "#9CA3AF", display: "flex" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </div>
         </div>
 
         {hasActiveFilters && (
